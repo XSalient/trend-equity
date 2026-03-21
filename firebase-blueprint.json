@@ -46,6 +46,18 @@
         "savedAt": { "type": "string", "format": "date-time" }
       },
       "required": ["userId", "idea", "savedAt"]
+    },
+    "User": {
+      "title": "User",
+      "description": "User profile and preferences.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "tier": { "type": "string", "enum": ["free", "pro", "builder"] },
+        "filters": { "type": "object" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "tier", "updatedAt"]
     }
   },
   "firestore": {
@@ -56,6 +68,10 @@
     "/user_saves/{saveId}": {
       "schema": "UserSave",
       "description": "Stores ideas saved by users."
+    },
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Stores user profiles and preferences."
     }
   }
 }

@@ -1,4 +1,5 @@
 import { GoogleGenAI, Type } from "@google/genai";
+import { Idea } from "../types";
 
 const SYSTEM_PROMPT = `You are the Trend-Equity Idea Generator, a strict VC-filtered business idea engine for the Trend-Equity mobile app. Your output must be exactly 25 fresh, investable business ideas every run, presented as a daily news-style feed. Current date is always today.
 
@@ -53,7 +54,8 @@ Mandatory Output Format per Idea (11 fields exactly):
 8. Potential Exit
 9. Trend Sources & Triggers
 10. Heat Badge (e.g., "Early Bird – heating up" or "X entrepreneurs viewing/saved last 24h")
-11. Next Steps (3-5 actionable steps for a founder)
+11. Next Steps: Exactly 7 actionable steps. Each step should be a string in the format: "Step Title | Timeline | Key Risk | Tool/Link".
+    Example: "Build MVP | 2 weeks | Technical debt | Replit/Vercel"
 
 Additional Mechanics:
 - Saturation Indicator: Label "Early Bird – heating up" or estimate "X entrepreneurs viewing/saved last 24h" (synthetic estimate).
@@ -127,4 +129,49 @@ export async function generateDailyIdeas(date: string) {
       }
     }
   }
+}
+
+export async function generateFullActionPlan(idea: Idea) {
+  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+  
+  const prompt = `Generate a comprehensive 10+ step action plan for this business idea:
+  Headline: ${idea.headline}
+  Pitch: ${idea.pitch}
+  VC Justification: ${idea.vcJustification}
+  
+  Provide a detailed roadmap with milestones, a list of essential tools, potential risks, and a realistic timeline.
+  Format as JSON.`;
+
+  const schema = {
+    type: Type.OBJECT,
+    properties: {
+      roadmap: {
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            step: { type: Type.STRING },
+            details: { type: Type.STRING },
+            milestone: { type: Type.STRING }
+          },
+          required: ["step", "details", "milestone"]
+        }
+      },
+      tools: { type: Type.ARRAY, items: { type: Type.STRING } },
+      risks: { type: Type.ARRAY, items: { type: Type.STRING } },
+      timeline: { type: Type.STRING }
+    },
+    required: ["roadmap", "tools", "risks", "timeline"]
+  };
+
+  const response = await ai.models.generateContent({
+    model: "gemini-3-flash-preview",
+    contents: prompt,
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: schema
+    }
+  });
+
+  return JSON.parse(response.text);
 }

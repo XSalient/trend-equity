@@ -48,9 +48,23 @@ service cloud.firestore {
              data.savedAt is timestamp;
     }
 
+    function isValidUserProfile(data) {
+      return data.userId is string &&
+             data.tier in ['free', 'pro', 'builder'] &&
+             data.updatedAt is timestamp;
+    }
+
     // ===============================================================
     // Rules
     // ===============================================================
+
+    match /users/{userId} {
+      // Users can only read and write their own profile
+      allow read: if isOwner(userId);
+      allow create, update: if isOwner(userId) && 
+                              isValidUserProfile(request.resource.data);
+      allow delete: if false;
+    }
 
     match /daily_generations/{date} {
       // Anyone can read daily generations (public feed)
