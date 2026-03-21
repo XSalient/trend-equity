@@ -1,0 +1,61 @@
+{
+  "entities": {
+    "DailyGeneration": {
+      "title": "Daily Generation",
+      "description": "A collection of 20 business ideas generated for a specific day.",
+      "type": "object",
+      "properties": {
+        "date": {
+          "type": "string",
+          "description": "The date of generation in YYYY-MM-DD format."
+        },
+        "ideas": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "headline": { "type": "string" },
+              "pitch": { "type": "string" },
+              "vcJustification": { "type": "string" },
+              "categoryTags": { "type": "array", "items": { "type": "string" } },
+              "costEffort": { "type": "string" },
+              "revenuePotentialScore": { "type": "number" },
+              "revenueSkeleton": { "type": "string" },
+              "unfairAdvantage": { "type": "string" },
+              "potentialExit": { "type": "string" },
+              "trendSources": { "type": "array", "items": { "type": "string" } },
+              "saturationLabel": { "type": "string" }
+            }
+          }
+        },
+        "generatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["date", "ideas", "generatedAt"]
+    },
+    "UserSave": {
+      "title": "User Save",
+      "description": "An idea saved by a specific user.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "idea": { "type": "object" },
+        "savedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "idea", "savedAt"]
+    }
+  },
+  "firestore": {
+    "/daily_generations/{date}": {
+      "schema": "DailyGeneration",
+      "description": "Stores the 20 ideas generated for each day."
+    },
+    "/user_saves/{saveId}": {
+      "schema": "UserSave",
+      "description": "Stores ideas saved by users."
+    }
+  }
+}
