@@ -144,8 +144,15 @@ export default function App() {
       setUser(u);
       setAuthReady(true);
       if (u) {
-        // For demo: if logged in, you are "Pro" by default
-        setTier('pro');
+        // Fetch user data from Firestore to get the correct tier
+        const userRef = doc(db, 'users', u.uid);
+        getDoc(userRef).then(docSnap => {
+          if (docSnap.exists()) {
+            setTier(docSnap.data().tier || 'free');
+          } else {
+            setTier('free');
+          }
+        });
       } else {
         setTier('free');
         setUserSaves([]);
@@ -215,20 +222,24 @@ export default function App() {
     // 1. Industry
     if (filters.industries.length > 0) {
       filtered = filtered.filter(idea => 
-        filters.industries.some(ind => 
-          idea.categoryTags.some(tag => tag.toLowerCase().includes(ind.toLowerCase())) ||
-          idea.headline.toLowerCase().includes(ind.toLowerCase())
-        )
+        filters.industries.some(ind => {
+          const searchTerms = ind.toLowerCase().split(/[\/\s-]/);
+          return searchTerms.some(term => 
+            idea.categoryTags.some(tag => tag.toLowerCase().includes(term)) ||
+            idea.headline.toLowerCase().includes(term) ||
+            idea.pitch.toLowerCase().includes(term)
+          );
+        })
       );
     }
 
-    // 2. Risk
+    // 2. Risk (Scale is 0-10)
     if (filters.riskLevels.length > 0) {
       filtered = filtered.filter(idea => {
         const score = idea.revenuePotentialScore;
-        const isLow = score < 75;
-        const isHigh = score > 85;
-        const isMedium = score >= 75 && score <= 85;
+        const isLow = score < 5;
+        const isHigh = score > 8;
+        const isMedium = score >= 5 && score <= 8;
         
         if (filters.riskLevels.includes('Low') && isLow) return true;
         if (filters.riskLevels.includes('Medium') && isMedium) return true;
@@ -249,7 +260,8 @@ export default function App() {
       filtered = filtered.filter(idea => 
         filters.marketFocus.some(m => 
           idea.pitch.toLowerCase().includes(m.toLowerCase()) ||
-          idea.trendSources.some(s => s.toLowerCase().includes(m.toLowerCase()))
+          idea.trendSources.some(s => s.toLowerCase().includes(m.toLowerCase())) ||
+          idea.vcJustification.toLowerCase().includes(m.toLowerCase())
         )
       );
     }
@@ -257,8 +269,9 @@ export default function App() {
     // 5. Team
     if (filters.teamSize.length > 0) {
       filtered = filtered.filter(idea => {
-        const isSolo = idea.costEffort.toLowerCase().includes('low') || idea.costEffort.toLowerCase().includes('solo');
-        const isTeam = idea.costEffort.toLowerCase().includes('high') || idea.costEffort.toLowerCase().includes('team');
+        const costEffort = idea.costEffort.toLowerCase();
+        const isSolo = costEffort.includes('solo') || costEffort.includes('low');
+        const isTeam = costEffort.includes('team') || costEffort.includes('funding') || costEffort.includes('co-founder');
         const isSmall = !isSolo && !isTeam;
 
         if (filters.teamSize.includes('Solo-friendly') && isSolo) return true;
@@ -596,19 +609,47 @@ export default function App() {
         {/* Header */}
         <header className="sticky top-0 z-50 bg-zinc-950/80 backdrop-blur-md border-b border-zinc-900">
           <div className="max-w-3xl mx-auto px-4 h-16 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center">
-                <TrendingUp className="w-5 h-5 text-white" />
-              </div>
-              <h1 className="text-lg font-black tracking-tighter uppercase italic">Trend Equity</h1>
-            </div>
-
             <div className="flex items-center gap-4">
-              {user ? (
-                <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center">
+                  <TrendingUp className="w-5 h-5 text-white" />
+                </div>
+                <h1 className="text-lg font-black tracking-tighter uppercase italic hidden sm:block">Trend Equity</h1>
+              </div>
+              <div className="h-4 w-px bg-zinc-800 hidden sm:block" />
+              <div className="flex items-center gap-2 text-emerald-500">
+                <Calendar className="w-3.5 h-3.5" />
+                <span className="text-[10px] font-bold uppercase tracking-widest">
+                  {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                </span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              {user && (
+                <>
+                  <div className="flex items-center gap-1">
+                    {tier !== 'free' && (
+                      <button 
+                        onClick={() => triggerGeneration()}
+                        disabled={generating}
+                        className="p-2 text-zinc-500 hover:text-emerald-500 transition-colors disabled:opacity-50"
+                        title="Force Refresh Feed"
+                      >
+                        <RefreshCw className={`w-4 h-4 ${generating ? 'animate-spin' : ''}`} />
+                      </button>
+                    )}
+                    <button 
+                      onClick={handleLogout}
+                      className="p-2 text-zinc-500 hover:text-white transition-colors"
+                      title="Logout"
+                    >
+                      <LogOut className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <div className="h-4 w-px bg-zinc-800 mx-1" />
                   <button 
                     onClick={() => setActiveTab('pro')}
-                    className="hidden sm:block text-right hover:opacity-80 transition-opacity"
+                    className="text-right hover:opacity-80 transition-opacity group"
                   >
                     <div className="flex items-center gap-1 justify-end">
                       <Crown className={`w-3 h-3 ${
@@ -621,30 +662,14 @@ export default function App() {
                         tier === 'pro' ? 'text-emerald-500' : 
                         'text-zinc-500'
                       }`}>
-                        {tier === 'builder' ? 'Builder Tier' : tier === 'pro' ? 'Pro Tier' : 'Free Tier'}
+                        {tier === 'builder' ? 'Builder' : tier === 'pro' ? 'Pro' : 'Free'}
                       </p>
                     </div>
-                    <p className="text-xs text-zinc-300 truncate max-w-[100px]">{user.displayName || user.email}</p>
+                    <p className="text-[10px] text-zinc-400 truncate max-w-[80px] group-hover:text-emerald-400 transition-colors">{user.displayName || user.email}</p>
                   </button>
-                  {tier !== 'free' && (
-                    <button 
-                      onClick={() => triggerGeneration()}
-                      disabled={generating}
-                      className="p-2 text-zinc-500 hover:text-emerald-500 transition-colors disabled:opacity-50"
-                      title="Force Refresh Feed"
-                    >
-                      <RefreshCw className={`w-4 h-4 ${generating ? 'animate-spin' : ''}`} />
-                    </button>
-                  )}
-                  <button 
-                    onClick={handleLogout}
-                    className="p-2 text-zinc-500 hover:text-white transition-colors"
-                    title="Logout"
-                  >
-                    <LogOut className="w-5 h-5" />
-                  </button>
-                </div>
-              ) : (
+                </>
+              )}
+              {!user && (
                 <button 
                   onClick={handleLogin}
                   className="flex items-center gap-2 px-4 py-1.5 bg-white text-black text-xs font-bold rounded-full hover:bg-zinc-200 transition-colors"
@@ -660,18 +685,14 @@ export default function App() {
         <main className="max-w-3xl mx-auto px-4 py-8 space-y-8">
           {/* Intro Section */}
           <div className="space-y-4">
-            <div className="flex items-center gap-2 text-emerald-500">
-              <Calendar className="w-4 h-4" />
-              <span className="text-xs font-bold uppercase tracking-widest">
-                {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
-              </span>
+            <div className="space-y-1">
+              <h2 className="text-4xl md:text-5xl font-black tracking-tight leading-[0.9] uppercase italic">
+                Today's <br /> <span className="text-emerald-500">Top {tier === 'free' ? '10' : '25'}</span> Ideas
+              </h2>
+              <p className="text-zinc-400 text-sm leading-relaxed max-w-xl">
+                {dailyGen?.intro || "Fresh opportunities derived from real-time signals and vetted through strict VC logic."}
+              </p>
             </div>
-            <h2 className="text-4xl md:text-5xl font-black tracking-tight leading-[0.9] uppercase italic">
-              Today's <br /> <span className="text-emerald-500">Top {tier === 'free' ? '10' : '25'}</span> Ideas
-            </h2>
-            <p className="text-zinc-400 text-sm leading-relaxed max-w-xl">
-              {dailyGen?.intro || "Fresh opportunities derived from real-time signals and vetted through strict VC logic."}
-            </p>
           </div>
 
           {/* Tabs */}
@@ -692,11 +713,11 @@ export default function App() {
               onClick={() => setActiveTab('pro')}
               className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
                 activeTab === 'pro' 
-                  ? tier === 'builder' ? 'bg-zinc-800 text-white shadow-lg' : 'bg-emerald-600 text-white shadow-lg' 
+                  ? 'bg-zinc-800 text-white shadow-lg' 
                   : tier === 'builder' ? 'text-zinc-500 hover:text-zinc-300' : 'text-emerald-500 hover:text-emerald-400'
               }`}
             >
-              {tier === 'builder' ? 'MANAGE PLAN' : 'UPGRADE'}
+              MANAGE PLAN
             </button>
           </div>
 
