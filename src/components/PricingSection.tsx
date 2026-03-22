@@ -94,6 +94,9 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
           </div>
           <ul className="space-y-3 flex-1">
             <li className="flex items-center gap-2 text-xs text-zinc-300">
+              <Sparkles className="w-4 h-4 text-amber-500" /> 35 ideas / day
+            </li>
+            <li className="flex items-center gap-2 text-xs text-zinc-300">
               <Sparkles className="w-4 h-4 text-amber-500" /> Build with Me Suite
             </li>
             <li className="flex items-center gap-2 text-xs text-zinc-300">

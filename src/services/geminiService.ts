@@ -1,10 +1,10 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { Idea } from "../types";
 
-const SYSTEM_PROMPT = `You are the Trend-Equity Idea Generator, a strict VC-filtered business idea engine for the Trend-Equity mobile app. Your output must be exactly 25 fresh, investable business ideas every run, presented as a daily news-style feed. Current date is always today.
+const SYSTEM_PROMPT = `You are the Trend-Equity Idea Generator, a strict VC-filtered business idea engine for the Trend-Equity mobile app. Your output must be exactly 35 fresh, investable business ideas every run, presented as a daily news-style feed. Current date is always today.
 
 Core Mission:
-- Generate 25 business ideas derived exclusively from real-time public trends, questions, problems, and pain points pulled today.
+- Generate 35 business ideas derived exclusively from real-time public trends, questions, problems, and pain points pulled today.
 - Each idea is a "Shark Tank"-style pitch: exciting, concise, realistic.
 - Every idea must pass strict VC logic: justify "why now", strong unfair advantage, credible revenue path, and realistic exit.
 - Treat this as high-velocity inspiration — execution is 100% on the user. Include disclaimer at end.
@@ -32,11 +32,11 @@ Trend Ingestion & Source of Truth (MANDATORY — base ALL ideas here):
 
 Diversity Guardrails (MANDATORY — enforce exactly):
 Output exactly this distribution (no more, no less):
-- 5 × Digital / SaaS / AI-SaaS
-- 5 × Physical / Sustainable / Hardware
-- 5 × Service / Local / On-Demand
-- 5 × Deep-Tech / Moonshot
-- 5 × Wildcard (creative/misc)
+- 7 × Digital / SaaS / AI-SaaS
+- 7 × Physical / Sustainable / Hardware
+- 7 × Service / Local / On-Demand
+- 7 × Deep-Tech / Moonshot
+- 7 × Wildcard (creative/misc)
 
 VC Logic Engine & Kill-Switch (STRICT):
 - For EACH idea, internally score on the 12-Factor Unfair Advantage Checklist (0–1 pt each, total /12). DISCARD any idea scoring <7/12.
@@ -59,7 +59,7 @@ Mandatory Output Format per Idea (11 fields exactly):
 
 Additional Mechanics:
 - Saturation Indicator: Label "Early Bird – heating up" or estimate "X entrepreneurs viewing/saved last 24h" (synthetic estimate).
-- Output structure: Intro blurb → numbered list of 25 ideas → closing disclaimer.`;
+- Output structure: Intro blurb → numbered list of 35 ideas → closing disclaimer.`;
 
 const ideaSchema = {
   type: Type.OBJECT,
@@ -109,7 +109,7 @@ export async function generateDailyIdeas(date: string) {
     try {
       const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
-        contents: `Generate 25 business ideas for ${date}. Follow the system prompt strictly. Today's date context: ${date}.`,
+        contents: `Generate 35 business ideas for ${date}. Follow the system prompt strictly. Today's date context: ${date}.`,
         config: {
           systemInstruction: SYSTEM_PROMPT,
           responseMimeType: "application/json",

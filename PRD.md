@@ -21,7 +21,7 @@ Trend Equity uses a tiered subscription model:
 
 | Feature | Free | Pro | Builder |
 | :--- | :--- | :--- | :--- |
-| **Daily Ideas** | 10 ideas / day | 25 ideas / day | 25 ideas / day |
+| **Daily Ideas** | 10 ideas / day | 25 ideas / day | 35 ideas / day |
 | **Saves** | 5 saves / month | Unlimited | Unlimited |
 | **Exporting** | PDF Pitch Deck | PDF, Notion, GDocs | PDF, Notion, GDocs |
 | **Analysis** | Basic VC Analysis | Full VC Analysis | Full VC Analysis |

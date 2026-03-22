@@ -731,6 +731,82 @@ export default function App() {
     doc.save(`${idea.headline.replace(/\s+/g, '_')}_Full_Plan.pdf`);
   };
 
+  const exportListToCSV = () => {
+    const ideas = activeTab === 'feed' ? (dailyGen?.ideas || []) : userSaves.map(s => s.idea);
+    if (ideas.length === 0) {
+      alert("No ideas to export.");
+      return;
+    }
+
+    const headers = ["Idea Name", "Tags", "Description"];
+    const rows = ideas.map(idea => [
+      `"${idea.headline.replace(/"/g, '""')}"`,
+      `"${(idea.categoryTags || []).join(', ').replace(/"/g, '""')}"`,
+      `"${idea.pitch.replace(/"/g, '""')}"`
+    ]);
+
+    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `Trend_Equity_Ideas_${activeTab}_${today}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const exportListToPDF = () => {
+    const ideas = activeTab === 'feed' ? (dailyGen?.ideas || []) : userSaves.map(s => s.idea);
+    if (ideas.length === 0) {
+      alert("No ideas to export.");
+      return;
+    }
+
+    const doc = new jsPDF();
+    const margin = 20;
+    let y = 20;
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+
+    doc.setFontSize(20);
+    doc.setFont("helvetica", "bold");
+    doc.text(`TREND EQUITY: ${activeTab.toUpperCase()} IDEAS`, margin, y);
+    y += 10;
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.text(`Generated on ${new Date().toLocaleDateString()}`, margin, y);
+    y += 15;
+
+    ideas.forEach((idea, index) => {
+      if (y > pageHeight - 40) {
+        doc.addPage();
+        y = 20;
+      }
+
+      doc.setFontSize(14);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(16, 185, 129);
+      doc.text(`${index + 1}. ${idea.headline.toUpperCase()}`, margin, y);
+      y += 7;
+
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(100);
+      doc.text(`TAGS: ${(idea.categoryTags || []).join(', ')}`, margin, y);
+      y += 6;
+
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(0);
+      const pitchLines = doc.splitTextToSize(idea.pitch, 170);
+      doc.text(pitchLines, margin, y);
+      y += pitchLines.length * 5 + 10;
+    });
+
+    doc.save(`Trend_Equity_Ideas_${activeTab}_${today}.pdf`);
+  };
+
   if (loading || generating) {
     return (
       <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center p-6 text-center">
@@ -797,6 +873,7 @@ export default function App() {
                         <span className="absolute top-1 right-1 w-2 h-2 bg-emerald-500 rounded-full border-2 border-zinc-950" />
                       )}
                     </button>
+
                     <button 
                       onClick={handleLogout}
                       className="p-2 text-zinc-500 hover:text-white transition-colors"
@@ -898,7 +975,7 @@ export default function App() {
           <div className="space-y-4">
             <div className="space-y-1">
               <h2 className="text-4xl md:text-5xl font-black tracking-tight leading-[0.9] uppercase italic">
-                Today's <br /> <span className="text-emerald-500">Top {tier === 'free' ? '10' : '25'}</span> Ideas
+                Today's <br /> <span className="text-emerald-500">Top {tier === 'free' ? '10' : tier === 'pro' ? '25' : '35'}</span> Ideas
               </h2>
               <p className="text-zinc-400 text-sm leading-relaxed max-w-xl">
                 {dailyGen?.intro || "Fresh opportunities derived from real-time signals and vetted through strict VC logic."}
@@ -940,9 +1017,11 @@ export default function App() {
                   filters={filters} 
                   setFilters={setFilters} 
                   tier={tier} 
+                  onExportCSV={exportListToCSV}
+                  onExportPDF={exportListToPDF}
                 />
 
-                {getFilteredIdeas(dailyGen?.ideas || []).slice(0, tier === 'free' ? 10 : 25).map((idea, i) => (
+                {getFilteredIdeas(dailyGen?.ideas || []).slice(0, tier === 'free' ? 10 : tier === 'pro' ? 25 : 35).map((idea, i) => (
                   <IdeaCard 
                     key={idea.id} 
                     idea={idea} 
@@ -962,7 +1041,7 @@ export default function App() {
                     <div className="space-y-2">
                       <h3 className="text-xl font-black uppercase italic tracking-tight">Unlock {dailyGen.ideas.length - 10} More Ideas</h3>
                       <p className="text-zinc-500 text-sm max-w-xs mx-auto">
-                        Pro & Builder users get 25 ideas daily, unlimited saves, and priority email digests.
+                        Pro & Builder users get up to 35 ideas daily, unlimited saves, and priority email digests.
                       </p>
                     </div>
                     <button 
