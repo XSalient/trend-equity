@@ -6,3 +6,8 @@ coverage/
 *.log
 .env*
 !.env.example
+firebase-applet-config.json
+PRD.md
+metadata.json
+firebase-blueprint.json
+src/services/prompts.json
