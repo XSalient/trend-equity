@@ -504,6 +504,36 @@ export default function App() {
     }
   };
 
+  const updateIdea = async (updatedIdea: Idea) => {
+    if (!user) return;
+
+    // 1. Update local saves
+    setUserSaves(prev => prev.map(s => s.idea.id === updatedIdea.id ? { ...s, idea: updatedIdea } : s));
+
+    // 2. Update Firestore if saved
+    const existing = userSaves.find(s => s.idea.id === updatedIdea.id);
+    if (existing) {
+      try {
+        const saveRef = doc(db, 'user_saves', existing.id!);
+        await setDoc(saveRef, { idea: updatedIdea, updatedAt: serverTimestamp() }, { merge: true });
+      } catch (err) {
+        handleFirestoreError(err, OperationType.WRITE, `user_saves/${existing.id}`);
+      }
+    }
+    
+    // 3. Update local dailyGen if it's from today
+    if (dailyGen && dailyGen.ideas.some(i => i.id === updatedIdea.id)) {
+      const updatedDailyGen = {
+        ...dailyGen,
+        ideas: dailyGen.ideas.map(i => i.id === updatedIdea.id ? updatedIdea : i)
+      };
+      setDailyGen(updatedDailyGen);
+      // We don't necessarily need to update Firestore for daily_generations here, 
+      // as it's a global feed, but we could if we wanted to cache it for everyone.
+      // For now, let's keep it local to the user's session or their saved ideas.
+    }
+  };
+
   const exportToPDF = (idea: Idea, format: 'pdf' | 'notion' | 'gdocs' = 'pdf') => {
     if (format !== 'pdf' && tier === 'free') {
       alert("Template exports (Notion/GDocs) are Pro features. Upgrade now!");
@@ -737,6 +767,7 @@ export default function App() {
                     idea={idea} 
                     isSaved={userSaves.some(s => s.idea.id === idea.id)}
                     onToggleSave={() => toggleSave(idea)}
+                    onUpdateIdea={updateIdea}
                     isSaving={false}
                     tier={tier}
                     onExport={(fmt) => exportToPDF(idea, fmt)}
@@ -770,6 +801,7 @@ export default function App() {
                     idea={save.idea} 
                     isSaved={true}
                     onToggleSave={() => toggleSave(save.idea)}
+                    onUpdateIdea={updateIdea}
                     isSaving={false}
                     tier={tier}
                     onExport={(fmt) => exportToPDF(save.idea, fmt)}

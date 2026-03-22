@@ -27,10 +27,11 @@ export interface Idea {
   heatBadge: string;
   nextSteps: string[];
   fullActionPlan?: {
-    roadmap: { step: string; details: string; milestone: string }[];
+    roadmap: { id: string; step: string; details: string; milestone: string; isDone?: boolean; isCustom?: boolean }[];
     tools: string[];
     risks: string[];
     timeline: string;
+    generatedAt?: any;
   };
 }
 

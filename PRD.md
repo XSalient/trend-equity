@@ -51,6 +51,9 @@ Trend Equity uses a tiered subscription model:
 
 ### 4.4. Builder-Specific Features
 - **Full Action Plan:** AI-generated 10+ step roadmap with milestones, tools, and risks.
+- **Plan Customization:** Add custom steps, remove steps, and mark steps as completed.
+- **VC Deep Dive:** AI-driven explanations for specific plan sections (Roadmap, Stack, Risks).
+- **Persistence:** Customized plans are saved and cached for fast viewing in the "Saved" tab.
 - **Build with Me:** Automated generation of prompt packs and starter repository structures.
 - **Validation Toolkit:** Frameworks for testing market demand.
 

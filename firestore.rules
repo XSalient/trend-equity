@@ -15,6 +15,7 @@
 //   - userId: string (required)
 //   - idea: object (required)
 //   - savedAt: timestamp (required)
+//   - updatedAt: timestamp (optional)
 //
 // ===============================================================
 
@@ -45,7 +46,15 @@ service cloud.firestore {
     function isValidUserSave(data) {
       return data.userId is string &&
              data.idea is map &&
-             data.savedAt is timestamp;
+             data.savedAt is timestamp &&
+             (!('updatedAt' in data) || data.updatedAt is timestamp);
+    }
+
+    function isValidUserSaveUpdate(data, prevData) {
+      return data.userId == prevData.userId &&
+             data.savedAt == prevData.savedAt &&
+             data.idea is map &&
+             data.updatedAt == request.time;
     }
 
     function isValidUserProfile(data) {
@@ -85,10 +94,12 @@ service cloud.firestore {
       allow create: if isAuthenticated() &&
                       request.resource.data.userId == request.auth.uid &&
                       isValidUserSave(request.resource.data);
+      // Users can update their own saves
+      allow update: if isAuthenticated() && 
+                      resource.data.userId == request.auth.uid &&
+                      isValidUserSaveUpdate(request.resource.data, resource.data);
       // Users can delete their own saves
       allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
-      // No updates for saves
-      allow update: if false;
     }
   }
 }

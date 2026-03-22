@@ -140,6 +140,7 @@ export async function generateFullActionPlan(idea: Idea) {
   VC Justification: ${idea.vcJustification}
   
   Provide a detailed roadmap with milestones, a list of essential tools, potential risks, and a realistic timeline.
+  Each roadmap step must have a unique ID (e.g., "step-1", "step-2").
   Format as JSON.`;
 
   const schema = {
@@ -150,11 +151,12 @@ export async function generateFullActionPlan(idea: Idea) {
         items: {
           type: Type.OBJECT,
           properties: {
+            id: { type: Type.STRING },
             step: { type: Type.STRING },
             details: { type: Type.STRING },
             milestone: { type: Type.STRING }
           },
-          required: ["step", "details", "milestone"]
+          required: ["id", "step", "details", "milestone"]
         }
       },
       tools: { type: Type.ARRAY, items: { type: Type.STRING } },
@@ -174,4 +176,25 @@ export async function generateFullActionPlan(idea: Idea) {
   });
 
   return JSON.parse(response.text);
+}
+
+export async function explainPlanSection(idea: Idea, section: string, context: string) {
+  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+  
+  const prompt = `As a VC advisor, explain this specific section of the action plan for "${idea.headline}":
+  Section: ${section}
+  Context: ${context}
+  
+  Provide a deep dive into why this is important, how to execute it effectively, and what common pitfalls to avoid. 
+  Keep it concise but highly actionable.`;
+
+  const response = await ai.models.generateContent({
+    model: "gemini-3-flash-preview",
+    contents: prompt,
+    config: {
+      systemInstruction: "You are a senior VC advisor helping a founder execute their business plan."
+    }
+  });
+
+  return response.text;
 }

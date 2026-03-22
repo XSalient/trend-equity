@@ -43,7 +43,8 @@
       "properties": {
         "userId": { "type": "string" },
         "idea": { "type": "object" },
-        "savedAt": { "type": "string", "format": "date-time" }
+        "savedAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
       },
       "required": ["userId", "idea", "savedAt"]
     },
