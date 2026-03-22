@@ -323,3 +323,112 @@ export async function generateAlerts() {
 
   return JSON.parse(response.text);
 }
+
+export async function generateWeeklyTrendRadar() {
+  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+  const prompt = `Generate a "Weekly Trend Radar" for the current week. 
+  Analyze the top 5 emerging market trends, shifts in consumer behavior, and high-potential opportunity areas.
+  Format as JSON.`;
+
+  const schema = {
+    type: Type.OBJECT,
+    properties: {
+      week: { type: Type.STRING },
+      topTrends: {
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            title: { type: Type.STRING },
+            description: { type: Type.STRING },
+            impact: { type: Type.STRING },
+            sector: { type: Type.STRING }
+          },
+          required: ["title", "description", "impact", "sector"]
+        }
+      },
+      marketShift: { type: Type.STRING },
+      opportunityAreas: { type: Type.ARRAY, items: { type: Type.STRING } }
+    },
+    required: ["week", "topTrends", "marketShift", "opportunityAreas"]
+  };
+
+  const response = await ai.models.generateContent({
+    model: "gemini-3-flash-preview",
+    contents: prompt,
+    config: { responseMimeType: "application/json", responseSchema: schema }
+  });
+
+  return JSON.parse(response.text);
+}
+
+export async function generateFuturecasting(horizon: '2027' | '2030' | '2035') {
+  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+  const prompt = `Perform a "Futurecasting" analysis for the year ${horizon}. 
+  Predict 3 major paradigm shifts and 5 specific industry predictions with probability scores.
+  Identify potential winners and losers for each prediction.
+  Format as JSON.`;
+
+  const schema = {
+    type: Type.OBJECT,
+    properties: {
+      horizon: { type: Type.STRING },
+      predictions: {
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            title: { type: Type.STRING },
+            probability: { type: Type.NUMBER },
+            rationale: { type: Type.STRING },
+            winners: { type: Type.ARRAY, items: { type: Type.STRING } },
+            losers: { type: Type.ARRAY, items: { type: Type.STRING } }
+          },
+          required: ["title", "probability", "rationale", "winners", "losers"]
+        }
+      },
+      paradigmShifts: { type: Type.ARRAY, items: { type: Type.STRING } }
+    },
+    required: ["horizon", "predictions", "paradigmShifts"]
+  };
+
+  const response = await ai.models.generateContent({
+    model: "gemini-3-flash-preview",
+    contents: prompt,
+    config: { responseMimeType: "application/json", responseSchema: schema }
+  });
+
+  return JSON.parse(response.text);
+}
+
+export async function generateExpertVetting(idea: Idea) {
+  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+  const prompt = `As a top-tier VC partner, perform an "Expert Vetting" of this business idea:
+  Headline: ${idea.headline}
+  Pitch: ${idea.pitch}
+  VC Justification: ${idea.vcJustification}
+  
+  Provide a score (0-100), a verdict (High Conviction, Moderate, or Pass), and a deep analysis of strengths, weaknesses, and pivot suggestions.
+  Format as JSON.`;
+
+  const schema = {
+    type: Type.OBJECT,
+    properties: {
+      score: { type: Type.NUMBER },
+      verdict: { type: Type.STRING, enum: ["High Conviction", "Moderate", "Pass"] },
+      strengths: { type: Type.ARRAY, items: { type: Type.STRING } },
+      weaknesses: { type: Type.ARRAY, items: { type: Type.STRING } },
+      pivotSuggestions: { type: Type.ARRAY, items: { type: Type.STRING } },
+      comparableExits: { type: Type.ARRAY, items: { type: Type.STRING } }
+    },
+    required: ["score", "verdict", "strengths", "weaknesses", "pivotSuggestions", "comparableExits"]
+  };
+
+  const response = await ai.models.generateContent({
+    model: "gemini-3-flash-preview",
+    contents: prompt,
+    config: { responseMimeType: "application/json", responseSchema: schema }
+  });
+
+  return JSON.parse(response.text);
+}

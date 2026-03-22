@@ -30,6 +30,7 @@ const RISK_LEVELS = ['Low', 'Medium', 'High'];
 const EFFORT_LEVELS = ['Low', 'Medium', 'High'];
 const MARKET_FOCUS = ['Global', 'US-centric', 'EU-focused', 'Emerging Markets', 'Hyper-local/Regional'];
 const TEAM_SIZE = ['Solo-friendly', 'Small team (2–5)', 'Needs co-founder/funding round'];
+const PRODUCT_TYPES = ['Digital', 'Physical'];
 
 export function FilterBar({ filters, setFilters, tier, onExportCSV, onExportPDF }: FilterBarProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -40,6 +41,7 @@ export function FilterBar({ filters, setFilters, tier, onExportCSV, onExportPDF 
   const resetFilters = () => {
     setFilters({
       industries: [],
+      productTypes: [],
       riskLevels: [],
       effortLevels: [],
       marketFocus: [],
@@ -53,7 +55,7 @@ export function FilterBar({ filters, setFilters, tier, onExportCSV, onExportPDF 
   const toggleFilter = (key: keyof FilterState, value: string) => {
     if (isFree) return; // Locked for free
 
-    const current = filters[key] as string[];
+    const current = (filters[key] as string[]) || [];
     const next = current.includes(value)
       ? current.filter(v => v !== value)
       : [...current, value];
@@ -62,11 +64,12 @@ export function FilterBar({ filters, setFilters, tier, onExportCSV, onExportPDF 
   };
 
   const activeCount = 
-    filters.industries.length + 
-    filters.riskLevels.length + 
-    filters.effortLevels.length + 
-    filters.marketFocus.length + 
-    filters.teamSize.length +
+    (filters.industries?.length || 0) + 
+    (filters.productTypes?.length || 0) +
+    (filters.riskLevels?.length || 0) + 
+    (filters.effortLevels?.length || 0) + 
+    (filters.marketFocus?.length || 0) + 
+    (filters.teamSize?.length || 0) +
     (filters.customKeywords ? 1 : 0);
 
   return (
@@ -151,28 +154,55 @@ export function FilterBar({ filters, setFilters, tier, onExportCSV, onExportPDF 
               <div className="py-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 border-t border-white/5 mt-3">
                 
                 {/* Industry Filter */}
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-xs font-bold uppercase tracking-widest text-zinc-500">Industry</h4>
-                    {isFree && <Lock className="w-3 h-3 text-zinc-600" />}
+                <div className="space-y-6">
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-xs font-bold uppercase tracking-widest text-zinc-500">Industry</h4>
+                      {isFree && <Lock className="w-3 h-3 text-zinc-600" />}
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {INDUSTRIES.map(industry => (
+                        <button
+                          key={industry}
+                          disabled={isFree}
+                          onClick={() => toggleFilter('industries', industry)}
+                          className={`px-3 py-1.5 rounded-full text-xs transition-all ${
+                            filters.industries.includes(industry)
+                              ? 'bg-emerald-500 text-black font-medium'
+                              : isFree 
+                                ? 'bg-zinc-800/30 text-zinc-600 cursor-not-allowed'
+                                : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
+                          }`}
+                        >
+                          {industry}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    {INDUSTRIES.map(industry => (
-                      <button
-                        key={industry}
-                        disabled={isFree}
-                        onClick={() => toggleFilter('industries', industry)}
-                        className={`px-3 py-1.5 rounded-full text-xs transition-all ${
-                          filters.industries.includes(industry)
-                            ? 'bg-emerald-500 text-black font-medium'
-                            : isFree 
-                              ? 'bg-zinc-800/30 text-zinc-600 cursor-not-allowed'
-                              : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
-                        }`}
-                      >
-                        {industry}
-                      </button>
-                    ))}
+
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-xs font-bold uppercase tracking-widest text-zinc-500">Product Type</h4>
+                      {isFree && <Lock className="w-3 h-3 text-zinc-600" />}
+                    </div>
+                    <div className="flex gap-2">
+                      {PRODUCT_TYPES.map(type => (
+                        <button
+                          key={type}
+                          disabled={isFree}
+                          onClick={() => toggleFilter('productTypes', type)}
+                          className={`flex-1 py-1.5 rounded-lg text-xs transition-all ${
+                            filters.productTypes.includes(type)
+                              ? 'bg-emerald-500 text-black font-medium'
+                              : isFree 
+                                ? 'bg-zinc-800/30 text-zinc-600 cursor-not-allowed'
+                                : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
+                          }`}
+                        >
+                          {type}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
 

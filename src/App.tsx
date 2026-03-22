@@ -19,8 +19,15 @@ import {
   deleteDoc
 } from 'firebase/firestore';
 import { db, auth } from './firebase';
-import { Idea, DailyGeneration, UserSave, FilterState, Alert } from './types';
-import { generateDailyIdeas, generateAlerts } from './services/geminiService';
+import { Idea, DailyGeneration, UserSave, FilterState, Alert, WeeklyTrendRadar, Futurecasting, ExpertVetting } from './types';
+import { 
+  generateDailyIdeas, 
+  generateAlerts, 
+  generateWeeklyTrendRadar, 
+  generateFuturecasting, 
+  generateExpertVetting 
+} from './services/geminiService';
+import { TIER_LIMITS, Tier } from './constants';
 import { 
   TrendingUp, 
   Zap, 
@@ -53,7 +60,9 @@ import {
   Sparkles,
   Filter,
   RotateCcw,
-  X
+  X,
+  Mail,
+  Radar
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { jsPDF } from 'jspdf';
@@ -124,12 +133,17 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'feed' | 'saved' | 'pro'>('feed');
-  const [tier, setTier] = useState<'free' | 'pro' | 'builder'>('free');
+  const [activeTab, setActiveTab] = useState<'feed' | 'saved' | 'pro' | 'radar' | 'future' | 'digest'>('feed');
+  const [tier, setTier] = useState<Tier>('free');
   const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [weeklyRadar, setWeeklyRadar] = useState<WeeklyTrendRadar | null>(null);
+  const [futurecasting, setFuturecasting] = useState<Futurecasting | null>(null);
+  const [loadingRadar, setLoadingRadar] = useState(false);
+  const [loadingFuture, setLoadingFuture] = useState(false);
   const [showAlerts, setShowAlerts] = useState(false);
   const [filters, setFilters] = useState<FilterState>({
     industries: [],
+    productTypes: [],
     riskLevels: [],
     effortLevels: [],
     marketFocus: [],
@@ -190,7 +204,7 @@ export default function App() {
     alert("Upgraded to Builder Tier! Full suite unlocked.");
   };
 
-  const handleUpgrade = async (plan: 'pro' | 'builder') => {
+  const handleUpgrade = async (plan: Tier) => {
     if (!user) {
       handleLogin();
       return;
@@ -205,7 +219,7 @@ export default function App() {
     alert(`Upgraded to ${plan.toUpperCase()}!`);
   };
 
-  const handleDowngrade = async (plan: 'free' | 'pro') => {
+  const handleDowngrade = async (plan: Tier) => {
     setTier(plan);
     if (user) {
       try {
@@ -242,12 +256,47 @@ export default function App() {
 
   const unreadAlertsCount = alerts.filter(a => !a.isRead).length;
 
+  const fetchWeeklyRadar = async () => {
+    if (tier === 'free') return;
+    setLoadingRadar(true);
+    try {
+      const radar = await generateWeeklyTrendRadar();
+      setWeeklyRadar(radar);
+    } catch (err) {
+      console.error("Failed to fetch weekly radar:", err);
+    } finally {
+      setLoadingRadar(false);
+    }
+  };
+
+  const fetchFuturecasting = async (horizon: '2027' | '2030' | '2035' = '2030') => {
+    if (tier !== 'builder') return;
+    setLoadingFuture(true);
+    try {
+      const future = await generateFuturecasting(horizon);
+      setFuturecasting(future);
+    } catch (err) {
+      console.error("Failed to fetch futurecasting:", err);
+    } finally {
+      setLoadingFuture(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'radar' && !weeklyRadar) {
+      fetchWeeklyRadar();
+    }
+    if (activeTab === 'future' && !futurecasting) {
+      fetchFuturecasting();
+    }
+  }, [activeTab, tier]);
+
   // --- Filtering Logic ---
   const getFilteredIdeas = useCallback((ideas: Idea[]) => {
     let filtered = [...ideas];
 
     // 1. Industry
-    if (filters.industries.length > 0) {
+    if (filters.industries?.length > 0) {
       filtered = filtered.filter(idea => 
         filters.industries.some(ind => {
           const searchTerms = ind.toLowerCase().split(/[\/\s-]/);
@@ -260,8 +309,30 @@ export default function App() {
       );
     }
 
+    // 1.5 Product Type
+    if (filters.productTypes?.length > 0) {
+      filtered = filtered.filter(idea => {
+        const isDigital = idea.categoryTags.some(tag => 
+          tag.toLowerCase().includes('digital') || 
+          tag.toLowerCase().includes('saas') || 
+          tag.toLowerCase().includes('software') ||
+          tag.toLowerCase().includes('app')
+        );
+        const isPhysical = idea.categoryTags.some(tag => 
+          tag.toLowerCase().includes('physical') || 
+          tag.toLowerCase().includes('hardware') || 
+          tag.toLowerCase().includes('sustainable') ||
+          tag.toLowerCase().includes('product')
+        );
+
+        if (filters.productTypes.includes('Digital') && isDigital) return true;
+        if (filters.productTypes.includes('Physical') && isPhysical) return true;
+        return false;
+      });
+    }
+
     // 2. Risk (Scale is 0-10)
-    if (filters.riskLevels.length > 0) {
+    if (filters.riskLevels?.length > 0) {
       filtered = filtered.filter(idea => {
         const score = idea.revenuePotentialScore;
         const isLow = score < 5;
@@ -276,14 +347,14 @@ export default function App() {
     }
 
     // 3. Effort
-    if (filters.effortLevels.length > 0) {
+    if (filters.effortLevels?.length > 0) {
       filtered = filtered.filter(idea => 
         filters.effortLevels.some(eff => idea.costEffort.toLowerCase().includes(eff.toLowerCase()))
       );
     }
 
     // 4. Market
-    if (filters.marketFocus.length > 0) {
+    if (filters.marketFocus?.length > 0) {
       filtered = filtered.filter(idea => 
         filters.marketFocus.some(m => 
           idea.pitch.toLowerCase().includes(m.toLowerCase()) ||
@@ -294,7 +365,7 @@ export default function App() {
     }
 
     // 5. Team
-    if (filters.teamSize.length > 0) {
+    if (filters.teamSize?.length > 0) {
       filtered = filtered.filter(idea => {
         const costEffort = idea.costEffort.toLowerCase();
         const isSolo = costEffort.includes('solo') || costEffort.includes('low');
@@ -321,7 +392,7 @@ export default function App() {
     }
 
     // 7. Exclude Categories (Builder)
-    if (tier === 'builder' && filters.excludeCategories.length > 0) {
+    if (tier === 'builder' && filters.excludeCategories?.length > 0) {
       filtered = filtered.filter(idea => 
         !filters.excludeCategories.some(exc => 
           idea.categoryTags.some(tag => tag.toLowerCase().includes(exc.toLowerCase()))
@@ -356,7 +427,20 @@ export default function App() {
       if (docSnap.exists()) {
         const data = docSnap.data();
         if (data.tier) setTier(data.tier);
-        if (data.filters) setFilters(data.filters);
+        if (data.filters) {
+          setFilters(prev => ({
+            ...prev,
+            ...data.filters,
+            // Ensure arrays exist even if missing in Firestore
+            industries: data.filters.industries || [],
+            productTypes: data.filters.productTypes || [],
+            riskLevels: data.filters.riskLevels || [],
+            effortLevels: data.filters.effortLevels || [],
+            marketFocus: data.filters.marketFocus || [],
+            teamSize: data.filters.teamSize || [],
+            excludeCategories: data.filters.excludeCategories || []
+          }));
+        }
       } else {
         // Initialize user document
         setDoc(userRef, {
@@ -569,7 +653,35 @@ export default function App() {
     }
 
     if (format === 'notion' || format === 'gdocs') {
-      alert(`Generating ${format === 'notion' ? 'Notion' : 'Google Docs'} template... Check your email/dashboard.`);
+      const content = `
+# ${idea.headline}
+${idea.pitch}
+
+## VC Justification
+${idea.vcJustification}
+
+## Unfair Advantage
+${idea.unfairAdvantage}
+
+## Revenue Model
+${idea.revenueSkeleton}
+
+## Roadmap
+${idea.fullActionPlan?.roadmap.map((s, i) => `${i + 1}. ${s.step}: ${s.details}`).join('\n') || 'N/A'}
+
+## Tools
+${idea.fullActionPlan?.tools.join(', ') || 'N/A'}
+
+## Risks
+${idea.fullActionPlan?.risks.join(', ') || 'N/A'}
+      `;
+      const blob = new Blob([content], { type: 'text/markdown' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${idea.headline.replace(/\s+/g, '_')}_${format}_template.md`;
+      link.click();
+      alert(`Generated ${format === 'notion' ? 'Notion' : 'Google Docs'} compatible Markdown template.`);
       return;
     }
 
@@ -822,11 +934,17 @@ export default function App() {
           {generating ? "Generating Daily VC Feed..." : "Loading Trend Equity..."}
         </h2>
         <p className="mt-2 text-zinc-500 text-sm max-w-xs">
-          {generating ? "Our AI is scanning real-time signals from Google, X, and Reddit to find today's top 20 opportunities." : "Connecting to the VC engine..."}
+          {generating ? `Our AI is scanning real-time signals from Google, X, and Reddit to find today's top ${TIER_LIMITS[tier].dailyIdeas} opportunities.` : "Connecting to the VC engine..."}
         </p>
       </div>
     );
   }
+
+  const getDynamicIntro = () => {
+    const count = TIER_LIMITS[tier].dailyIdeas;
+    const dateStr = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    return `Welcome to the ${dateStr} edition of Trend-Equity. Today we navigate the convergence of emerging market signals and high-velocity AI-native shifts. The following ${count} ideas have been filtered through our strict VC engine for maximum investability and timing relevance.`;
+  };
 
   return (
     <ErrorBoundary>
@@ -863,16 +981,18 @@ export default function App() {
                         <RefreshCw className={`w-4 h-4 ${generating ? 'animate-spin' : ''}`} />
                       </button>
                     )}
-                    <button 
-                      onClick={() => setShowAlerts(!showAlerts)}
-                      className="p-2 text-zinc-500 hover:text-white transition-colors relative"
-                      title="Alerts"
-                    >
-                      <Bell className="w-4 h-4" />
-                      {unreadAlertsCount > 0 && (
-                        <span className="absolute top-1 right-1 w-2 h-2 bg-emerald-500 rounded-full border-2 border-zinc-950" />
-                      )}
-                    </button>
+                    {tier === 'builder' && (
+                      <button 
+                        onClick={() => setShowAlerts(!showAlerts)}
+                        className="p-2 text-zinc-500 hover:text-white transition-colors relative"
+                        title="Alerts"
+                      >
+                        <Bell className="w-4 h-4" />
+                        {unreadAlertsCount > 0 && (
+                          <span className="absolute top-1 right-1 w-2 h-2 bg-emerald-500 rounded-full border-2 border-zinc-950" />
+                        )}
+                      </button>
+                    )}
 
                     <button 
                       onClick={handleLogout}
@@ -975,10 +1095,10 @@ export default function App() {
           <div className="space-y-4">
             <div className="space-y-1">
               <h2 className="text-4xl md:text-5xl font-black tracking-tight leading-[0.9] uppercase italic">
-                Today's <br /> <span className="text-emerald-500">Top {tier === 'free' ? '10' : tier === 'pro' ? '25' : '35'}</span> Ideas
+                Today's <br /> <span className="text-emerald-500">Top {TIER_LIMITS[tier].dailyIdeas}</span> Ideas
               </h2>
               <p className="text-zinc-400 text-sm leading-relaxed max-w-xl">
-                {dailyGen?.intro || "Fresh opportunities derived from real-time signals and vetted through strict VC logic."}
+                {getDynamicIntro()}
               </p>
             </div>
           </div>
@@ -995,8 +1115,32 @@ export default function App() {
               onClick={() => setActiveTab('saved')}
               className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === 'saved' ? 'bg-zinc-800 text-white shadow-lg' : 'text-zinc-500 hover:text-zinc-300'}`}
             >
-              SAVED ({userSaves.length}{tier === 'free' ? '/5' : ''})
+              SAVED ({userSaves.length}{tier === 'free' ? `/${TIER_LIMITS.free.monthlySaves}` : ''})
             </button>
+            {tier === 'builder' && (
+              <button 
+                onClick={() => setActiveTab('radar')}
+                className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === 'radar' ? 'bg-zinc-800 text-white shadow-lg' : 'text-zinc-500 hover:text-zinc-300'}`}
+              >
+                WEEKLY RADAR
+              </button>
+            )}
+            {tier === 'builder' && (
+              <button 
+                onClick={() => setActiveTab('future')}
+                className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === 'future' ? 'bg-zinc-800 text-white shadow-lg' : 'text-zinc-500 hover:text-zinc-300'}`}
+              >
+                FUTURECASTING
+              </button>
+            )}
+            {tier !== 'free' && (
+              <button 
+                onClick={() => setActiveTab('digest')}
+                className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === 'digest' ? 'bg-zinc-800 text-white shadow-lg' : 'text-zinc-500 hover:text-zinc-300'}`}
+              >
+                DIGEST
+              </button>
+            )}
             <button 
               onClick={() => setActiveTab('pro')}
               className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
@@ -1021,7 +1165,7 @@ export default function App() {
                   onExportPDF={exportListToPDF}
                 />
 
-                {getFilteredIdeas(dailyGen?.ideas || []).slice(0, tier === 'free' ? 10 : tier === 'pro' ? 25 : 35).map((idea, i) => (
+                {getFilteredIdeas(dailyGen?.ideas || []).slice(0, TIER_LIMITS[tier].dailyIdeas).map((idea, i) => (
                   <IdeaCard 
                     key={idea.id} 
                     idea={idea} 
@@ -1034,14 +1178,14 @@ export default function App() {
                   />
                 ))}
                 
-                {tier === 'free' && dailyGen && dailyGen.ideas.length > 10 && (
+                {tier === 'free' && dailyGen && dailyGen.ideas.length > TIER_LIMITS.free.dailyIdeas && (
                   <div className="p-8 bg-zinc-900 border border-zinc-800 rounded-3xl text-center space-y-4 shadow-2xl relative overflow-hidden">
                     <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-500 via-amber-500 to-emerald-500" />
                     <Lock className="w-10 h-10 text-zinc-700 mx-auto" />
                     <div className="space-y-2">
-                      <h3 className="text-xl font-black uppercase italic tracking-tight">Unlock {dailyGen.ideas.length - 10} More Ideas</h3>
+                      <h3 className="text-xl font-black uppercase italic tracking-tight">Unlock {dailyGen.ideas.length - TIER_LIMITS.free.dailyIdeas} More Ideas</h3>
                       <p className="text-zinc-500 text-sm max-w-xs mx-auto">
-                        Pro & Builder users get up to 35 ideas daily, unlimited saves, and priority email digests.
+                        Pro & Builder users get up to {TIER_LIMITS.builder.dailyIdeas} ideas daily, unlimited saves, and priority email digests.
                       </p>
                     </div>
                     <button 
@@ -1053,6 +1197,186 @@ export default function App() {
                   </div>
                 )}
               </>
+            ) : activeTab === 'radar' ? (
+              <div className="space-y-6">
+                <div className="p-6 bg-zinc-900 border border-zinc-800 rounded-3xl space-y-6">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <h3 className="text-2xl font-black uppercase italic tracking-tight">Weekly Trend Radar</h3>
+                      <p className="text-zinc-500 text-xs uppercase font-bold tracking-widest">{weeklyRadar?.week || 'Analyzing current signals...'}</p>
+                    </div>
+                    <RefreshCw className={`w-5 h-5 text-emerald-500 ${loadingRadar ? 'animate-spin' : ''}`} onClick={fetchWeeklyRadar} />
+                  </div>
+
+                  {loadingRadar ? (
+                    <div className="py-12 text-center space-y-4">
+                      <Loader2 className="w-8 h-8 text-emerald-500 animate-spin mx-auto" />
+                      <p className="text-xs text-zinc-500 uppercase font-bold tracking-widest">Scanning global markets...</p>
+                    </div>
+                  ) : weeklyRadar ? (
+                    <div className="space-y-8">
+                      <div className="p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-2xl">
+                        <p className="text-sm text-emerald-200 leading-relaxed">
+                          <span className="font-black uppercase italic mr-2">Market Shift:</span>
+                          {weeklyRadar.marketShift}
+                        </p>
+                      </div>
+
+                      <div className="grid gap-4">
+                        {weeklyRadar.topTrends.map((trend, i) => (
+                          <div key={i} className="p-4 bg-zinc-800/50 border border-white/5 rounded-2xl space-y-2">
+                            <div className="flex items-center justify-between">
+                              <h4 className="text-sm font-black uppercase italic text-white">{trend.title}</h4>
+                              <span className="px-2 py-0.5 bg-zinc-700 text-zinc-400 text-[8px] font-bold uppercase rounded-full">{trend.sector}</span>
+                            </div>
+                            <p className="text-xs text-zinc-400 leading-relaxed">{trend.description}</p>
+                            <p className="text-[10px] text-emerald-500 font-bold uppercase tracking-widest">Impact: {trend.impact}</p>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="space-y-3">
+                        <h4 className="text-xs font-black uppercase italic text-zinc-500 tracking-widest">Opportunity Areas</h4>
+                        <div className="flex flex-wrap gap-2">
+                          {weeklyRadar.opportunityAreas.map((area, i) => (
+                            <span key={i} className="px-3 py-1 bg-zinc-800 border border-zinc-700 text-zinc-300 text-[10px] font-bold rounded-full">{area}</span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="py-12 text-center space-y-4">
+                      <TrendingUp className="w-12 h-12 text-zinc-800 mx-auto" />
+                      <p className="text-xs text-zinc-500">Click the refresh icon to generate this week's radar.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : activeTab === 'future' ? (
+              <div className="space-y-6">
+                <div className="p-6 bg-zinc-900 border border-zinc-800 rounded-3xl space-y-6 relative overflow-hidden">
+                  <div className="absolute top-0 right-0 p-4 opacity-10">
+                    <Sparkles className="w-24 h-24 text-amber-500" />
+                  </div>
+                  
+                  <div className="flex items-center justify-between relative z-10">
+                    <div className="space-y-1">
+                      <h3 className="text-2xl font-black uppercase italic tracking-tight">Futurecasting Engine</h3>
+                      <p className="text-zinc-500 text-xs uppercase font-bold tracking-widest">Horizon: {futurecasting?.horizon || '2030'}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <select 
+                        onChange={(e) => fetchFuturecasting(e.target.value as any)}
+                        className="bg-zinc-800 border border-zinc-700 text-white text-[10px] font-bold uppercase rounded-lg px-2 py-1 outline-none"
+                      >
+                        <option value="2027">2027</option>
+                        <option value="2030">2030</option>
+                        <option value="2035">2035</option>
+                      </select>
+                      <RefreshCw className={`w-5 h-5 text-amber-500 ${loadingFuture ? 'animate-spin' : ''}`} onClick={() => fetchFuturecasting()} />
+                    </div>
+                  </div>
+
+                  {loadingFuture ? (
+                    <div className="py-12 text-center space-y-4">
+                      <Loader2 className="w-8 h-8 text-amber-500 animate-spin mx-auto" />
+                      <p className="text-xs text-zinc-500 uppercase font-bold tracking-widest">Simulating future paradigms...</p>
+                    </div>
+                  ) : futurecasting ? (
+                    <div className="space-y-8 relative z-10">
+                      <div className="space-y-3">
+                        <h4 className="text-xs font-black uppercase italic text-amber-500 tracking-widest">Paradigm Shifts</h4>
+                        <div className="space-y-2">
+                          {futurecasting.paradigmShifts.map((shift, i) => (
+                            <div key={i} className="flex items-start gap-3 p-3 bg-amber-500/5 border border-amber-500/10 rounded-xl">
+                              <Zap className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                              <p className="text-xs text-amber-100 leading-relaxed">{shift}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="space-y-4">
+                        <h4 className="text-xs font-black uppercase italic text-zinc-500 tracking-widest">Industry Predictions</h4>
+                        <div className="space-y-4">
+                          {futurecasting.predictions.map((pred, i) => (
+                            <div key={i} className="p-4 bg-zinc-800/50 border border-white/5 rounded-2xl space-y-4">
+                              <div className="flex items-center justify-between">
+                                <h4 className="text-sm font-black uppercase italic text-white">{pred.title}</h4>
+                                <div className="flex items-center gap-2">
+                                  <div className="w-24 h-1.5 bg-zinc-700 rounded-full overflow-hidden">
+                                    <div className="h-full bg-amber-500" style={{ width: `${pred.probability}%` }} />
+                                  </div>
+                                  <span className="text-[10px] font-bold text-amber-500">{pred.probability}%</span>
+                                </div>
+                              </div>
+                              <p className="text-xs text-zinc-400 leading-relaxed italic">"{pred.rationale}"</p>
+                              <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-1">
+                                  <p className="text-[8px] font-black uppercase tracking-widest text-emerald-500">Winners</p>
+                                  <p className="text-[10px] text-zinc-300">{pred.winners.join(', ')}</p>
+                                </div>
+                                <div className="space-y-1">
+                                  <p className="text-[8px] font-black uppercase tracking-widest text-red-500">Losers</p>
+                                  <p className="text-[10px] text-zinc-300">{pred.losers.join(', ')}</p>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="py-12 text-center space-y-4">
+                      <Sparkles className="w-12 h-12 text-zinc-800 mx-auto" />
+                      <p className="text-xs text-zinc-500">Select a horizon and click refresh to generate predictions.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : activeTab === 'digest' ? (
+              <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+                <div className="p-8 bg-zinc-900/50 border border-white/5 rounded-3xl text-center space-y-6">
+                  <div className="w-16 h-16 bg-emerald-500/10 rounded-2xl flex items-center justify-center mx-auto">
+                    <Mail className="w-8 h-8 text-emerald-500" />
+                  </div>
+                  <div className="space-y-2">
+                    <h3 className="text-2xl font-black text-white uppercase italic tracking-tight">Priority Email Digest</h3>
+                    <p className="text-zinc-400 text-sm max-w-md mx-auto">
+                      Get the most investable signals delivered to your inbox before the market wakes up.
+                    </p>
+                  </div>
+
+                  <div className="space-y-6 max-w-sm mx-auto">
+                    <div className="flex flex-col gap-4">
+                      <div className="flex items-center justify-between p-4 bg-zinc-800/50 border border-white/5 rounded-xl">
+                        <div className="text-left">
+                          <p className="text-xs font-bold text-white uppercase tracking-widest">Daily Digest</p>
+                          <p className="text-[10px] text-zinc-500">Every morning at 8:00 AM</p>
+                        </div>
+                        <div className="w-10 h-5 bg-emerald-500 rounded-full relative cursor-pointer">
+                          <div className="absolute top-0.5 right-0.5 w-4 h-4 bg-white rounded-full shadow-lg" />
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between p-4 bg-zinc-800/50 border border-white/5 rounded-xl opacity-50">
+                        <div className="text-left">
+                          <p className="text-xs font-bold text-white uppercase tracking-widest">Weekly Trend Radar</p>
+                          <p className="text-[10px] text-zinc-500">Every Sunday at 6:00 PM</p>
+                        </div>
+                        <div className="w-10 h-5 bg-zinc-700 rounded-full relative cursor-pointer">
+                          <div className="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow-lg" />
+                        </div>
+                      </div>
+                    </div>
+                    <button className="w-full py-4 bg-emerald-600 text-white text-xs font-black uppercase tracking-widest rounded-xl hover:bg-emerald-500 transition-all shadow-lg shadow-emerald-900/20">
+                      Save Preferences
+                    </button>
+                    <p className="text-[10px] text-zinc-600 font-bold uppercase tracking-widest">
+                      Digests are sent to {user?.email}
+                    </p>
+                  </div>
+                </div>
+              </div>
             ) : activeTab === 'saved' ? (
               userSaves.length > 0 ? (
                 userSaves.map((save) => (

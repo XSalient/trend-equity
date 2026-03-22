@@ -2,6 +2,7 @@ export type Tier = 'free' | 'pro' | 'builder';
 
 export interface FilterState {
   industries: string[];
+  productTypes: string[];
   riskLevels: string[];
   effortLevels: string[];
   marketFocus: string[];
@@ -71,4 +72,30 @@ export interface Alert {
   timestamp: any;
   isRead: boolean;
   link?: string;
+}
+
+export interface WeeklyTrendRadar {
+  week: string;
+  topTrends: { title: string; description: string; impact: string; sector: string }[];
+  marketShift: string;
+  opportunityAreas: string[];
+  generatedAt: any;
+}
+
+export interface Futurecasting {
+  horizon: '2027' | '2030' | '2035';
+  predictions: { title: string; probability: number; rationale: string; winners: string[]; losers: string[] }[];
+  paradigmShifts: string[];
+  generatedAt: any;
+}
+
+export interface ExpertVetting {
+  ideaId: string;
+  score: number;
+  verdict: 'High Conviction' | 'Moderate' | 'Pass';
+  strengths: string[];
+  weaknesses: string[];
+  pivotSuggestions: string[];
+  comparableExits: string[];
+  generatedAt: any;
 }
