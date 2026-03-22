@@ -19,8 +19,8 @@ import {
   deleteDoc
 } from 'firebase/firestore';
 import { db, auth } from './firebase';
-import { Idea, DailyGeneration, UserSave, FilterState } from './types';
-import { generateDailyIdeas } from './services/geminiService';
+import { Idea, DailyGeneration, UserSave, FilterState, Alert } from './types';
+import { generateDailyIdeas, generateAlerts } from './services/geminiService';
 import { 
   TrendingUp, 
   Zap, 
@@ -52,7 +52,8 @@ import {
   Share2,
   Sparkles,
   Filter,
-  RotateCcw
+  RotateCcw,
+  X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { jsPDF } from 'jspdf';
@@ -125,6 +126,8 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'feed' | 'saved' | 'pro'>('feed');
   const [tier, setTier] = useState<'free' | 'pro' | 'builder'>('free');
+  const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [showAlerts, setShowAlerts] = useState(false);
   const [filters, setFilters] = useState<FilterState>({
     industries: [],
     riskLevels: [],
@@ -214,6 +217,30 @@ export default function App() {
     }
     alert(`Downgraded to ${plan.toUpperCase()}.`);
   };
+
+  // --- Alerts ---
+  useEffect(() => {
+    const fetchAlerts = async () => {
+      try {
+        const generatedAlerts = await generateAlerts();
+        setAlerts(generatedAlerts.map((a: any, i: number) => ({
+          ...a,
+          id: `alert-${Date.now()}-${i}`,
+          timestamp: new Date(),
+          isRead: false
+        })));
+      } catch (err) {
+        console.error("Failed to fetch alerts:", err);
+      }
+    };
+    fetchAlerts();
+  }, []);
+
+  const markAlertAsRead = (id: string) => {
+    setAlerts(prev => prev.map(a => a.id === id ? { ...a, isRead: true } : a));
+  };
+
+  const unreadAlertsCount = alerts.filter(a => !a.isRead).length;
 
   // --- Filtering Logic ---
   const getFilteredIdeas = useCallback((ideas: Idea[]) => {
@@ -549,16 +576,29 @@ export default function App() {
     const doc = new jsPDF();
     const margin = 20;
     let y = 20;
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+
+    const checkPage = (heightNeeded: number) => {
+      if (y + heightNeeded > pageHeight - 20) {
+        doc.addPage();
+        y = 20;
+        return true;
+      }
+      return false;
+    };
 
     // Title
-    doc.setFontSize(22);
+    doc.setFontSize(24);
     doc.setFont("helvetica", "bold");
+    doc.setTextColor(16, 185, 129); // Emerald 500
     doc.text(idea.headline.toUpperCase(), margin, y);
     y += 15;
 
     // Pitch
     doc.setFontSize(14);
     doc.setFont("helvetica", "italic");
+    doc.setTextColor(100);
     const pitchLines = doc.splitTextToSize(`"${idea.pitch}"`, 170);
     doc.text(pitchLines, margin, y);
     y += pitchLines.length * 7 + 10;
@@ -566,6 +606,7 @@ export default function App() {
     // VC Justification
     doc.setFontSize(12);
     doc.setFont("helvetica", "bold");
+    doc.setTextColor(0);
     doc.text("VC JUSTIFICATION", margin, y);
     y += 7;
     doc.setFont("helvetica", "normal");
@@ -574,6 +615,7 @@ export default function App() {
     y += vcLines.length * 6 + 10;
 
     // Unfair Advantage
+    checkPage(30);
     doc.setFont("helvetica", "bold");
     doc.text("UNFAIR ADVANTAGE", margin, y);
     y += 7;
@@ -583,6 +625,7 @@ export default function App() {
     y += uaLines.length * 6 + 10;
 
     // Revenue Model
+    checkPage(30);
     doc.setFont("helvetica", "bold");
     doc.text("REVENUE MODEL", margin, y);
     y += 7;
@@ -591,16 +634,92 @@ export default function App() {
     doc.text(revLines, margin, y);
     y += revLines.length * 6 + 10;
 
-    // Next Steps
-    if (idea.nextSteps && idea.nextSteps.length > 0) {
+    // Full Action Plan
+    if (idea.fullActionPlan) {
+      checkPage(40);
+      doc.setFontSize(16);
       doc.setFont("helvetica", "bold");
-      doc.text("ACTIONABLE NEXT STEPS", margin, y);
+      doc.setTextColor(16, 185, 129);
+      doc.text("FULL EXECUTION PLAN", margin, y);
+      y += 10;
+      doc.setTextColor(0);
+
+      doc.setFontSize(12);
+      doc.text("ROADMAP", margin, y);
       y += 7;
       doc.setFont("helvetica", "normal");
-      idea.nextSteps.forEach((step, i) => {
-        const stepLines = doc.splitTextToSize(`${i + 1}. ${step}`, 160);
-        doc.text(stepLines, margin + 5, y);
-        y += stepLines.length * 6 + 2;
+      idea.fullActionPlan.roadmap.forEach((step, i) => {
+        checkPage(20);
+        doc.setFont("helvetica", "bold");
+        doc.text(`${i + 1}. ${step.step} (${step.milestone})`, margin + 5, y);
+        y += 6;
+        doc.setFont("helvetica", "normal");
+        const stepDetails = doc.splitTextToSize(step.details, 160);
+        doc.text(stepDetails, margin + 10, y);
+        y += stepDetails.length * 6 + 4;
+      });
+
+      checkPage(30);
+      doc.setFont("helvetica", "bold");
+      doc.text("ESSENTIAL TOOLS", margin, y);
+      y += 7;
+      doc.setFont("helvetica", "normal");
+      const toolsText = idea.fullActionPlan.tools.join(", ");
+      const toolLines = doc.splitTextToSize(toolsText, 170);
+      doc.text(toolLines, margin, y);
+      y += toolLines.length * 6 + 10;
+
+      checkPage(30);
+      doc.setFont("helvetica", "bold");
+      doc.text("KEY RISKS", margin, y);
+      y += 7;
+      doc.setFont("helvetica", "normal");
+      idea.fullActionPlan.risks.forEach((risk, i) => {
+        checkPage(10);
+        doc.text(`• ${risk}`, margin + 5, y);
+        y += 6;
+      });
+      y += 4;
+    }
+
+    // Validation Toolkit
+    if (idea.validationToolkit) {
+      checkPage(40);
+      doc.addPage();
+      y = 20;
+      doc.setFontSize(16);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(16, 185, 129);
+      doc.text("VALIDATION TOOLKIT", margin, y);
+      y += 10;
+      doc.setTextColor(0);
+
+      doc.setFontSize(12);
+      doc.text("LANDING PAGE COPY", margin, y);
+      y += 7;
+      doc.setFont("helvetica", "normal");
+      doc.text(`Hero: ${idea.validationToolkit.landingPage.hero}`, margin + 5, y);
+      y += 6;
+      doc.text(`Sub-hero: ${idea.validationToolkit.landingPage.subHero}`, margin + 5, y);
+      y += 6;
+      doc.text("Value Props:", margin + 5, y);
+      y += 6;
+      idea.validationToolkit.landingPage.valueProps.forEach(vp => {
+        doc.text(`- ${vp}`, margin + 10, y);
+        y += 6;
+      });
+      y += 4;
+
+      checkPage(30);
+      doc.setFont("helvetica", "bold");
+      doc.text("CUSTOMER INTERVIEW QUESTIONS", margin, y);
+      y += 7;
+      doc.setFont("helvetica", "normal");
+      idea.validationToolkit.interviewScript.forEach((q, i) => {
+        checkPage(15);
+        const qLines = doc.splitTextToSize(`${i + 1}. ${q}`, 160);
+        doc.text(qLines, margin + 5, y);
+        y += qLines.length * 6 + 2;
       });
     }
 
@@ -609,7 +728,7 @@ export default function App() {
     doc.setTextColor(150);
     doc.text(`Generated by Trend-Equity on ${new Date().toLocaleDateString()}`, margin, 280);
 
-    doc.save(`${idea.headline.replace(/\s+/g, '_')}_Pitch_Deck.pdf`);
+    doc.save(`${idea.headline.replace(/\s+/g, '_')}_Full_Plan.pdf`);
   };
 
   if (loading || generating) {
@@ -669,6 +788,16 @@ export default function App() {
                       </button>
                     )}
                     <button 
+                      onClick={() => setShowAlerts(!showAlerts)}
+                      className="p-2 text-zinc-500 hover:text-white transition-colors relative"
+                      title="Alerts"
+                    >
+                      <Bell className="w-4 h-4" />
+                      {unreadAlertsCount > 0 && (
+                        <span className="absolute top-1 right-1 w-2 h-2 bg-emerald-500 rounded-full border-2 border-zinc-950" />
+                      )}
+                    </button>
+                    <button 
                       onClick={handleLogout}
                       className="p-2 text-zinc-500 hover:text-white transition-colors"
                       title="Logout"
@@ -711,6 +840,58 @@ export default function App() {
             </div>
           </div>
         </header>
+
+        {/* Alerts Dropdown */}
+        <AnimatePresence>
+          {showAlerts && (
+            <div className="fixed inset-0 z-[60] flex justify-end p-4 pointer-events-none">
+              <motion.div 
+                initial={{ opacity: 0, y: -20, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -20, scale: 0.95 }}
+                className="w-full max-w-sm bg-zinc-900 border border-zinc-800 rounded-2xl shadow-2xl pointer-events-auto overflow-hidden flex flex-col max-h-[80vh]"
+              >
+                <div className="p-4 border-b border-zinc-800 flex items-center justify-between bg-zinc-900/50">
+                  <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-400">Market Alerts</h3>
+                  <button onClick={() => setShowAlerts(false)} className="text-zinc-500 hover:text-white"><X className="w-4 h-4" /></button>
+                </div>
+                <div className="overflow-y-auto p-2 space-y-2">
+                  {alerts.length > 0 ? (
+                    alerts.map((alert) => (
+                      <div 
+                        key={alert.id} 
+                        onClick={() => markAlertAsRead(alert.id)}
+                        className={`p-3 rounded-xl border transition-all cursor-pointer ${
+                          alert.isRead ? 'bg-zinc-900/30 border-zinc-800/50 opacity-60' : 'bg-zinc-800/50 border-white/5 hover:border-emerald-500/30'
+                        }`}
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className={`mt-1 w-2 h-2 rounded-full flex-shrink-0 ${
+                            alert.type === 'success' ? 'bg-emerald-500' :
+                            alert.type === 'warning' ? 'bg-amber-500' :
+                            alert.type === 'error' ? 'bg-red-500' : 'bg-blue-500'
+                          }`} />
+                          <div className="space-y-1">
+                            <p className="text-xs font-bold text-white">{alert.title}</p>
+                            <p className="text-[11px] text-zinc-400 leading-relaxed">{alert.message}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="p-8 text-center space-y-2">
+                      <Bell className="w-8 h-8 text-zinc-800 mx-auto" />
+                      <p className="text-xs text-zinc-500">No new alerts today.</p>
+                    </div>
+                  )}
+                </div>
+                <div className="p-3 bg-zinc-900/80 border-t border-zinc-800 text-center">
+                  <p className="text-[10px] text-zinc-600 uppercase font-bold tracking-widest">Powered by VC Logic Engine</p>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
 
         <main className="max-w-3xl mx-auto px-4 py-8 space-y-8">
           {/* Intro Section */}

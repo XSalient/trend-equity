@@ -198,3 +198,128 @@ export async function explainPlanSection(idea: Idea, section: string, context: s
 
   return response.text;
 }
+
+export async function generateBuildWithMe(idea: Idea) {
+  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+  
+  const prompt = `Generate a "Build with Me" package for this business idea:
+  Headline: ${idea.headline}
+  Pitch: ${idea.pitch}
+  
+  Provide:
+  1. A "Prompt Pack": 5-7 highly specific LLM prompts to help build the MVP (e.g., system architecture, database schema, landing page copy, initial API routes).
+  2. A "Starter Repository Structure": A recommended file tree for the project.
+  3. "First 24 Hours": A checklist of exactly what to do in the first 24 hours of building.
+  
+  Format as JSON.`;
+
+  const schema = {
+    type: Type.OBJECT,
+    properties: {
+      promptPack: {
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            title: { type: Type.STRING },
+            prompt: { type: Type.STRING }
+          },
+          required: ["title", "prompt"]
+        }
+      },
+      repoStructure: { type: Type.STRING },
+      first24Hours: { type: Type.ARRAY, items: { type: Type.STRING } }
+    },
+    required: ["promptPack", "repoStructure", "first24Hours"]
+  };
+
+  const response = await ai.models.generateContent({
+    model: "gemini-3-flash-preview",
+    contents: prompt,
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: schema
+    }
+  });
+
+  return JSON.parse(response.text);
+}
+
+export async function generateValidationToolkit(idea: Idea) {
+  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+  
+  const prompt = `Generate a "Validation Toolkit" for this business idea:
+  Headline: ${idea.headline}
+  Pitch: ${idea.pitch}
+  
+  Provide:
+  1. "Landing Page Copy": Hero headline, sub-headline, and 3 key value propositions for a smoke test.
+  2. "Customer Interview Script": 5 critical questions to ask potential customers.
+  3. "Smoke Test Strategy": A specific way to test demand with $0-$100 budget.
+  4. "Success Metrics": What numbers indicate this idea is worth pursuing.
+  
+  Format as JSON.`;
+
+  const schema = {
+    type: Type.OBJECT,
+    properties: {
+      landingPage: {
+        type: Type.OBJECT,
+        properties: {
+          hero: { type: Type.STRING },
+          subHero: { type: Type.STRING },
+          valueProps: { type: Type.ARRAY, items: { type: Type.STRING } }
+        },
+        required: ["hero", "subHero", "valueProps"]
+      },
+      interviewScript: { type: Type.ARRAY, items: { type: Type.STRING } },
+      smokeTest: { type: Type.STRING },
+      successMetrics: { type: Type.ARRAY, items: { type: Type.STRING } }
+    },
+    required: ["landingPage", "interviewScript", "smokeTest", "successMetrics"]
+  };
+
+  const response = await ai.models.generateContent({
+    model: "gemini-3-flash-preview",
+    contents: prompt,
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: schema
+    }
+  });
+
+  return JSON.parse(response.text);
+}
+
+export async function generateAlerts() {
+  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+  
+  const prompt = `Generate 3-5 "Market Trend Alerts" for today. 
+  These should be high-signal, actionable alerts about emerging business opportunities, market shifts, or regulatory changes.
+  Each alert should have a title, a brief message, and a type (info, success, warning, error).
+  Format as JSON.`;
+
+  const schema = {
+    type: Type.ARRAY,
+    items: {
+      type: Type.OBJECT,
+      properties: {
+        title: { type: Type.STRING },
+        message: { type: Type.STRING },
+        type: { type: Type.STRING, enum: ["info", "success", "warning", "error"] }
+      },
+      required: ["title", "message", "type"]
+    }
+  };
+
+  const response = await ai.models.generateContent({
+    model: "gemini-3-flash-preview",
+    contents: prompt,
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: schema
+    }
+  });
+
+  return JSON.parse(response.text);
+}

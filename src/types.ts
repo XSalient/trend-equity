@@ -33,6 +33,19 @@ export interface Idea {
     timeline: string;
     generatedAt?: any;
   };
+  buildWithMe?: {
+    promptPack: { title: string; prompt: string }[];
+    repoStructure: string;
+    first24Hours: string[];
+    generatedAt?: any;
+  };
+  validationToolkit?: {
+    landingPage: { hero: string; subHero: string; valueProps: string[] };
+    interviewScript: string[];
+    smokeTest: string;
+    successMetrics: string[];
+    generatedAt?: any;
+  };
 }
 
 export interface DailyGeneration {
@@ -48,4 +61,14 @@ export interface UserSave {
   userId: string;
   idea: Idea;
   savedAt: any;
+}
+
+export interface Alert {
+  id: string;
+  title: string;
+  message: string;
+  type: 'info' | 'success' | 'warning' | 'error';
+  timestamp: any;
+  isRead: boolean;
+  link?: string;
 }
