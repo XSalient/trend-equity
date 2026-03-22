@@ -11,3 +11,5 @@ PRD.md
 metadata.json
 firebase-blueprint.json
 src/services/prompts.json
+*.zip
+.secrets_backup/
