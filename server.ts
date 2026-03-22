@@ -1,7 +1,6 @@
 import express from 'express';
 import dotenv from 'dotenv';
 import { GoogleGenAI, Type } from "@google/genai";
-import prompts from './src/services/prompts.json' assert { type: 'json' };
 
 dotenv.config();
 
@@ -10,7 +9,18 @@ const port = process.env.PORT || 3001;
 
 app.use(express.json());
 
-const SYSTEM_PROMPT = prompts.SYSTEM_PROMPT;
+// Load prompts with fallback
+let localPrompts = { SYSTEM_PROMPT: '' };
+try {
+  // @ts-ignore - dynamic import for local dev only
+  const promptsModule = await import('./src/services/prompts.json', { assert: { type: 'json' } });
+  localPrompts = promptsModule.default;
+} catch (e) {
+  console.log('--- Notice: No local prompts.json found. Relying on environment variables. ---');
+}
+
+const SYSTEM_PROMPT = process.env.SYSTEM_PROMPT || localPrompts.SYSTEM_PROMPT;
+const FIREBASE_CONFIG = process.env.FIREBASE_CONFIG ? JSON.parse(process.env.FIREBASE_CONFIG) : null;
 
 // Re-using schemas from the original geminiService
 const ideaSchema = {

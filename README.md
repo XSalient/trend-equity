@@ -1,20 +1,67 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# Trend-Equity Setup Guide
 
-# Run and deploy your AI Studio app
+This guide explains how to set up the Trend-Equity project on a new development machine using **Doppler** for secret management.
 
-This contains everything you need to run your app locally.
+## 🚀 Prerequisites
 
-View your app in AI Studio: https://ai.studio/apps/2483267a-16b1-4a9e-a89c-b858e59053d2
+1.  **Node.js**: Install the latest LTS version.
+2.  **Doppler CLI**: [Install Doppler CLI](https://docs.doppler.com/docs/install-cli).
+3.  **Git**: Ensure you have access to the repository.
 
-## Run Locally
+## 🛠️ First-Time Setup
 
-**Prerequisites:**  Node.js
+### 1. Clone the Repository
+```bash
+git clone https://github.com/s7github/trend-equity.git
+cd trend-equity
+```
 
+### 2. Authenticate Doppler
+Log in to your Doppler account on the new machine:
+```bash
+doppler login
+```
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+### 3. Connect the Project
+Link your local directory to the existing Doppler project:
+```bash
+doppler setup --project trend-equity --config dev
+```
+
+### 4. Install Dependencies
+```bash
+npm install
+```
+
+### 5. Run the Application
+You can run the app directly using Doppler to inject secrets into the environment:
+```bash
+doppler run -- npm run dev
+```
+Alternatively, if you prefer using a `.env` file locally:
+```bash
+doppler secrets download --format env --no-backup > .env
+npm run dev
+```
+
+---
+
+## 🔒 Managing Secrets
+
+The project uses a **BFF (Backend For Frontend)** architecture to protect sensitive data. The following secrets are managed via Doppler:
+
+- `GEMINI_API_KEY`: Your Google AI Studio API key.
+- `SYSTEM_PROMPT`: The proprietary business logic for the AI engine.
+- `FIREBASE_CONFIG`: The application's Firebase credentials.
+
+### Syncing Changes
+If you update local configuration files (like `prompts.json`) and want to push them to Doppler:
+```powershell
+./scripts/doppler_sync.ps1
+```
+
+## 🛠️ Technical Stack
+- **Frontend**: React, Vite, Tailwind CSS, Motion.
+- **Backend**: Node.js, Express (BFF architecture).
+- **Database**: Firebase Firestore & Auth.
+- **AI**: Google Gemini API.
