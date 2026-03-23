@@ -119,9 +119,14 @@ const radarSchema = {
 // --- Endpoints ---
 
 app.post('/api/generate/daily', async (req, res) => {
-  const { date } = req.body;
+  const { date, country, countryCount } = req.body;
   try {
-    const data = await generateWithGemini(`Generate 35 business ideas for ${date}. Today context: ${date}.`, responseSchema);
+    let promptStr = `Generate 35 business ideas for ${date}. Today context: ${date}.`;
+    if (country && country !== 'Global' && countryCount > 0) {
+      promptStr += ` Include exactly ${countryCount} ideas heavily tailored specifically for the market and demographics in ${country}. The rest should be global/US-centric as usual.`;
+    }
+    
+    const data = await generateWithGemini(promptStr, responseSchema);
     res.json(data);
   } catch (err: any) {
     console.error("Daily Generation Error (Falling back to mock):", err);

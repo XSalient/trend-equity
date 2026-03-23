@@ -1,10 +1,10 @@
 import { Idea } from "../types";
 
-export async function generateDailyIdeas(date: string) {
+export async function generateDailyIdeas(date: string, country?: string, countryCount?: number) {
   const response = await fetch('/api/generate/daily', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ date })
+    body: JSON.stringify({ date, country, countryCount })
   });
   if (!response.ok) throw new Error('Failed to generate ideas');
   return response.json();

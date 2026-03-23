@@ -43,7 +43,25 @@ export function useIdeas(user: User | null, tier: Tier, authReady: boolean) {
     setGenerating(true);
     setError(null);
     try {
-      const result = await generateDailyIdeas(today);
+      // Determine user locale/country
+      const getCountryName = () => {
+        try {
+          const localeString = navigator.language; // e.g. "en-US", "fr-FR", "en"
+          const region = localeString.split('-')[1];
+          if (region) {
+            const displayNames = new Intl.DisplayNames(['en'], { type: 'region' });
+            return displayNames.of(region) || 'Global';
+          }
+        } catch (e) {
+          // Fallback
+        }
+        return 'Global';
+      };
+      
+      const country = getCountryName();
+      const countryCount = tier === 'builder' ? 5 : tier === 'pro' ? 3 : 1;
+
+      const result = await generateDailyIdeas(today, country, countryCount);
       const newGen: DailyGeneration = {
         date: today,
         intro: result.intro,
@@ -67,7 +85,7 @@ export function useIdeas(user: User | null, tier: Tier, authReady: boolean) {
     } finally {
       setGenerating(false);
     }
-  }, [today, generating]);
+  }, [today, generating, tier]);
 
   const fetchDaily = useCallback(async (isRetry = false) => {
     if (!isRetry) setLoading(true);
