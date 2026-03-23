@@ -1,280 +1,89 @@
-import React, { useState, useEffect, useCallback, Component } from 'react';
-import { 
-  onAuthStateChanged, 
-  signInWithPopup, 
-  GoogleAuthProvider, 
-  signOut,
-  User
-} from 'firebase/auth';
-import { 
-  doc, 
-  getDoc, 
-  setDoc, 
-  collection, 
-  addDoc, 
-  query, 
-  where, 
-  onSnapshot,
-  serverTimestamp,
-  deleteDoc
-} from 'firebase/firestore';
-import { db, auth } from './firebase';
-import { Idea, DailyGeneration, UserSave, FilterState, Alert, WeeklyTrendRadar, Futurecasting, ExpertVetting } from './types';
-import { 
-  generateDailyIdeas, 
-  generateAlerts, 
-  generateWeeklyTrendRadar, 
-  generateFuturecasting, 
-  generateExpertVetting 
-} from './services/geminiService';
-import { TIER_LIMITS, Tier } from './constants';
-import { 
-  TrendingUp, 
-  Zap, 
-  DollarSign, 
-  Target, 
-  ChevronDown, 
-  ChevronUp, 
-  Bookmark, 
-  BookmarkCheck,
-  LogOut,
-  LogIn,
-  Loader2,
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  TrendingUp,
   AlertCircle,
   RefreshCw,
   Calendar,
   Rocket,
-  CheckCircle2,
   Wand2,
-  Crown,
   Lock,
-  Download,
-  Shield,
-  BarChart3,
-  Users,
-  Trophy,
-  Bell,
-  Settings,
-  FileText,
-  Share2,
-  Sparkles,
-  Filter,
-  RotateCcw,
-  X,
-  Mail,
-  Radar
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { jsPDF } from 'jspdf';
+
+// --- Types & Constants ---
+import { TIER_LIMITS } from './constants';
+import { WeeklyTrendRadar, Futurecasting, Idea } from './types';
+
+// --- Hooks ---
+import { useAuth } from './hooks/useAuth';
+import { useTier } from './hooks/useTier';
+import { useAlerts } from './hooks/useAlerts';
+import { useIdeas } from './hooks/useIdeas';
 
 // --- Components ---
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { IdeaCard } from './components/IdeaCard';
 import { PricingSection } from './components/PricingSection';
-import { FilterBar } from './components/FilterBar';
+import { Header } from './components/layout/Header';
+import { AlertsPanel } from './components/layout/AlertsPanel';
 
-// --- Error Handling ---
-enum OperationType {
-  CREATE = 'create',
-  UPDATE = 'update',
-  DELETE = 'delete',
-  LIST = 'list',
-  GET = 'get',
-  WRITE = 'write',
-}
+// --- Tab Views ---
+import { IdeaFeed } from './components/tabs/IdeaFeed';
+import { WeeklyRadarTab } from './components/tabs/WeeklyRadar';
+import { FuturecastingTab } from './components/tabs/Futurecasting';
+import { EmailDigestTab } from './components/tabs/EmailDigest';
+import { SavedIdeasTab } from './components/tabs/SavedIdeas';
 
-interface FirestoreErrorInfo {
-  error: string;
-  operationType: OperationType;
-  path: string | null;
-  authInfo: {
-    userId: string | undefined;
-    email: string | null | undefined;
-    emailVerified: boolean | undefined;
-    isAnonymous: boolean | undefined;
-    tenantId: string | null | undefined;
-    providerInfo: {
-      providerId: string;
-      displayName: string | null;
-      email: string | null;
-      photoUrl: string | null;
-    }[];
-  }
-}
-
-function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
-  const errInfo: FirestoreErrorInfo = {
-    error: error instanceof Error ? error.message : String(error),
-    authInfo: {
-      userId: auth.currentUser?.uid,
-      email: auth.currentUser?.email,
-      emailVerified: auth.currentUser?.emailVerified,
-      isAnonymous: auth.currentUser?.isAnonymous,
-      tenantId: auth.currentUser?.tenantId,
-      providerInfo: auth.currentUser?.providerData.map(provider => ({
-        providerId: provider.providerId,
-        displayName: provider.displayName,
-        email: provider.email,
-        photoUrl: provider.photoURL
-      })) || []
-    },
-    operationType,
-    path
-  };
-  console.error('Firestore Error: ', JSON.stringify(errInfo));
-  throw new Error(JSON.stringify(errInfo));
-}
+// --- Utils ---
+import { generateWeeklyTrendRadar, generateFuturecasting } from './services/geminiService';
+import { exportToPDF, exportListToCSV, exportListToPDF } from './utils/exportUtils';
 
 export default function App() {
-  const [user, setUser] = useState<User | null>(null);
-  const [authReady, setAuthReady] = useState(false);
-  const [dailyGen, setDailyGen] = useState<DailyGeneration | null>(null);
-  const [userSaves, setUserSaves] = useState<UserSave[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [generating, setGenerating] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { user, authReady, handleLogin, handleLogout, error: authError } = useAuth();
+  const { tier, handleUpgrade, handleDowngrade, upgradeToBuilder } = useTier(user);
+  const { alerts, showAlerts, setShowAlerts, markAlertAsRead, unreadAlertsCount } = useAlerts();
+  
+  const { 
+    dailyGen, 
+    userSaves, 
+    loading, 
+    generating, 
+    error: ideasError, 
+    filters, 
+    setFilters, 
+    toggleSave, 
+    updateIdea, 
+    getFilteredIdeas, 
+    triggerGeneration,
+    fetchDaily
+  } = useIdeas(user, tier, authReady);
+
   const [activeTab, setActiveTab] = useState<'feed' | 'saved' | 'pro' | 'radar' | 'future' | 'digest'>('feed');
-  const [tier, setTier] = useState<Tier>('free');
-  const [alerts, setAlerts] = useState<Alert[]>([]);
   const [weeklyRadar, setWeeklyRadar] = useState<WeeklyTrendRadar | null>(null);
   const [futurecasting, setFuturecasting] = useState<Futurecasting | null>(null);
   const [loadingRadar, setLoadingRadar] = useState(false);
   const [loadingFuture, setLoadingFuture] = useState(false);
-  const [showAlerts, setShowAlerts] = useState(false);
-  const [filters, setFilters] = useState<FilterState>({
-    industries: [],
-    productTypes: [],
-    riskLevels: [],
-    effortLevels: [],
-    marketFocus: [],
-    teamSize: [],
-    excludeCategories: [],
-    customKeywords: '',
-    sortBy: 'revenue'
-  });
 
+  const error = authError || ideasError;
   const today = new Date().toISOString().split('T')[0];
 
-  // --- Auth ---
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (u) => {
-      setUser(u);
-      setAuthReady(true);
-      if (u) {
-        // Fetch user data from Firestore to get the correct tier
-        const userRef = doc(db, 'users', u.uid);
-        getDoc(userRef).then(docSnap => {
-          if (docSnap.exists()) {
-            setTier(docSnap.data().tier || 'free');
-          } else {
-            setTier('free');
-          }
-        });
-      } else {
-        setTier('free');
-        setUserSaves([]);
-      }
-    });
-    return () => unsubscribe();
-  }, []);
-
-  const handleLogin = async () => {
-    try {
-      const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
-    } catch (err: any) {
-      // Handle user closing the popup gracefully
-      if (err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request') {
-        console.log("Sign-in popup closed by user.");
-        return;
-      }
-      console.error("Login Error:", err);
-      setError("Failed to sign in. Please try again.");
-    }
-  };
-
-  const handleLogout = () => signOut(auth);
-
-  const upgradeToBuilder = () => {
-    if (!user) {
-      handleLogin();
-      return;
-    }
-    setTier('builder');
-    alert("Upgraded to Builder Tier! Full suite unlocked.");
-  };
-
-  const handleUpgrade = async (plan: Tier) => {
-    if (!user) {
-      handleLogin();
-      return;
-    }
-    setTier(plan);
-    try {
-      const userRef = doc(db, 'users', user.uid);
-      await setDoc(userRef, { tier: plan, updatedAt: serverTimestamp() }, { merge: true });
-    } catch (err) {
-      handleFirestoreError(err, OperationType.WRITE, `users/${user.uid}`);
-    }
-    alert(`Upgraded to ${plan.toUpperCase()}!`);
-  };
-
-  const handleDowngrade = async (plan: Tier) => {
-    setTier(plan);
-    if (user) {
-      try {
-        const userRef = doc(db, 'users', user.uid);
-        await setDoc(userRef, { tier: plan, updatedAt: serverTimestamp() }, { merge: true });
-      } catch (err) {
-        handleFirestoreError(err, OperationType.WRITE, `users/${user.uid}`);
-      }
-    }
-    alert(`Downgraded to ${plan.toUpperCase()}.`);
-  };
-
-  // --- Alerts ---
-  useEffect(() => {
-    const fetchAlerts = async () => {
-      try {
-        const generatedAlerts = await generateAlerts();
-        setAlerts(generatedAlerts.map((a: any, i: number) => ({
-          ...a,
-          id: `alert-${Date.now()}-${i}`,
-          timestamp: new Date(),
-          isRead: false
-        })));
-      } catch (err) {
-        console.error("Failed to fetch alerts:", err);
-      }
-    };
-    fetchAlerts();
-  }, []);
-
-  const markAlertAsRead = (id: string) => {
-    setAlerts(prev => prev.map(a => a.id === id ? { ...a, isRead: true } : a));
-  };
-
-  const unreadAlertsCount = alerts.filter(a => !a.isRead).length;
-
+  // --- Tab Specific Actions ---
   const fetchWeeklyRadar = async () => {
-    if (tier === 'free') return;
     setLoadingRadar(true);
     try {
       const radar = await generateWeeklyTrendRadar();
       setWeeklyRadar(radar);
     } catch (err) {
-      console.error("Failed to fetch weekly radar:", err);
+      console.error("Failed to fetch radar:", err);
     } finally {
       setLoadingRadar(false);
     }
   };
 
   const fetchFuturecasting = async (horizon: '2027' | '2030' | '2035' = '2030') => {
-    if (tier !== 'builder') return;
     setLoadingFuture(true);
     try {
-      const future = await generateFuturecasting(horizon);
-      setFuturecasting(future);
+      const fc = await generateFuturecasting(horizon);
+      setFuturecasting(fc);
     } catch (err) {
       console.error("Failed to fetch futurecasting:", err);
     } finally {
@@ -283,647 +92,21 @@ export default function App() {
   };
 
   useEffect(() => {
-    if (activeTab === 'radar' && !weeklyRadar) {
-      fetchWeeklyRadar();
-    }
-    if (activeTab === 'future' && !futurecasting) {
-      fetchFuturecasting();
-    }
-  }, [activeTab, tier]);
+    if (activeTab === 'radar' && !weeklyRadar) fetchWeeklyRadar();
+    if (activeTab === 'future' && !futurecasting) fetchFuturecasting();
+  }, [activeTab]);
 
-  // --- Filtering Logic ---
-  const getFilteredIdeas = useCallback((ideas: Idea[]) => {
-    let filtered = [...ideas];
-
-    // 1. Industry
-    if (filters.industries?.length > 0) {
-      filtered = filtered.filter(idea => 
-        filters.industries.some(ind => {
-          const searchTerms = ind.toLowerCase().split(/[\/\s-]/);
-          return searchTerms.some(term => 
-            idea.categoryTags.some(tag => tag.toLowerCase().includes(term)) ||
-            idea.headline.toLowerCase().includes(term) ||
-            idea.pitch.toLowerCase().includes(term)
-          );
-        })
-      );
-    }
-
-    // 1.5 Product Type
-    if (filters.productTypes?.length > 0) {
-      filtered = filtered.filter(idea => {
-        const isDigital = idea.categoryTags.some(tag => 
-          tag.toLowerCase().includes('digital') || 
-          tag.toLowerCase().includes('saas') || 
-          tag.toLowerCase().includes('software') ||
-          tag.toLowerCase().includes('app')
-        );
-        const isPhysical = idea.categoryTags.some(tag => 
-          tag.toLowerCase().includes('physical') || 
-          tag.toLowerCase().includes('hardware') || 
-          tag.toLowerCase().includes('sustainable') ||
-          tag.toLowerCase().includes('product')
-        );
-
-        if (filters.productTypes.includes('Digital') && isDigital) return true;
-        if (filters.productTypes.includes('Physical') && isPhysical) return true;
-        return false;
-      });
-    }
-
-    // 2. Risk (Scale is 0-10)
-    if (filters.riskLevels?.length > 0) {
-      filtered = filtered.filter(idea => {
-        const score = idea.revenuePotentialScore;
-        const isLow = score < 5;
-        const isHigh = score > 8;
-        const isMedium = score >= 5 && score <= 8;
-        
-        if (filters.riskLevels.includes('Low') && isLow) return true;
-        if (filters.riskLevels.includes('Medium') && isMedium) return true;
-        if (filters.riskLevels.includes('High') && isHigh) return true;
-        return false;
-      });
-    }
-
-    // 3. Effort
-    if (filters.effortLevels?.length > 0) {
-      filtered = filtered.filter(idea => 
-        filters.effortLevels.some(eff => idea.costEffort.toLowerCase().includes(eff.toLowerCase()))
-      );
-    }
-
-    // 4. Market
-    if (filters.marketFocus?.length > 0) {
-      filtered = filtered.filter(idea => 
-        filters.marketFocus.some(m => 
-          idea.pitch.toLowerCase().includes(m.toLowerCase()) ||
-          idea.trendSources.some(s => s.toLowerCase().includes(m.toLowerCase())) ||
-          idea.vcJustification.toLowerCase().includes(m.toLowerCase())
-        )
-      );
-    }
-
-    // 5. Team
-    if (filters.teamSize?.length > 0) {
-      filtered = filtered.filter(idea => {
-        const costEffort = idea.costEffort.toLowerCase();
-        const isSolo = costEffort.includes('solo') || costEffort.includes('low');
-        const isTeam = costEffort.includes('team') || costEffort.includes('funding') || costEffort.includes('co-founder');
-        const isSmall = !isSolo && !isTeam;
-
-        if (filters.teamSize.includes('Solo-friendly') && isSolo) return true;
-        if (filters.teamSize.includes('Small team (2–5)') && isSmall) return true;
-        if (filters.teamSize.includes('Needs co-founder/funding round') && isTeam) return true;
-        return false;
-      });
-    }
-
-    // 6. Custom Keywords (Builder)
-    if (tier === 'builder' && filters.customKeywords) {
-      const keywords = filters.customKeywords.toLowerCase().split(',').map(k => k.trim());
-      filtered = filtered.filter(idea => 
-        keywords.some(k => 
-          idea.headline.toLowerCase().includes(k) || 
-          idea.pitch.toLowerCase().includes(k) ||
-          idea.categoryTags.some(tag => tag.toLowerCase().includes(k))
-        )
-      );
-    }
-
-    // 7. Exclude Categories (Builder)
-    if (tier === 'builder' && filters.excludeCategories?.length > 0) {
-      filtered = filtered.filter(idea => 
-        !filters.excludeCategories.some(exc => 
-          idea.categoryTags.some(tag => tag.toLowerCase().includes(exc.toLowerCase()))
-        )
-      );
-    }
-
-    // 8. Sorting
-    filtered.sort((a, b) => {
-      if (filters.sortBy === 'revenue') return b.revenuePotentialScore - a.revenuePotentialScore;
-      if (filters.sortBy === 'effort') {
-        const getEffort = (s: string) => {
-          s = s.toLowerCase();
-          if (s.includes('low')) return 0;
-          if (s.includes('high')) return 2;
-          return 1;
-        };
-        return getEffort(a.costEffort) - getEffort(b.costEffort);
-      }
-      return 0; // Default newest (already sorted by generation)
-    });
-
-    return filtered;
-  }, [filters, tier]);
-
-  // --- User Profile Sync ---
-  useEffect(() => {
-    if (!user) return;
-
-    const userRef = doc(db, 'users', user.uid);
-    const unsubscribe = onSnapshot(userRef, (docSnap) => {
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        if (data.tier) setTier(data.tier);
-        if (data.filters) {
-          setFilters(prev => ({
-            ...prev,
-            ...data.filters,
-            // Ensure arrays exist even if missing in Firestore
-            industries: data.filters.industries || [],
-            productTypes: data.filters.productTypes || [],
-            riskLevels: data.filters.riskLevels || [],
-            effortLevels: data.filters.effortLevels || [],
-            marketFocus: data.filters.marketFocus || [],
-            teamSize: data.filters.teamSize || [],
-            excludeCategories: data.filters.excludeCategories || []
-          }));
-        }
-      } else {
-        // Initialize user document
-        setDoc(userRef, {
-          userId: user.uid,
-          tier: 'pro', // Default for logged in users
-          filters: {
-            industries: [],
-            riskLevels: [],
-            effortLevels: [],
-            marketFocus: [],
-            teamSize: [],
-            excludeCategories: [],
-            customKeywords: '',
-            sortBy: 'revenue'
-          },
-          updatedAt: serverTimestamp()
-        }).catch(err => handleFirestoreError(err, OperationType.WRITE, `users/${user.uid}`));
-      }
-    }, (err) => {
-      handleFirestoreError(err, OperationType.GET, `users/${user.uid}`);
-    });
-
-    return () => unsubscribe();
-  }, [user]);
-
-  // --- Save Filters to Profile ---
-  useEffect(() => {
-    if (!user || !authReady) return;
-
-    const saveFilters = async () => {
-      const userRef = doc(db, 'users', user.uid);
-      try {
-        await setDoc(userRef, { 
-          filters,
-          updatedAt: serverTimestamp() 
-        }, { merge: true });
-      } catch (err) {
-        console.error("Failed to save filters:", err);
-      }
-    };
-
-    const timeoutId = setTimeout(saveFilters, 1000); // Debounce
-    return () => clearTimeout(timeoutId);
-  }, [filters, user, authReady]);
-
-  // --- Data Fetching ---
-  const fetchDaily = useCallback(async (isRetry = false) => {
-    if (!isRetry) setLoading(true);
-    setError(null);
-    try {
-      const docRef = doc(db, 'daily_generations', today);
-      let docSnap;
-      try {
-        docSnap = await getDoc(docRef);
-      } catch (err: any) {
-        // If it's a transient error, we might want to handle it here
-        const msg = err?.message || "";
-        if (msg.includes("Quota exceeded")) {
-          setError("Daily quota reached. Please try again tomorrow.");
-          setLoading(false);
-          return;
-        }
-        throw err; // Re-throw for outer catch
-      }
-
-      if (docSnap.exists()) {
-        setDailyGen(docSnap.data() as DailyGeneration);
-      } else {
-        // Trigger generation if not found
-        await triggerGeneration();
-      }
-    } catch (err: any) {
-      console.error("Fetch Error:", err);
-      const msg = err?.message || "";
-      if (msg.includes("Quota exceeded")) {
-        setError("Daily quota reached. Please try again tomorrow.");
-      } else if (msg.includes("offline")) {
-        setError("You appear to be offline.");
-      } else {
-        setError("Failed to load today's ideas.");
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, [today, authReady]);
-
-  useEffect(() => {
-    if (!authReady) return;
-    fetchDaily();
-  }, [fetchDaily, authReady]);
-
-  // --- User Saves Sync ---
-  useEffect(() => {
-    if (!user) return;
-
-    const q = query(collection(db, 'user_saves'), where('userId', '==', user.uid));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const saves = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as UserSave));
-      setUserSaves(saves);
-    }, (err) => {
-      console.error("Saves Sync Error:", err);
-    });
-
-    return () => unsubscribe();
-  }, [user]);
-
-  const triggerGeneration = async () => {
-    if (generating) return;
-    setGenerating(true);
-    setError(null);
-    try {
-      const result = await generateDailyIdeas(today);
-      const newGen: DailyGeneration = {
-        date: today,
-        intro: result.intro,
-        ideas: result.ideas.map((idea: any, index: number) => ({
-          ...idea,
-          id: `${today}-${index}`
-        })),
-        disclaimer: result.disclaimer,
-        generatedAt: serverTimestamp()
-      };
-
-      try {
-        await setDoc(doc(db, 'daily_generations', today), newGen);
-      } catch (err) {
-        handleFirestoreError(err, OperationType.WRITE, `daily_generations/${today}`);
-      }
-      setDailyGen(newGen);
-    } catch (err: any) {
-      console.error("Generation Error:", err);
-      setError("AI generation failed. Please refresh to try again.");
-    } finally {
-      setGenerating(false);
-    }
+  const onToggleSaveLocal = (idea: Idea) => {
+    toggleSave(idea, TIER_LIMITS, handleLogin, () => setActiveTab('pro'));
   };
 
-  const toggleSave = async (idea: Idea) => {
-    if (!user) {
-      handleLogin();
-      return;
-    }
-
-    const isFree = tier === 'free';
-    if (isFree && userSaves.length >= 5) {
-      alert("Free tier limit reached: 5 saves/month. Upgrade to Pro for unlimited saves.");
-      setActiveTab('pro');
-      return;
-    }
-
-    const existing = userSaves.find(s => s.idea.id === idea.id);
-    try {
-      if (existing) {
-        try {
-          await deleteDoc(doc(db, 'user_saves', existing.id!));
-        } catch (err) {
-          handleFirestoreError(err, OperationType.DELETE, `user_saves/${existing.id}`);
-        }
-      } else {
-        try {
-          await addDoc(collection(db, 'user_saves'), {
-            userId: user.uid,
-            idea,
-            savedAt: serverTimestamp()
-          });
-        } catch (err) {
-          handleFirestoreError(err, OperationType.WRITE, 'user_saves');
-        }
-      }
-    } catch (err: any) {
-      console.error("Save Error:", err);
-    }
-  };
-
-  const updateIdea = async (updatedIdea: Idea) => {
-    if (!user) return;
-
-    // 1. Update local saves
-    setUserSaves(prev => prev.map(s => s.idea.id === updatedIdea.id ? { ...s, idea: updatedIdea } : s));
-
-    // 2. Update Firestore if saved
-    const existing = userSaves.find(s => s.idea.id === updatedIdea.id);
-    if (existing) {
-      try {
-        const saveRef = doc(db, 'user_saves', existing.id!);
-        await setDoc(saveRef, { idea: updatedIdea, updatedAt: serverTimestamp() }, { merge: true });
-      } catch (err) {
-        handleFirestoreError(err, OperationType.WRITE, `user_saves/${existing.id}`);
-      }
-    }
-    
-    // 3. Update local dailyGen if it's from today
-    if (dailyGen && dailyGen.ideas.some(i => i.id === updatedIdea.id)) {
-      const updatedDailyGen = {
-        ...dailyGen,
-        ideas: dailyGen.ideas.map(i => i.id === updatedIdea.id ? updatedIdea : i)
-      };
-      setDailyGen(updatedDailyGen);
-      // We don't necessarily need to update Firestore for daily_generations here, 
-      // as it's a global feed, but we could if we wanted to cache it for everyone.
-      // For now, let's keep it local to the user's session or their saved ideas.
-    }
-  };
-
-  const exportToPDF = (idea: Idea, format: 'pdf' | 'notion' | 'gdocs' = 'pdf') => {
-    if (format !== 'pdf' && tier === 'free') {
-      alert("Template exports (Notion/GDocs) are Pro features. Upgrade now!");
-      setActiveTab('pro');
-      return;
-    }
-
-    if (format === 'notion' || format === 'gdocs') {
-      const content = `
-# ${idea.headline}
-${idea.pitch}
-
-## VC Justification
-${idea.vcJustification}
-
-## Unfair Advantage
-${idea.unfairAdvantage}
-
-## Revenue Model
-${idea.revenueSkeleton}
-
-## Roadmap
-${idea.fullActionPlan?.roadmap.map((s, i) => `${i + 1}. ${s.step}: ${s.details}`).join('\n') || 'N/A'}
-
-## Tools
-${idea.fullActionPlan?.tools.join(', ') || 'N/A'}
-
-## Risks
-${idea.fullActionPlan?.risks.join(', ') || 'N/A'}
-      `;
-      const blob = new Blob([content], { type: 'text/markdown' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `${idea.headline.replace(/\s+/g, '_')}_${format}_template.md`;
-      link.click();
-      alert(`Generated ${format === 'notion' ? 'Notion' : 'Google Docs'} compatible Markdown template.`);
-      return;
-    }
-
-    const doc = new jsPDF();
-    const margin = 20;
-    let y = 20;
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const pageHeight = doc.internal.pageSize.getHeight();
-
-    const checkPage = (heightNeeded: number) => {
-      if (y + heightNeeded > pageHeight - 20) {
-        doc.addPage();
-        y = 20;
-        return true;
-      }
-      return false;
-    };
-
-    // Title
-    doc.setFontSize(24);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(16, 185, 129); // Emerald 500
-    doc.text(idea.headline.toUpperCase(), margin, y);
-    y += 15;
-
-    // Pitch
-    doc.setFontSize(14);
-    doc.setFont("helvetica", "italic");
-    doc.setTextColor(100);
-    const pitchLines = doc.splitTextToSize(`"${idea.pitch}"`, 170);
-    doc.text(pitchLines, margin, y);
-    y += pitchLines.length * 7 + 10;
-
-    // VC Justification
-    doc.setFontSize(12);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(0);
-    doc.text("VC JUSTIFICATION", margin, y);
-    y += 7;
-    doc.setFont("helvetica", "normal");
-    const vcLines = doc.splitTextToSize(idea.vcJustification, 170);
-    doc.text(vcLines, margin, y);
-    y += vcLines.length * 6 + 10;
-
-    // Unfair Advantage
-    checkPage(30);
-    doc.setFont("helvetica", "bold");
-    doc.text("UNFAIR ADVANTAGE", margin, y);
-    y += 7;
-    doc.setFont("helvetica", "normal");
-    const uaLines = doc.splitTextToSize(idea.unfairAdvantage, 170);
-    doc.text(uaLines, margin, y);
-    y += uaLines.length * 6 + 10;
-
-    // Revenue Model
-    checkPage(30);
-    doc.setFont("helvetica", "bold");
-    doc.text("REVENUE MODEL", margin, y);
-    y += 7;
-    doc.setFont("helvetica", "normal");
-    const revLines = doc.splitTextToSize(idea.revenueSkeleton, 170);
-    doc.text(revLines, margin, y);
-    y += revLines.length * 6 + 10;
-
-    // Full Action Plan
-    if (idea.fullActionPlan) {
-      checkPage(40);
-      doc.setFontSize(16);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(16, 185, 129);
-      doc.text("FULL EXECUTION PLAN", margin, y);
-      y += 10;
-      doc.setTextColor(0);
-
-      doc.setFontSize(12);
-      doc.text("ROADMAP", margin, y);
-      y += 7;
-      doc.setFont("helvetica", "normal");
-      idea.fullActionPlan.roadmap.forEach((step, i) => {
-        checkPage(20);
-        doc.setFont("helvetica", "bold");
-        doc.text(`${i + 1}. ${step.step} (${step.milestone})`, margin + 5, y);
-        y += 6;
-        doc.setFont("helvetica", "normal");
-        const stepDetails = doc.splitTextToSize(step.details, 160);
-        doc.text(stepDetails, margin + 10, y);
-        y += stepDetails.length * 6 + 4;
-      });
-
-      checkPage(30);
-      doc.setFont("helvetica", "bold");
-      doc.text("ESSENTIAL TOOLS", margin, y);
-      y += 7;
-      doc.setFont("helvetica", "normal");
-      const toolsText = idea.fullActionPlan.tools.join(", ");
-      const toolLines = doc.splitTextToSize(toolsText, 170);
-      doc.text(toolLines, margin, y);
-      y += toolLines.length * 6 + 10;
-
-      checkPage(30);
-      doc.setFont("helvetica", "bold");
-      doc.text("KEY RISKS", margin, y);
-      y += 7;
-      doc.setFont("helvetica", "normal");
-      idea.fullActionPlan.risks.forEach((risk, i) => {
-        checkPage(10);
-        doc.text(`• ${risk}`, margin + 5, y);
-        y += 6;
-      });
-      y += 4;
-    }
-
-    // Validation Toolkit
-    if (idea.validationToolkit) {
-      checkPage(40);
-      doc.addPage();
-      y = 20;
-      doc.setFontSize(16);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(16, 185, 129);
-      doc.text("VALIDATION TOOLKIT", margin, y);
-      y += 10;
-      doc.setTextColor(0);
-
-      doc.setFontSize(12);
-      doc.text("LANDING PAGE COPY", margin, y);
-      y += 7;
-      doc.setFont("helvetica", "normal");
-      doc.text(`Hero: ${idea.validationToolkit.landingPage.hero}`, margin + 5, y);
-      y += 6;
-      doc.text(`Sub-hero: ${idea.validationToolkit.landingPage.subHero}`, margin + 5, y);
-      y += 6;
-      doc.text("Value Props:", margin + 5, y);
-      y += 6;
-      idea.validationToolkit.landingPage.valueProps.forEach(vp => {
-        doc.text(`- ${vp}`, margin + 10, y);
-        y += 6;
-      });
-      y += 4;
-
-      checkPage(30);
-      doc.setFont("helvetica", "bold");
-      doc.text("CUSTOMER INTERVIEW QUESTIONS", margin, y);
-      y += 7;
-      doc.setFont("helvetica", "normal");
-      idea.validationToolkit.interviewScript.forEach((q, i) => {
-        checkPage(15);
-        const qLines = doc.splitTextToSize(`${i + 1}. ${q}`, 160);
-        doc.text(qLines, margin + 5, y);
-        y += qLines.length * 6 + 2;
-      });
-    }
-
-    // Footer
-    doc.setFontSize(10);
-    doc.setTextColor(150);
-    doc.text(`Generated by Trend-Equity on ${new Date().toLocaleDateString()}`, margin, 280);
-
-    doc.save(`${idea.headline.replace(/\s+/g, '_')}_Full_Plan.pdf`);
-  };
-
-  const exportListToCSV = () => {
-    const ideas = activeTab === 'feed' ? (dailyGen?.ideas || []) : userSaves.map(s => s.idea);
-    if (ideas.length === 0) {
-      alert("No ideas to export.");
-      return;
-    }
-
-    const headers = ["Idea Name", "Tags", "Description"];
-    const rows = ideas.map(idea => [
-      `"${idea.headline.replace(/"/g, '""')}"`,
-      `"${(idea.categoryTags || []).join(', ').replace(/"/g, '""')}"`,
-      `"${idea.pitch.replace(/"/g, '""')}"`
-    ]);
-
-    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `Trend_Equity_Ideas_${activeTab}_${today}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  const exportListToPDF = () => {
-    const ideas = activeTab === 'feed' ? (dailyGen?.ideas || []) : userSaves.map(s => s.idea);
-    if (ideas.length === 0) {
-      alert("No ideas to export.");
-      return;
-    }
-
-    const doc = new jsPDF();
-    const margin = 20;
-    let y = 20;
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const pageHeight = doc.internal.pageSize.getHeight();
-
-    doc.setFontSize(20);
-    doc.setFont("helvetica", "bold");
-    doc.text(`TREND EQUITY: ${activeTab.toUpperCase()} IDEAS`, margin, y);
-    y += 10;
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "normal");
-    doc.text(`Generated on ${new Date().toLocaleDateString()}`, margin, y);
-    y += 15;
-
-    ideas.forEach((idea, index) => {
-      if (y > pageHeight - 40) {
-        doc.addPage();
-        y = 20;
-      }
-
-      doc.setFontSize(14);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(16, 185, 129);
-      doc.text(`${index + 1}. ${idea.headline.toUpperCase()}`, margin, y);
-      y += 7;
-
-      doc.setFontSize(10);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(100);
-      doc.text(`TAGS: ${(idea.categoryTags || []).join(', ')}`, margin, y);
-      y += 6;
-
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(0);
-      const pitchLines = doc.splitTextToSize(idea.pitch, 170);
-      doc.text(pitchLines, margin, y);
-      y += pitchLines.length * 5 + 10;
-    });
-
-    doc.save(`Trend_Equity_Ideas_${activeTab}_${today}.pdf`);
-  };
+  const onUpgradeToBuilder = () => upgradeToBuilder(handleLogin);
 
   if (loading || generating) {
     return (
       <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center p-6 text-center">
         <div className="relative">
-          <motion.div 
+          <motion.div
             animate={{ rotate: 360 }}
             transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
             className="w-16 h-16 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full"
@@ -949,146 +132,26 @@ ${idea.fullActionPlan?.risks.join(', ') || 'N/A'}
   return (
     <ErrorBoundary>
       <div className="min-h-screen bg-zinc-950 text-zinc-100 font-sans selection:bg-emerald-500/30">
-        {/* Header */}
-        <header className="sticky top-0 z-50 bg-zinc-950/80 backdrop-blur-md border-b border-zinc-900">
-          <div className="max-w-3xl mx-auto px-4 h-16 flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center">
-                  <TrendingUp className="w-5 h-5 text-white" />
-                </div>
-                <h1 className="text-lg font-black tracking-tighter uppercase italic hidden sm:block">Trend Equity</h1>
-              </div>
-              <div className="h-4 w-px bg-zinc-800 hidden sm:block" />
-              <div className="flex items-center gap-2 text-emerald-500">
-                <Calendar className="w-3.5 h-3.5" />
-                <span className="text-[10px] font-bold uppercase tracking-widest">
-                  {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
-                </span>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              {user && (
-                <>
-                  <div className="flex items-center gap-1">
-                    {tier !== 'free' && (
-                      <button 
-                        onClick={() => triggerGeneration()}
-                        disabled={generating}
-                        className="p-2 text-zinc-500 hover:text-emerald-500 transition-colors disabled:opacity-50"
-                        title="Force Refresh Feed"
-                      >
-                        <RefreshCw className={`w-4 h-4 ${generating ? 'animate-spin' : ''}`} />
-                      </button>
-                    )}
-                    {tier === 'builder' && (
-                      <button 
-                        onClick={() => setShowAlerts(!showAlerts)}
-                        className="p-2 text-zinc-500 hover:text-white transition-colors relative"
-                        title="Alerts"
-                      >
-                        <Bell className="w-4 h-4" />
-                        {unreadAlertsCount > 0 && (
-                          <span className="absolute top-1 right-1 w-2 h-2 bg-emerald-500 rounded-full border-2 border-zinc-950" />
-                        )}
-                      </button>
-                    )}
+        <Header 
+          user={user}
+          tier={tier}
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          unreadAlertsCount={unreadAlertsCount}
+          showAlerts={showAlerts}
+          setShowAlerts={setShowAlerts}
+          handleLogout={handleLogout}
+          handleLogin={handleLogin}
+          triggerGeneration={triggerGeneration}
+          generating={generating}
+        />
 
-                    <button 
-                      onClick={handleLogout}
-                      className="p-2 text-zinc-500 hover:text-white transition-colors"
-                      title="Logout"
-                    >
-                      <LogOut className="w-4 h-4" />
-                    </button>
-                  </div>
-                  <div className="h-4 w-px bg-zinc-800 mx-1" />
-                  <button 
-                    onClick={() => setActiveTab('pro')}
-                    className="text-right hover:opacity-80 transition-opacity group"
-                  >
-                    <div className="flex items-center gap-1 justify-end">
-                      <Crown className={`w-3 h-3 ${
-                        tier === 'builder' ? 'text-amber-500' : 
-                        tier === 'pro' ? 'text-emerald-500' : 
-                        'text-zinc-500'
-                      }`} />
-                      <p className={`text-[10px] font-bold uppercase tracking-widest leading-none ${
-                        tier === 'builder' ? 'text-amber-500' : 
-                        tier === 'pro' ? 'text-emerald-500' : 
-                        'text-zinc-500'
-                      }`}>
-                        {tier === 'builder' ? 'Builder' : tier === 'pro' ? 'Pro' : 'Free'}
-                      </p>
-                    </div>
-                    <p className="text-[10px] text-zinc-400 truncate max-w-[80px] group-hover:text-emerald-400 transition-colors">{user.displayName || user.email}</p>
-                  </button>
-                </>
-              )}
-              {!user && (
-                <button 
-                  onClick={handleLogin}
-                  className="flex items-center gap-2 px-4 py-1.5 bg-white text-black text-xs font-bold rounded-full hover:bg-zinc-200 transition-colors"
-                >
-                  <LogIn className="w-4 h-4" />
-                  SIGN IN
-                </button>
-              )}
-            </div>
-          </div>
-        </header>
-
-        {/* Alerts Dropdown */}
-        <AnimatePresence>
-          {showAlerts && (
-            <div className="fixed inset-0 z-[60] flex justify-end p-4 pointer-events-none">
-              <motion.div 
-                initial={{ opacity: 0, y: -20, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -20, scale: 0.95 }}
-                className="w-full max-w-sm bg-zinc-900 border border-zinc-800 rounded-2xl shadow-2xl pointer-events-auto overflow-hidden flex flex-col max-h-[80vh]"
-              >
-                <div className="p-4 border-b border-zinc-800 flex items-center justify-between bg-zinc-900/50">
-                  <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-400">Market Alerts</h3>
-                  <button onClick={() => setShowAlerts(false)} className="text-zinc-500 hover:text-white"><X className="w-4 h-4" /></button>
-                </div>
-                <div className="overflow-y-auto p-2 space-y-2">
-                  {alerts.length > 0 ? (
-                    alerts.map((alert) => (
-                      <div 
-                        key={alert.id} 
-                        onClick={() => markAlertAsRead(alert.id)}
-                        className={`p-3 rounded-xl border transition-all cursor-pointer ${
-                          alert.isRead ? 'bg-zinc-900/30 border-zinc-800/50 opacity-60' : 'bg-zinc-800/50 border-white/5 hover:border-emerald-500/30'
-                        }`}
-                      >
-                        <div className="flex items-start gap-3">
-                          <div className={`mt-1 w-2 h-2 rounded-full flex-shrink-0 ${
-                            alert.type === 'success' ? 'bg-emerald-500' :
-                            alert.type === 'warning' ? 'bg-amber-500' :
-                            alert.type === 'error' ? 'bg-red-500' : 'bg-blue-500'
-                          }`} />
-                          <div className="space-y-1">
-                            <p className="text-xs font-bold text-white">{alert.title}</p>
-                            <p className="text-[11px] text-zinc-400 leading-relaxed">{alert.message}</p>
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="p-8 text-center space-y-2">
-                      <Bell className="w-8 h-8 text-zinc-800 mx-auto" />
-                      <p className="text-xs text-zinc-500">No new alerts today.</p>
-                    </div>
-                  )}
-                </div>
-                <div className="p-3 bg-zinc-900/80 border-t border-zinc-800 text-center">
-                  <p className="text-[10px] text-zinc-600 uppercase font-bold tracking-widest">Powered by VC Logic Engine</p>
-                </div>
-              </motion.div>
-            </div>
-          )}
-        </AnimatePresence>
+        <AlertsPanel 
+          alerts={alerts}
+          showAlerts={showAlerts}
+          setShowAlerts={setShowAlerts}
+          markAlertAsRead={markAlertAsRead}
+        />
 
         <main className="max-w-3xl mx-auto px-4 py-8 space-y-8">
           {/* Intro Section */}
@@ -1105,20 +168,20 @@ ${idea.fullActionPlan?.risks.join(', ') || 'N/A'}
 
           {/* Tabs */}
           <div className="flex flex-wrap gap-2 p-1 bg-zinc-900 rounded-xl w-fit">
-            <button 
+            <button
               onClick={() => setActiveTab('feed')}
               className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === 'feed' ? 'bg-zinc-800 text-white shadow-lg' : 'text-zinc-500 hover:text-zinc-300'}`}
             >
               DAILY FEED
             </button>
-            <button 
+            <button
               onClick={() => setActiveTab('saved')}
               className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === 'saved' ? 'bg-zinc-800 text-white shadow-lg' : 'text-zinc-500 hover:text-zinc-300'}`}
             >
               SAVED ({userSaves.length}{tier === 'free' ? `/${TIER_LIMITS.free.monthlySaves}` : ''})
             </button>
             {tier === 'builder' && (
-              <button 
+              <button
                 onClick={() => setActiveTab('radar')}
                 className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === 'radar' ? 'bg-zinc-800 text-white shadow-lg' : 'text-zinc-500 hover:text-zinc-300'}`}
               >
@@ -1126,7 +189,7 @@ ${idea.fullActionPlan?.risks.join(', ') || 'N/A'}
               </button>
             )}
             {tier === 'builder' && (
-              <button 
+              <button
                 onClick={() => setActiveTab('future')}
                 className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === 'future' ? 'bg-zinc-800 text-white shadow-lg' : 'text-zinc-500 hover:text-zinc-300'}`}
               >
@@ -1134,277 +197,68 @@ ${idea.fullActionPlan?.risks.join(', ') || 'N/A'}
               </button>
             )}
             {tier !== 'free' && (
-              <button 
+              <button
                 onClick={() => setActiveTab('digest')}
                 className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === 'digest' ? 'bg-zinc-800 text-white shadow-lg' : 'text-zinc-500 hover:text-zinc-300'}`}
               >
                 DIGEST
               </button>
             )}
-            <button 
+            <button
               onClick={() => setActiveTab('pro')}
-              className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                activeTab === 'pro' 
-                  ? 'bg-zinc-800 text-white shadow-lg' 
+              className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === 'pro'
+                  ? 'bg-zinc-800 text-white shadow-lg'
                   : tier === 'builder' ? 'text-zinc-500 hover:text-zinc-300' : 'text-emerald-500 hover:text-emerald-400'
-              }`}
+                }`}
             >
               MANAGE PLAN
             </button>
           </div>
 
-          {/* Feed */}
+          {/* Feed Content */}
           <div className="space-y-6">
             {activeTab === 'feed' ? (
-              <>
-                <FilterBar 
-                  filters={filters} 
-                  setFilters={setFilters} 
-                  tier={tier} 
-                  onExportCSV={exportListToCSV}
-                  onExportPDF={exportListToPDF}
-                />
-
-                {getFilteredIdeas(dailyGen?.ideas || []).slice(0, TIER_LIMITS[tier].dailyIdeas).map((idea, i) => (
-                  <IdeaCard 
-                    key={idea.id} 
-                    idea={idea} 
-                    isSaved={userSaves.some(s => s.idea.id === idea.id)}
-                    onToggleSave={() => toggleSave(idea)}
-                    onUpdateIdea={updateIdea}
-                    isSaving={false}
-                    tier={tier}
-                    onExport={(fmt) => exportToPDF(idea, fmt)}
-                  />
-                ))}
-                
-                {tier === 'free' && dailyGen && dailyGen.ideas.length > TIER_LIMITS.free.dailyIdeas && (
-                  <div className="p-8 bg-zinc-900 border border-zinc-800 rounded-3xl text-center space-y-4 shadow-2xl relative overflow-hidden">
-                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-500 via-amber-500 to-emerald-500" />
-                    <Lock className="w-10 h-10 text-zinc-700 mx-auto" />
-                    <div className="space-y-2">
-                      <h3 className="text-xl font-black uppercase italic tracking-tight">Unlock {dailyGen.ideas.length - TIER_LIMITS.free.dailyIdeas} More Ideas</h3>
-                      <p className="text-zinc-500 text-sm max-w-xs mx-auto">
-                        Pro & Builder users get up to {TIER_LIMITS.builder.dailyIdeas} ideas daily, unlimited saves, and priority email digests.
-                      </p>
-                    </div>
-                    <button 
-                      onClick={() => setActiveTab('pro')}
-                      className="px-8 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-black uppercase italic tracking-widest rounded-full transition-all shadow-lg shadow-emerald-900/40"
-                    >
-                      View Pricing
-                    </button>
-                  </div>
-                )}
-              </>
+              <IdeaFeed 
+                dailyGen={dailyGen}
+                userSaves={userSaves}
+                filters={filters}
+                setFilters={setFilters}
+                tier={tier}
+                onExportCSV={() => exportListToCSV(dailyGen?.ideas || [], activeTab, today)}
+                onExportPDF={() => exportListToPDF(dailyGen?.ideas || [], activeTab, today)}
+                toggleSave={onToggleSaveLocal}
+                updateIdea={updateIdea}
+                getFilteredIdeas={getFilteredIdeas}
+                exportToPDF={exportToPDF}
+                setActiveTab={setActiveTab}
+              />
             ) : activeTab === 'radar' ? (
-              <div className="space-y-6">
-                <div className="p-6 bg-zinc-900 border border-zinc-800 rounded-3xl space-y-6">
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-1">
-                      <h3 className="text-2xl font-black uppercase italic tracking-tight">Weekly Trend Radar</h3>
-                      <p className="text-zinc-500 text-xs uppercase font-bold tracking-widest">{weeklyRadar?.week || 'Analyzing current signals...'}</p>
-                    </div>
-                    <RefreshCw className={`w-5 h-5 text-emerald-500 ${loadingRadar ? 'animate-spin' : ''}`} onClick={fetchWeeklyRadar} />
-                  </div>
-
-                  {loadingRadar ? (
-                    <div className="py-12 text-center space-y-4">
-                      <Loader2 className="w-8 h-8 text-emerald-500 animate-spin mx-auto" />
-                      <p className="text-xs text-zinc-500 uppercase font-bold tracking-widest">Scanning global markets...</p>
-                    </div>
-                  ) : weeklyRadar ? (
-                    <div className="space-y-8">
-                      <div className="p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-2xl">
-                        <p className="text-sm text-emerald-200 leading-relaxed">
-                          <span className="font-black uppercase italic mr-2">Market Shift:</span>
-                          {weeklyRadar.marketShift}
-                        </p>
-                      </div>
-
-                      <div className="grid gap-4">
-                        {weeklyRadar.topTrends.map((trend, i) => (
-                          <div key={i} className="p-4 bg-zinc-800/50 border border-white/5 rounded-2xl space-y-2">
-                            <div className="flex items-center justify-between">
-                              <h4 className="text-sm font-black uppercase italic text-white">{trend.title}</h4>
-                              <span className="px-2 py-0.5 bg-zinc-700 text-zinc-400 text-[8px] font-bold uppercase rounded-full">{trend.sector}</span>
-                            </div>
-                            <p className="text-xs text-zinc-400 leading-relaxed">{trend.description}</p>
-                            <p className="text-[10px] text-emerald-500 font-bold uppercase tracking-widest">Impact: {trend.impact}</p>
-                          </div>
-                        ))}
-                      </div>
-
-                      <div className="space-y-3">
-                        <h4 className="text-xs font-black uppercase italic text-zinc-500 tracking-widest">Opportunity Areas</h4>
-                        <div className="flex flex-wrap gap-2">
-                          {weeklyRadar.opportunityAreas.map((area, i) => (
-                            <span key={i} className="px-3 py-1 bg-zinc-800 border border-zinc-700 text-zinc-300 text-[10px] font-bold rounded-full">{area}</span>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="py-12 text-center space-y-4">
-                      <TrendingUp className="w-12 h-12 text-zinc-800 mx-auto" />
-                      <p className="text-xs text-zinc-500">Click the refresh icon to generate this week's radar.</p>
-                    </div>
-                  )}
-                </div>
-              </div>
+              <WeeklyRadarTab 
+                weeklyRadar={weeklyRadar}
+                loadingRadar={loadingRadar}
+                fetchWeeklyRadar={fetchWeeklyRadar}
+              />
             ) : activeTab === 'future' ? (
-              <div className="space-y-6">
-                <div className="p-6 bg-zinc-900 border border-zinc-800 rounded-3xl space-y-6 relative overflow-hidden">
-                  <div className="absolute top-0 right-0 p-4 opacity-10">
-                    <Sparkles className="w-24 h-24 text-amber-500" />
-                  </div>
-                  
-                  <div className="flex items-center justify-between relative z-10">
-                    <div className="space-y-1">
-                      <h3 className="text-2xl font-black uppercase italic tracking-tight">Futurecasting Engine</h3>
-                      <p className="text-zinc-500 text-xs uppercase font-bold tracking-widest">Horizon: {futurecasting?.horizon || '2030'}</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <select 
-                        onChange={(e) => fetchFuturecasting(e.target.value as any)}
-                        className="bg-zinc-800 border border-zinc-700 text-white text-[10px] font-bold uppercase rounded-lg px-2 py-1 outline-none"
-                      >
-                        <option value="2027">2027</option>
-                        <option value="2030">2030</option>
-                        <option value="2035">2035</option>
-                      </select>
-                      <RefreshCw className={`w-5 h-5 text-amber-500 ${loadingFuture ? 'animate-spin' : ''}`} onClick={() => fetchFuturecasting()} />
-                    </div>
-                  </div>
-
-                  {loadingFuture ? (
-                    <div className="py-12 text-center space-y-4">
-                      <Loader2 className="w-8 h-8 text-amber-500 animate-spin mx-auto" />
-                      <p className="text-xs text-zinc-500 uppercase font-bold tracking-widest">Simulating future paradigms...</p>
-                    </div>
-                  ) : futurecasting ? (
-                    <div className="space-y-8 relative z-10">
-                      <div className="space-y-3">
-                        <h4 className="text-xs font-black uppercase italic text-amber-500 tracking-widest">Paradigm Shifts</h4>
-                        <div className="space-y-2">
-                          {futurecasting.paradigmShifts.map((shift, i) => (
-                            <div key={i} className="flex items-start gap-3 p-3 bg-amber-500/5 border border-amber-500/10 rounded-xl">
-                              <Zap className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
-                              <p className="text-xs text-amber-100 leading-relaxed">{shift}</p>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div className="space-y-4">
-                        <h4 className="text-xs font-black uppercase italic text-zinc-500 tracking-widest">Industry Predictions</h4>
-                        <div className="space-y-4">
-                          {futurecasting.predictions.map((pred, i) => (
-                            <div key={i} className="p-4 bg-zinc-800/50 border border-white/5 rounded-2xl space-y-4">
-                              <div className="flex items-center justify-between">
-                                <h4 className="text-sm font-black uppercase italic text-white">{pred.title}</h4>
-                                <div className="flex items-center gap-2">
-                                  <div className="w-24 h-1.5 bg-zinc-700 rounded-full overflow-hidden">
-                                    <div className="h-full bg-amber-500" style={{ width: `${pred.probability}%` }} />
-                                  </div>
-                                  <span className="text-[10px] font-bold text-amber-500">{pred.probability}%</span>
-                                </div>
-                              </div>
-                              <p className="text-xs text-zinc-400 leading-relaxed italic">"{pred.rationale}"</p>
-                              <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-1">
-                                  <p className="text-[8px] font-black uppercase tracking-widest text-emerald-500">Winners</p>
-                                  <p className="text-[10px] text-zinc-300">{pred.winners.join(', ')}</p>
-                                </div>
-                                <div className="space-y-1">
-                                  <p className="text-[8px] font-black uppercase tracking-widest text-red-500">Losers</p>
-                                  <p className="text-[10px] text-zinc-300">{pred.losers.join(', ')}</p>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="py-12 text-center space-y-4">
-                      <Sparkles className="w-12 h-12 text-zinc-800 mx-auto" />
-                      <p className="text-xs text-zinc-500">Select a horizon and click refresh to generate predictions.</p>
-                    </div>
-                  )}
-                </div>
-              </div>
+              <FuturecastingTab 
+                futurecasting={futurecasting}
+                loadingFuture={loadingFuture}
+                fetchFuturecasting={fetchFuturecasting}
+              />
             ) : activeTab === 'digest' ? (
-              <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-                <div className="p-8 bg-zinc-900/50 border border-white/5 rounded-3xl text-center space-y-6">
-                  <div className="w-16 h-16 bg-emerald-500/10 rounded-2xl flex items-center justify-center mx-auto">
-                    <Mail className="w-8 h-8 text-emerald-500" />
-                  </div>
-                  <div className="space-y-2">
-                    <h3 className="text-2xl font-black text-white uppercase italic tracking-tight">Priority Email Digest</h3>
-                    <p className="text-zinc-400 text-sm max-w-md mx-auto">
-                      Get the most investable signals delivered to your inbox before the market wakes up.
-                    </p>
-                  </div>
-
-                  <div className="space-y-6 max-w-sm mx-auto">
-                    <div className="flex flex-col gap-4">
-                      <div className="flex items-center justify-between p-4 bg-zinc-800/50 border border-white/5 rounded-xl">
-                        <div className="text-left">
-                          <p className="text-xs font-bold text-white uppercase tracking-widest">Daily Digest</p>
-                          <p className="text-[10px] text-zinc-500">Every morning at 8:00 AM</p>
-                        </div>
-                        <div className="w-10 h-5 bg-emerald-500 rounded-full relative cursor-pointer">
-                          <div className="absolute top-0.5 right-0.5 w-4 h-4 bg-white rounded-full shadow-lg" />
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between p-4 bg-zinc-800/50 border border-white/5 rounded-xl opacity-50">
-                        <div className="text-left">
-                          <p className="text-xs font-bold text-white uppercase tracking-widest">Weekly Trend Radar</p>
-                          <p className="text-[10px] text-zinc-500">Every Sunday at 6:00 PM</p>
-                        </div>
-                        <div className="w-10 h-5 bg-zinc-700 rounded-full relative cursor-pointer">
-                          <div className="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow-lg" />
-                        </div>
-                      </div>
-                    </div>
-                    <button className="w-full py-4 bg-emerald-600 text-white text-xs font-black uppercase tracking-widest rounded-xl hover:bg-emerald-500 transition-all shadow-lg shadow-emerald-900/20">
-                      Save Preferences
-                    </button>
-                    <p className="text-[10px] text-zinc-600 font-bold uppercase tracking-widest">
-                      Digests are sent to {user?.email}
-                    </p>
-                  </div>
-                </div>
-              </div>
+              <EmailDigestTab user={user} />
             ) : activeTab === 'saved' ? (
-              userSaves.length > 0 ? (
-                userSaves.map((save) => (
-                  <IdeaCard 
-                    key={save.id} 
-                    idea={save.idea} 
-                    isSaved={true}
-                    onToggleSave={() => toggleSave(save.idea)}
-                    onUpdateIdea={updateIdea}
-                    isSaving={false}
-                    tier={tier}
-                    onExport={(fmt) => exportToPDF(save.idea, fmt)}
-                  />
-                ))
-              ) : (
-                <div className="py-20 text-center space-y-4">
-                  <Bookmark className="w-12 h-12 text-zinc-800 mx-auto" />
-                  <div className="space-y-1">
-                    <p className="text-zinc-400 font-bold">No saved ideas yet</p>
-                    <p className="text-zinc-600 text-xs">Ideas you bookmark will appear here for later review.</p>
-                  </div>
-                </div>
-              )
+              <SavedIdeasTab 
+                userSaves={userSaves}
+                toggleSave={onToggleSaveLocal}
+                updateIdea={updateIdea}
+                tier={tier}
+                exportToPDF={exportToPDF}
+              />
             ) : (
-              <PricingSection 
-                currentPlan={tier} 
-                onUpgrade={handleUpgrade} 
-                onDowngrade={handleDowngrade} 
+              <PricingSection
+                currentPlan={tier}
+                onUpgrade={handleUpgrade}
+                onDowngrade={handleDowngrade}
               />
             )}
           </div>
@@ -1420,7 +274,7 @@ ${idea.fullActionPlan?.risks.join(', ') || 'N/A'}
                 {dailyGen?.disclaimer || "All ideas cite real signals. Inspiration only — do your own diligence."}
               </p>
             </div>
-            
+
             <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-[10px] text-zinc-600 font-bold uppercase tracking-widest">
               <p>© 2026 TREND EQUITY ENGINE</p>
               <div className="flex gap-6">
@@ -1432,10 +286,10 @@ ${idea.fullActionPlan?.risks.join(', ') || 'N/A'}
           </footer>
         </main>
 
-        {/* Floating Refresh (Admin/Dev only or for everyone if error) */}
+        {/* Floating Refresh */}
         {error && (
           <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
-            <button 
+            <button
               onClick={() => fetchDaily(true)}
               className="flex items-center gap-2 px-6 py-3 bg-red-600 text-white rounded-full shadow-2xl hover:bg-red-500 transition-all font-bold text-sm"
             >

@@ -47,6 +47,7 @@ export interface Idea {
     successMetrics: string[];
     generatedAt?: any;
   };
+  expertVetting?: ExpertVetting;
 }
 
 export interface DailyGeneration {
