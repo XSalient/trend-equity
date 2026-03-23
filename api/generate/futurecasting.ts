@@ -1,0 +1,69 @@
+import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { generateWithGemini, Type } from '../_lib/gemini';
+import { getCached, setCached } from '../_lib/cache';
+import { checkAndIncrementUsage, buildUsageResponse } from '../_lib/usage';
+
+const schema = {
+  type: Type.OBJECT,
+  properties: {
+    horizon: { type: Type.STRING },
+    predictions: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          title: { type: Type.STRING },
+          probability: { type: Type.NUMBER },
+          rationale: { type: Type.STRING },
+          winners: { type: Type.ARRAY, items: { type: Type.STRING } },
+          losers: { type: Type.ARRAY, items: { type: Type.STRING } },
+        },
+        required: ['title', 'probability', 'rationale', 'winners', 'losers'],
+      },
+    },
+    paradigmShifts: { type: Type.ARRAY, items: { type: Type.STRING } },
+  },
+  required: ['horizon', 'predictions', 'paradigmShifts'],
+};
+
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
+  const { horizon, uid, tier } = req.body;
+  const featureType = 'futurecasting';
+  const cacheKey = `futurecasting_${horizon || 'default'}`;
+
+  try {
+    const cached = await getCached(cacheKey);
+    if (cached) {
+      return res.json({ ...cached, _cached: true, _usage: await buildUsageResponse(uid, tier, featureType) });
+    }
+
+    if (uid) {
+      const usage = await checkAndIncrementUsage(uid, tier || 'free', featureType);
+      if (!usage.allowed) {
+        return res.status(429).json({
+          error: 'Daily futurecasting limit reached. Upgrade for more analyses.',
+          _usage: { featureType, remaining: 0, limit: usage.limit, used: usage.limit },
+        });
+      }
+    }
+
+    const data = await generateWithGemini(
+      `Perform deep-future simulation for: ${horizon}.`,
+      schema,
+      'You are a futurist and startup strategist.'
+    );
+    await setCached(cacheKey, data);
+    return res.json({ ...data, _usage: await buildUsageResponse(uid, tier, featureType) });
+  } catch (err: any) {
+    console.error('Futurecasting Error (Falling back to mock):', err);
+    return res.json({
+      horizon: horizon || '2030',
+      predictions: [
+        { title: 'Personal AI Companionship Market Peaks', probability: 85, rationale: 'Saturation of loneliness-driven tech in urban centers.', winners: ['Personalized LLM providers'], losers: ['Generic social media apps'] },
+      ],
+      paradigmShifts: ['Post-labor economy in service sectors', 'Ubiquitous AR integration'],
+    });
+  }
+}
