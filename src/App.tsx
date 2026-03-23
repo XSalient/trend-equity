@@ -25,6 +25,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { PricingSection } from './components/PricingSection';
 import { Header } from './components/layout/Header';
 import { AlertsPanel } from './components/layout/AlertsPanel';
+import { IdeaFeedSkeleton, RadarSkeleton } from './components/layout/SkeletonLoaders';
 
 // --- Tab Views ---
 import { IdeaFeed } from './components/tabs/IdeaFeed';
@@ -35,12 +36,12 @@ import { SavedIdeasTab } from './components/tabs/SavedIdeas';
 
 // --- Utils ---
 import { generateWeeklyTrendRadar, generateFuturecasting } from './services/geminiService';
-import { exportToPDF, exportListToCSV, exportListToPDF } from './utils/exportUtils';
+import { exportDocument, exportListToCSV, exportListToPDF } from './utils/exportUtils';
 
 export default function App() {
   const { user, authReady, handleLogin, handleLogout, error: authError } = useAuth();
   const { tier, handleUpgrade, handleDowngrade, upgradeToBuilder } = useTier(user);
-  const { alerts, showAlerts, setShowAlerts, markAlertAsRead, unreadAlertsCount } = useAlerts();
+  const { alerts, showAlerts, setShowAlerts, markAlertAsRead, unreadAlertsCount, loading: alertsLoading } = useAlerts(user);
   
   const { 
     dailyGen, 
@@ -102,7 +103,14 @@ export default function App() {
 
   const onUpgradeToBuilder = () => upgradeToBuilder(handleLogin);
 
-  if (loading || generating) {
+  const getDynamicIntro = () => {
+    const count = TIER_LIMITS[tier].dailyIdeas;
+    const dateStr = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    return `Welcome to the ${dateStr} edition of Trend-Equity. Today we navigate the convergence of emerging market signals and high-velocity AI-native shifts. The following ${count} ideas have been filtered through our strict VC engine for maximum investability and timing relevance.`;
+  };
+
+  // Full-page loader only for Daily AI Generation (the big event)
+  if (generating) {
     return (
       <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center p-6 text-center">
         <div className="relative">
@@ -113,21 +121,15 @@ export default function App() {
           />
           <Rocket className="w-6 h-6 text-emerald-500 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
         </div>
-        <h2 className="mt-8 text-xl font-bold text-white tracking-tight">
-          {generating ? "Generating Daily VC Feed..." : "Loading Trend Equity..."}
+        <h2 className="mt-8 text-xl font-bold text-white tracking-tight italic uppercase">
+          Generating Daily VC Feed...
         </h2>
-        <p className="mt-2 text-zinc-500 text-sm max-w-xs">
-          {generating ? `Our AI is scanning real-time signals from Google, X, and Reddit to find today's top ${TIER_LIMITS[tier].dailyIdeas} opportunities.` : "Connecting to the VC engine..."}
+        <p className="mt-2 text-zinc-500 text-sm max-w-xs mx-auto">
+          Our AI is scanning real-time signals from Google, X, and Reddit to find today's top {TIER_LIMITS[tier].dailyIdeas} opportunities.
         </p>
       </div>
     );
   }
-
-  const getDynamicIntro = () => {
-    const count = TIER_LIMITS[tier].dailyIdeas;
-    const dateStr = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-    return `Welcome to the ${dateStr} edition of Trend-Equity. Today we navigate the convergence of emerging market signals and high-velocity AI-native shifts. The following ${count} ideas have been filtered through our strict VC engine for maximum investability and timing relevance.`;
-  };
 
   return (
     <ErrorBoundary>
@@ -151,6 +153,7 @@ export default function App() {
           showAlerts={showAlerts}
           setShowAlerts={setShowAlerts}
           markAlertAsRead={markAlertAsRead}
+          loading={alertsLoading}
         />
 
         <main className="max-w-3xl mx-auto px-4 py-8 space-y-8">
@@ -229,8 +232,11 @@ export default function App() {
                 toggleSave={onToggleSaveLocal}
                 updateIdea={updateIdea}
                 getFilteredIdeas={getFilteredIdeas}
-                exportToPDF={exportToPDF}
+                exportToPDF={exportDocument}
                 setActiveTab={setActiveTab}
+                loading={loading}
+                user={user}
+                handleLogin={handleLogin}
               />
             ) : activeTab === 'radar' ? (
               <WeeklyRadarTab 
@@ -252,7 +258,10 @@ export default function App() {
                 toggleSave={onToggleSaveLocal}
                 updateIdea={updateIdea}
                 tier={tier}
-                exportToPDF={exportToPDF}
+                exportToPDF={exportDocument}
+                loading={loading}
+                user={user}
+                handleLogin={handleLogin}
               />
             ) : (
               <PricingSection

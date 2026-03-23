@@ -27,14 +27,21 @@ export const FuturecastingTab: React.FC<FuturecastingTabProps> = ({
           </div>
           <div className="flex items-center gap-2">
             <select
+              value={futurecasting?.horizon || '2030'}
               onChange={(e) => fetchFuturecasting(e.target.value as any)}
-              className="bg-zinc-800 border border-zinc-700 text-white text-[10px] font-bold uppercase rounded-lg px-2 py-1 outline-none"
+              className="bg-zinc-800 border border-zinc-700 text-white text-[10px] font-bold uppercase rounded-lg px-2 py-1 outline-none cursor-pointer hover:bg-zinc-700 transition-colors"
             >
               <option value="2027">2027</option>
               <option value="2030">2030</option>
               <option value="2035">2035</option>
             </select>
-            <RefreshCw className={`w-5 h-5 text-amber-500 ${loadingFuture ? 'animate-spin' : ''}`} onClick={() => fetchFuturecasting()} />
+            <button 
+              onClick={() => fetchFuturecasting((futurecasting?.horizon as any) || '2030')}
+              disabled={loadingFuture}
+              className={`p-1 rounded-full hover:bg-white/5 transition-colors ${loadingFuture ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+              <RefreshCw className={`w-5 h-5 text-amber-500 ${loadingFuture ? 'animate-spin' : ''}`} />
+            </button>
           </div>
         </div>
 

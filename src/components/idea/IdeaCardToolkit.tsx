@@ -2,6 +2,7 @@ import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, BarChart3, Shield, Loader2, CheckCircle2, Wand2, Sparkles, HelpCircle, Trash2, Rocket, Zap } from 'lucide-react';
 import { Idea, ExpertVetting } from '../../types';
+import { ToolkitSkeleton } from '../layout/SkeletonLoaders';
 
 interface IdeaCardToolkitProps {
   idea: Idea;
@@ -99,6 +100,10 @@ export const IdeaCardToolkit: React.FC<IdeaCardToolkitProps> = ({
             exit={{ opacity: 0, height: 0 }}
             className="overflow-hidden"
           >
+            {(isGeneratingValidation || isGeneratingPlan || isGeneratingBuild) && (
+              <ToolkitSkeleton />
+            )}
+
             {activeToolkit === 'validation' && validationToolkit && (
               <div className="p-5 bg-zinc-900/50 border border-emerald-500/20 rounded-2xl space-y-5 mt-2">
                 <div className="flex items-center justify-between">

@@ -48,6 +48,7 @@ export interface Idea {
     generatedAt?: any;
   };
   expertVetting?: ExpertVetting;
+  seekingPartner?: boolean;
 }
 
 export interface DailyGeneration {
@@ -99,4 +100,14 @@ export interface ExpertVetting {
   pivotSuggestions: string[];
   comparableExits: string[];
   generatedAt: any;
+}
+
+export interface Comment {
+  id: string;
+  ideaId: string;
+  userId: string;
+  userName: string;
+  userPhoto?: string;
+  text: string;
+  timestamp: any;
 }

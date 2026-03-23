@@ -2,6 +2,7 @@ import React from 'react';
 import { Bookmark } from 'lucide-react';
 import { Idea, UserSave, Tier } from '../../types';
 import { IdeaCard } from '../IdeaCard';
+import { IdeaFeedSkeleton } from '../layout/SkeletonLoaders';
 
 interface SavedIdeasTabProps {
   userSaves: UserSave[];
@@ -9,6 +10,9 @@ interface SavedIdeasTabProps {
   updateIdea: (idea: Idea) => void;
   tier: Tier;
   exportToPDF: (idea: Idea, format: string) => void;
+  loading?: boolean;
+  user: any;
+  handleLogin: () => void;
 }
 
 export const SavedIdeasTab: React.FC<SavedIdeasTabProps> = ({
@@ -16,8 +20,13 @@ export const SavedIdeasTab: React.FC<SavedIdeasTabProps> = ({
   toggleSave,
   updateIdea,
   tier,
-  exportToPDF
+  exportToPDF,
+  loading,
+  user,
+  handleLogin
 }) => {
+  if (loading) return <IdeaFeedSkeleton />;
+
   return (
     userSaves.length > 0 ? (
       userSaves.map((save) => (
@@ -30,6 +39,8 @@ export const SavedIdeasTab: React.FC<SavedIdeasTabProps> = ({
           isSaving={false}
           tier={tier}
           onExport={(fmt) => exportToPDF(save.idea, fmt)}
+          user={user}
+          handleLogin={handleLogin}
         />
       ))
     ) : (

@@ -73,13 +73,21 @@ export async function generateExpertVetting(idea: Idea) {
   return response.json();
 }
 
-// Radar and Futurecasting could also be added to the server if needed
 export async function generateWeeklyTrendRadar() {
-   // Implementation similar to above...
-   return { week: "Current", topTrends: [], marketShift: "", opportunityAreas: [] };
+  const response = await fetch('/api/generate/radar', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' }
+  });
+  if (!response.ok) throw new Error('Failed to generate weekly radar');
+  return response.json();
 }
 
 export async function generateFuturecasting(horizon: '2027' | '2030' | '2035') {
-   // Implementation similar to above...
-   return { horizon, predictions: [], paradigmShifts: [] };
+  const response = await fetch('/api/generate/futurecasting', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ horizon })
+  });
+  if (!response.ok) throw new Error('Failed to generate futurecasting');
+  return response.json();
 }

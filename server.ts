@@ -20,9 +20,45 @@ try {
 }
 
 const SYSTEM_PROMPT = process.env.SYSTEM_PROMPT || localPrompts.SYSTEM_PROMPT;
-const FIREBASE_CONFIG = process.env.FIREBASE_CONFIG ? JSON.parse(process.env.FIREBASE_CONFIG) : null;
 
-// Re-using schemas from the original geminiService
+// Shared Core Generation Helper
+async function generateWithGemini(prompt: string, schema?: any, systemInstruction?: string) {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new Error("GEMINI_API_KEY missing from environment.");
+  
+  const ai = new GoogleGenAI({ apiKey });
+  
+  // Using the original model name from the user's setup
+  const modelToUse = "gemini-3-flash-preview"; 
+
+  try {
+    const response = await ai.models.generateContent({
+      model: modelToUse,
+      contents: prompt,
+      config: {
+        systemInstruction: systemInstruction || SYSTEM_PROMPT,
+        responseMimeType: schema ? "application/json" : "text/plain",
+        responseSchema: schema
+      }
+    });
+
+    if (schema) {
+      try {
+        return JSON.parse(response.text);
+      } catch (e) {
+        console.error("JSON Parse Error:", response.text);
+        throw new Error("AI returned invalid JSON structure.");
+      }
+    }
+    return { text: response.text };
+  } catch (err: any) {
+    console.error(`Gemini Error [${modelToUse}]:`, err);
+    throw err;
+  }
+}
+
+// --- Data Schemas ---
+
 const ideaSchema = {
   type: Type.OBJECT,
   properties: {
@@ -51,33 +87,44 @@ const responseSchema = {
   type: Type.OBJECT,
   properties: {
     intro: { type: Type.STRING },
-    ideas: {
-      type: Type.ARRAY,
-      items: ideaSchema
-    },
+    ideas: { type: Type.ARRAY, items: ideaSchema },
     disclaimer: { type: Type.STRING }
   },
   required: ["intro", "ideas", "disclaimer"]
 };
 
+const radarSchema = {
+  type: Type.OBJECT,
+  properties: {
+    week: { type: Type.STRING },
+    topTrends: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          title: { type: Type.STRING },
+          description: { type: Type.STRING },
+          impact: { type: Type.STRING },
+          sector: { type: Type.STRING }
+        },
+        required: ["title", "description", "impact", "sector"]
+      }
+    },
+    marketShift: { type: Type.STRING },
+    opportunityAreas: { type: Type.ARRAY, items: { type: Type.STRING } }
+  },
+  required: ["week", "topTrends", "marketShift", "opportunityAreas"]
+};
+
+// --- Endpoints ---
+
 app.post('/api/generate/daily', async (req, res) => {
   const { date } = req.body;
-  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-  
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: `Generate 35 business ideas for ${date}. Follow the system prompt strictly. Today's date context: ${date}.`,
-      config: {
-        systemInstruction: SYSTEM_PROMPT,
-        responseMimeType: "application/json",
-        responseSchema: responseSchema
-      }
-    });
-    res.json(JSON.parse(response.text));
-  } catch (error: any) {
-    console.error("Generation Error (Falling back to mock):", error);
-    // Mock fallback for testing when API is rate limited
+    const data = await generateWithGemini(`Generate 35 business ideas for ${date}. Today context: ${date}.`, responseSchema);
+    res.json(data);
+  } catch (err: any) {
+    console.error("Daily Generation Error (Falling back to mock):", err);
     res.json({
       intro: "Welcome to Trend-Equity. (Currently using cached market signals due to high demand)",
       ideas: [
@@ -91,25 +138,10 @@ app.post('/api/generate/daily', async (req, res) => {
           revenueSkeleton: "Tiered subscription model based on usage volume.",
           unfairAdvantage: "Proprietary fine-tuning on creator-specific content datasets.",
           potentialExit: "Acquisition by larger creator platforms (Substack, Beehiiv).",
-          trendSources: ["Substack Growth Statistics 2024", "X Tech Trends"],
+          trendSources: ["Substack Growth Statistics 2024"],
           saturationLabel: "Early Adopter Stage",
           heatBadge: "Trending",
-          nextSteps: ["Define 3 core 'magic' tools", "Build MVP waitlist", "Onboard alpha testers"]
-        },
-        {
-          headline: "Sustainable Urban Micro-Farming Kits",
-          pitch: "Modular, IoT-enabled hydroponic systems designed for apartment balconies and small indoor spaces.",
-          vcJustification: "Rising food costs and increased consumer focus on food security and sustainability.",
-          categoryTags: ["Sustainability", "Hardware", "IoT"],
-          costEffort: "Medium R&D, Direct-to-Consumer",
-          revenuePotentialScore: 7,
-          revenueSkeleton: "One-time hardware sale + recurring substrate/seed subscription.",
-          unfairAdvantage: "Optimized nutrient delivery algorithm for low-light environments.",
-          potentialExit: "Strategic buy-out by home goods or gardening conglomerates.",
-          trendSources: ["Urban Gardening Trend Report 2025", "Reddit r/hydroponics"],
-          saturationLabel: "Growing Interest",
-          heatBadge: "Steady Rise",
-          nextSteps: ["Prototype sensor array", "Source sustainable materials", "Launch Instagram community"]
+          nextSteps: ["Define 3 core 'magic' tools | 2 weeks | Dev costs | Replit", "Build MVP waitlist | 1 week | Low traction | Beehiiv", "Onboard alpha testers | 4 weeks | Engagement | X"]
         }
       ],
       disclaimer: "These are illustrative ideas based on recent market shifts. Do your own diligence."
@@ -117,19 +149,74 @@ app.post('/api/generate/daily', async (req, res) => {
   }
 });
 
+app.post('/api/generate/radar', async (req, res) => {
+  try {
+    const data = await generateWithGemini(
+      "Perform a VC-grade market analysis. Provide 5 top trends, a core market shift, and 5 opportunity areas.",
+      radarSchema,
+      "You are a top-tier Venture Capital market analyst."
+    );
+    res.json(data);
+  } catch (err: any) {
+    console.error("Radar Error (Falling back to mock):", err);
+    res.json({
+      week: "March 2026",
+      topTrends: [
+        { title: "Autonomous Grid Balancers", description: "AI-driven local energy storage and distribution optimization.", impact: "High", sector: "Energy" },
+        { title: "Verticalized AI Law Assistants", description: "Hyper-specialized LLMs for specific niche legal code (e.g., Maritime Law).", impact: "Medium", sector: "LegalTech" }
+      ],
+      marketShift: "Transition from 'Chat-based AI' to 'Agentic-native Workflows' across all B2B sectors.",
+      opportunityAreas: ["Micro-storage systems", "Privacy-first training data sets", "Agent orchestration layers"]
+    });
+  }
+});
+
+app.post('/api/generate/futurecasting', async (req, res) => {
+  const { horizon } = req.body;
+  const schema = {
+    type: Type.OBJECT,
+    properties: {
+      horizon: { type: Type.STRING },
+      predictions: {
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            title: { type: Type.STRING },
+            probability: { type: Type.NUMBER },
+            rationale: { type: Type.STRING },
+            winners: { type: Type.ARRAY, items: { type: Type.STRING } },
+            losers: { type: Type.ARRAY, items: { type: Type.STRING } }
+          },
+          required: ["title", "probability", "rationale", "winners", "losers"]
+        }
+      },
+      paradigmShifts: { type: Type.ARRAY, items: { type: Type.STRING } }
+    },
+    required: ["horizon", "predictions", "paradigmShifts"]
+  };
+  try {
+    const data = await generateWithGemini(
+      `Perform deep-future simulation for: ${horizon}.`,
+      schema,
+      "You are a futurist and startup strategist."
+    );
+    res.json(data);
+  } catch (err: any) {
+    console.error("Futurecasting Error (Falling back to mock):", err);
+    res.json({
+      horizon: horizon || '2030',
+      predictions: [
+        { title: "Personal AI Companionship Market Peaks", probability: 85, rationale: "Saturation of loneliness-driven tech in urban centers.", winners: ["Personalized LLM providers"], losers: ["Generic social media apps"] }
+      ],
+      paradigmShifts: ["Post-labor economy in service sectors", "Ubiquitous AR integration"]
+    });
+  }
+});
+
+// Reuse original action plan endpoint
 app.post('/api/generate/action-plan', async (req, res) => {
   const { idea } = req.body;
-  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-  
-  const prompt = `Generate a comprehensive 10+ step action plan for this business idea:
-  Headline: ${idea.headline}
-  Pitch: ${idea.pitch}
-  VC Justification: ${idea.vcJustification}
-  
-  Provide a detailed roadmap with milestones, a list of essential tools, potential risks, and a realistic timeline.
-  Each roadmap step must have a unique ID (e.g., "step-1", "step-2").
-  Format as JSON.`;
-
   const schema = {
     type: Type.OBJECT,
     properties: {
@@ -152,38 +239,16 @@ app.post('/api/generate/action-plan', async (req, res) => {
     },
     required: ["roadmap", "tools", "risks", "timeline"]
   };
-
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: schema
-      }
-    });
-    res.json(JSON.parse(response.text));
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Failed to generate action plan' });
+    const data = await generateWithGemini(`Generate roadmap for: ${idea.headline}`, schema);
+    res.json(data);
+  } catch (err: any) {
+    res.status(500).json({ error: "Action plan failed.", details: err.message });
   }
 });
 
 app.post('/api/generate/build-me', async (req, res) => {
   const { idea } = req.body;
-  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-  
-  const prompt = `Generate a "Build with Me" package for this business idea:
-  Headline: ${idea.headline}
-  Pitch: ${idea.pitch}
-  
-  Provide:
-  1. A "Prompt Pack": 5-7 highly specific LLM prompts to help build the MVP.
-  2. A "Starter Repository Structure": A recommended file tree.
-  3. "First 24 Hours": A checklist.
-  
-  Format as JSON.`;
-
   const schema = {
     type: Type.OBJECT,
     properties: {
@@ -200,99 +265,53 @@ app.post('/api/generate/build-me', async (req, res) => {
     },
     required: ["promptPack", "repoStructure", "first24Hours"]
   };
-
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: prompt,
-      config: { responseMimeType: "application/json", responseSchema: schema }
-    });
-    res.json(JSON.parse(response.text));
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Failed to generate build-me pack' });
+    const data = await generateWithGemini(`Generate Build-me pack for: ${idea.headline}`, schema);
+    res.json(data);
+  } catch (err: any) {
+    res.status(500).json({ error: "Build-me failed.", details: err.message });
   }
 });
 
 app.post('/api/generate/validation', async (req, res) => {
   const { idea } = req.body;
-  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-  
-  const prompt = `Generate a "Validation Toolkit" for this business idea:
-  Headline: ${idea.headline}
-  Pitch: ${idea.pitch}
-  
-  Format as JSON.`;
-
   const schema = {
-    type: Type.OBJECT,
-    properties: {
-      landingPage: {
-        type: Type.OBJECT,
-        properties: {
-          hero: { type: Type.STRING },
-          subHero: { type: Type.STRING },
-          valueProps: { type: Type.ARRAY, items: { type: Type.STRING } }
-        },
-        required: ["hero", "subHero", "valueProps"]
-      },
-      interviewScript: { type: Type.ARRAY, items: { type: Type.STRING } },
-      smokeTest: { type: Type.STRING },
-      successMetrics: { type: Type.ARRAY, items: { type: Type.STRING } }
-    },
-    required: ["landingPage", "interviewScript", "smokeTest", "successMetrics"]
-  };
-
+     type: Type.OBJECT,
+     properties: {
+       landingPage: { type: Type.OBJECT, properties: { hero: { type: Type.STRING }, subHero: { type: Type.STRING }, valueProps: { type: Type.ARRAY, items: { type: Type.STRING } } }, required: ["hero", "subHero", "valueProps"] },
+       interviewScript: { type: Type.ARRAY, items: { type: Type.STRING } },
+       smokeTest: { type: Type.STRING },
+       successMetrics: { type: Type.ARRAY, items: { type: Type.STRING } }
+     },
+     required: ["landingPage", "interviewScript", "smokeTest", "successMetrics"]
+  }
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: prompt,
-      config: { responseMimeType: "application/json", responseSchema: schema }
-    });
-    res.json(JSON.parse(response.text));
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Failed to generate validation toolkit' });
+     const data = await generateWithGemini(`Generate validation toolkit for: ${idea.headline}`, schema);
+     res.json(data);
+  } catch (err: any) {
+     res.status(500).json({ error: "Validation toolkit failed.", details: err.message });
   }
 });
 
 app.post('/api/generate/alerts', async (req, res) => {
-  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-  
   const schema = {
-    type: Type.ARRAY,
-    items: {
-      type: Type.OBJECT,
-      properties: {
-        title: { type: Type.STRING },
-        message: { type: Type.STRING },
-        type: { type: Type.STRING, enum: ["info", "success", "warning", "error"] }
-      },
-      required: ["title", "message", "type"]
-    }
+     type: Type.ARRAY,
+     items: {
+       type: Type.OBJECT,
+       properties: { title: { type: Type.STRING }, message: { type: Type.STRING }, type: { type: Type.STRING, enum: ["info", "success", "warning", "error"] } },
+       required: ["title", "message", "type"]
+     }
   };
-
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: "Generate 3-5 high-signal Market Trend Alerts for today.",
-      config: { responseMimeType: "application/json", responseSchema: schema }
-    });
-    res.json(JSON.parse(response.text));
-  } catch (error) {
-    console.error("Alerts Generation Error (Falling back to mock):", error);
-    res.json([
-      { title: "AI-Agents Sector Spike", message: "Significant increase in developer activity on GitHub related to agentic workflows.", type: "success" },
-      { title: "Semiconductor Supply Warning", message: "Potential delay in high-end GPU clusters affecting small AI startups.", type: "warning" },
-      { title: "New Venture Fund Launched", message: "A $500M fund specifically for European CleanTech has just been announced.", type: "info" }
-    ]);
+     const data = await generateWithGemini("Generate 3-5 high-signal Market Trend Alerts.", schema);
+     res.json(data);
+  } catch (err: any) {
+     res.json([{ title: "AI Spike", message: "Market signals active.", type: "success" }]);
   }
 });
 
 app.post('/api/generate/vetting', async (req, res) => {
   const { idea } = req.body;
-  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-  
   const schema = {
     type: Type.OBJECT,
     properties: {
@@ -305,22 +324,24 @@ app.post('/api/generate/vetting', async (req, res) => {
     },
     required: ["score", "verdict", "strengths", "weaknesses", "pivotSuggestions", "comparableExits"]
   };
-
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: `As a top-tier VC partner, perform an "Expert Vetting" of: ${idea.headline}`,
-      config: { responseMimeType: "application/json", responseSchema: schema }
-    });
-    res.json(JSON.parse(response.text));
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Failed to perform vetting' });
+    const data = await generateWithGemini(`Perform expert vetting for: ${idea.headline}`, schema);
+    res.json(data);
+  } catch (err: any) {
+    res.status(500).json({ error: "Vetting failed.", details: err.message });
+  }
+});
+
+app.post('/api/generate/explain', async (req, res) => {
+  const { idea, section, context } = req.body;
+  try {
+    const data = await generateWithGemini(`Explain step "${section}" for idea: ${idea.headline}. Context: ${context}.`);
+    res.json(data);
+  } catch (err: any) {
+    res.status(500).json({ text: "Explanation unavailable.", details: err.message });
   }
 });
 
 app.listen(port, () => {
   console.log(`BFF Server running on port ${port}`);
 });
-/ /   D o p p l e r   a u t o m a t i o n   v e r i f i e d  
- 

@@ -1,6 +1,7 @@
 import React from 'react';
-import { RefreshCw, Loader2, TrendingUp } from 'lucide-react';
+import { RefreshCw, TrendingUp } from 'lucide-react';
 import { WeeklyTrendRadar } from '../../types';
+import { RadarSkeleton } from '../layout/SkeletonLoaders';
 
 interface WeeklyRadarTabProps {
   weeklyRadar: WeeklyTrendRadar | null;
@@ -25,10 +26,7 @@ export const WeeklyRadarTab: React.FC<WeeklyRadarTabProps> = ({
         </div>
 
         {loadingRadar ? (
-          <div className="py-12 text-center space-y-4">
-            <Loader2 className="w-8 h-8 text-emerald-500 animate-spin mx-auto" />
-            <p className="text-xs text-zinc-500 uppercase font-bold tracking-widest">Scanning global markets...</p>
-          </div>
+          <RadarSkeleton />
         ) : weeklyRadar ? (
           <div className="space-y-8">
             <div className="p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-2xl">

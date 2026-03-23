@@ -6,10 +6,12 @@ import {
   ChevronUp,
   Loader2,
   Shield,
-  Wand2
+  Wand2,
+  Users
 } from 'lucide-react';
 import { Idea } from '../types';
 import { useIdeaActions } from '../hooks/useIdeaActions';
+import { IdeaComments } from './idea/IdeaComments';
 
 // Sub-components
 import { IdeaCardHeader } from './idea/IdeaCardHeader';
@@ -27,6 +29,8 @@ interface IdeaCardProps {
   isSaving: boolean;
   tier: 'free' | 'pro' | 'builder';
   onExport?: (format: 'pdf' | 'notion' | 'gdocs') => void;
+  user: any;
+  handleLogin: () => void;
 }
 
 export const IdeaCard: React.FC<IdeaCardProps> = ({
@@ -36,7 +40,9 @@ export const IdeaCard: React.FC<IdeaCardProps> = ({
   onUpdateIdea,
   isSaving,
   tier,
-  onExport
+  onExport,
+  user,
+  handleLogin
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [activeToolkit, setActiveToolkit] = useState<'roadmap' | 'build' | 'validation' | 'progress' | null>(null);
@@ -219,6 +225,28 @@ export const IdeaCard: React.FC<IdeaCardProps> = ({
             )}
           </AnimatePresence>
         </div>
+
+        {/* Community & Collaboration Footer */}
+        <div className="pt-4 border-t border-zinc-900 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => {
+                if (!onUpdateIdea) return;
+                onUpdateIdea({ ...idea, seekingPartner: !idea.seekingPartner });
+              }}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest transition-all ${
+                idea.seekingPartner 
+                  ? 'bg-emerald-500 text-black border-transparent' 
+                  : 'bg-zinc-800 text-zinc-500 border border-zinc-700 hover:border-zinc-600'
+              }`}
+            >
+              <Users className="w-3 h-3" />
+              {idea.seekingPartner ? 'LOOKING FOR CO-FOUNDER' : 'FIND CO-FOUNDER'}
+            </button>
+          </div>
+        </div>
+
+        <IdeaComments ideaId={idea.id} user={user} handleLogin={handleLogin} />
       </div>
     </motion.div>
   );
