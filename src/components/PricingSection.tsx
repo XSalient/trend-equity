@@ -1,5 +1,6 @@
-import React from 'react';
-import { CheckCircle2, Sparkles, Bell, Users, Trophy, Settings } from 'lucide-react';
+import React, { useState } from 'react';
+import { CheckCircle2, Sparkles, Bell, Users, Trophy, Settings, AlertTriangle, X, ArrowDown, FileText, Bookmark, Mail, Wrench, Eye } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 
 interface PricingSectionProps {
   currentPlan: 'free' | 'pro' | 'builder';
@@ -9,6 +10,59 @@ interface PricingSectionProps {
   onOpenApiAccess?: () => void;
 }
 
+type PlanKey = 'free' | 'pro' | 'builder';
+
+// Define what each tier offers so we can compute losses on downgrade
+const TIER_FEATURES: Record<string, { label: string; tiers: string[] }[]> = {
+  pro: [
+    { label: 'Up to 25 ideas / day (vs 10 on Free)', tiers: ['pro', 'builder'] },
+    { label: 'Unlimited Saves', tiers: ['pro', 'builder'] },
+    { label: 'Notion / GDocs Templates', tiers: ['pro', 'builder'] },
+    { label: 'Priority Email Digest', tiers: ['pro', 'builder'] },
+    { label: 'Validation Toolkit', tiers: ['pro', 'builder'] },
+  ],
+  builder: [
+    { label: 'Up to 35 ideas / day', tiers: ['builder'] },
+    { label: 'Build with Me Suite', tiers: ['builder'] },
+    { label: 'Advanced Alerts', tiers: ['builder'] },
+    { label: 'Weekly Trend Radar', tiers: ['builder'] },
+    { label: 'Futurecasting Engine', tiers: ['builder'] },
+    { label: 'Expert Vetting', tiers: ['builder'] },
+    { label: 'TE-100 Submission', tiers: ['builder'] },
+    { label: 'API Access', tiers: ['builder'] },
+    { label: 'Find Co-Founder', tiers: ['builder'] },
+  ],
+};
+
+function getFeaturesLost(from: string, to: string): string[] {
+  const allFeatures = [...TIER_FEATURES.builder, ...TIER_FEATURES.pro];
+  return allFeatures
+    .filter(f => f.tiers.includes(from) && !f.tiers.includes(to))
+    .map(f => f.label);
+}
+
+// Feature showcase items per tier (displayed below the cards)
+const TIER_SHOWCASE: Record<PlanKey, { icon: React.ReactNode; label: string; onClick?: string }[]> = {
+  free: [
+    { icon: <Eye className="w-5 h-5 text-emerald-500 mx-auto" />, label: '10 Ideas Daily' },
+    { icon: <Bookmark className="w-5 h-5 text-emerald-500 mx-auto" />, label: '5 Saves / Month' },
+    { icon: <FileText className="w-5 h-5 text-emerald-500 mx-auto" />, label: 'PDF Export' },
+  ],
+  pro: [
+    { icon: <Eye className="w-5 h-5 text-emerald-500 mx-auto" />, label: '25 Ideas Daily' },
+    { icon: <Bookmark className="w-5 h-5 text-emerald-500 mx-auto" />, label: 'Unlimited Saves' },
+    { icon: <FileText className="w-5 h-5 text-emerald-500 mx-auto" />, label: 'Notion / GDocs' },
+    { icon: <Mail className="w-5 h-5 text-emerald-500 mx-auto" />, label: 'Email Digest' },
+    { icon: <Wrench className="w-5 h-5 text-emerald-500 mx-auto" />, label: 'Validation Toolkit' },
+  ],
+  builder: [
+    { icon: <Bell className="w-5 h-5 text-amber-500 mx-auto" />, label: 'Real-time Alerts' },
+    { icon: <Users className="w-5 h-5 text-amber-500 mx-auto" />, label: 'Team-up Access' },
+    { icon: <Trophy className="w-5 h-5 text-amber-500 mx-auto" />, label: 'TE-100 Submission', onClick: 'te100' },
+    { icon: <Settings className="w-5 h-5 text-amber-500 mx-auto" />, label: 'API Access', onClick: 'api' },
+  ],
+};
+
 export const PricingSection: React.FC<PricingSectionProps> = ({ 
   currentPlan, 
   onUpgrade, 
@@ -16,6 +70,39 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
   onOpenTE100,
   onOpenApiAccess
 }) => {
+  const [pendingDowngrade, setPendingDowngrade] = useState<'free' | 'pro' | null>(null);
+  const [selectedTier, setSelectedTier] = useState<PlanKey>(currentPlan);
+
+  const featuresLost = pendingDowngrade ? getFeaturesLost(currentPlan, pendingDowngrade) : [];
+
+  const handleDowngradeClick = (targetPlan: 'free' | 'pro') => {
+    setPendingDowngrade(targetPlan);
+  };
+
+  const confirmDowngrade = () => {
+    if (pendingDowngrade) {
+      onDowngrade(pendingDowngrade);
+      setPendingDowngrade(null);
+    }
+  };
+
+  const handleShowcaseClick = (item: { onClick?: string }) => {
+    if (item.onClick === 'te100') onOpenTE100?.();
+    if (item.onClick === 'api') onOpenApiAccess?.();
+  };
+
+  // Border/highlight color for selected tier
+  const getCardStyle = (tier: PlanKey) => {
+    const isSelected = selectedTier === tier;
+    const isCurrent = currentPlan === tier;
+    if (isSelected && tier === 'builder') return 'border-amber-500 bg-amber-500/5 ring-1 ring-amber-500/30';
+    if (isSelected) return 'border-emerald-500 bg-emerald-500/5 ring-1 ring-emerald-500/30';
+    if (isCurrent) return 'border-zinc-600 bg-zinc-900/50';
+    return 'border-zinc-800 bg-zinc-900/50 hover:border-zinc-600';
+  };
+
+  const showcaseColor = selectedTier === 'builder' ? 'amber' : 'emerald';
+
   return (
     <div className="space-y-8 py-4">
       <div className="text-center space-y-2">
@@ -25,10 +112,18 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
 
       <div className="grid md:grid-cols-3 gap-6">
         {/* Free Plan */}
-        <div className={`p-6 rounded-3xl border ${currentPlan === 'free' ? 'border-emerald-500 bg-emerald-500/5' : 'border-zinc-800 bg-zinc-900/50'} space-y-6 flex flex-col`}>
-          <div className="space-y-1">
-            <h4 className="text-lg font-black uppercase italic">Free</h4>
-            <p className="text-3xl font-black">$0</p>
+        <div 
+          onClick={() => setSelectedTier('free')}
+          className={`p-6 rounded-3xl border ${getCardStyle('free')} space-y-6 flex flex-col cursor-pointer transition-all duration-200`}
+        >
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <h4 className="text-lg font-black uppercase italic">Free</h4>
+              <p className="text-3xl font-black">$0</p>
+            </div>
+            {currentPlan === 'free' && (
+              <span className="text-[9px] font-bold uppercase tracking-widest text-emerald-500 bg-emerald-500/10 px-2 py-1 rounded-full">Current</span>
+            )}
           </div>
           <ul className="space-y-3 flex-1">
             <li className="flex items-center gap-2 text-xs text-zinc-400">
@@ -42,7 +137,7 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
             </li>
           </ul>
           <button 
-            onClick={() => currentPlan !== 'free' && onDowngrade('free')}
+            onClick={(e) => { e.stopPropagation(); currentPlan !== 'free' && handleDowngradeClick('free'); }}
             disabled={currentPlan === 'free'}
             className={`w-full py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${currentPlan === 'free' ? 'bg-zinc-800 text-zinc-500 cursor-default' : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-300'}`}
           >
@@ -51,11 +146,19 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
         </div>
 
         {/* Pro Plan */}
-        <div className={`p-6 rounded-3xl border ${currentPlan === 'pro' ? 'border-emerald-500 bg-emerald-500/5' : 'border-zinc-800 bg-zinc-900/50'} space-y-6 relative overflow-hidden flex flex-col`}>
+        <div 
+          onClick={() => setSelectedTier('pro')}
+          className={`p-6 rounded-3xl border ${getCardStyle('pro')} space-y-6 relative overflow-hidden flex flex-col cursor-pointer transition-all duration-200`}
+        >
           <div className="absolute top-0 right-0 px-3 py-1 bg-emerald-500 text-black text-[8px] font-black uppercase tracking-widest rounded-bl-xl">Popular</div>
-          <div className="space-y-1">
-            <h4 className="text-lg font-black uppercase italic">Pro</h4>
-            <p className="text-3xl font-black">$9<span className="text-sm text-zinc-500">/mo</span></p>
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <h4 className="text-lg font-black uppercase italic">Pro</h4>
+              <p className="text-3xl font-black">$9<span className="text-sm text-zinc-500">/mo</span></p>
+            </div>
+            {currentPlan === 'pro' && (
+              <span className="text-[9px] font-bold uppercase tracking-widest text-emerald-500 bg-emerald-500/10 px-2 py-1 rounded-full">Current</span>
+            )}
           </div>
           <ul className="space-y-3 flex-1">
             <li className="flex items-center gap-2 text-xs text-zinc-300">
@@ -75,9 +178,10 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
             </li>
           </ul>
           <button 
-            onClick={() => {
+            onClick={(e) => {
+              e.stopPropagation();
               if (currentPlan === 'free') onUpgrade('pro');
-              if (currentPlan === 'builder') onDowngrade('pro');
+              if (currentPlan === 'builder') handleDowngradeClick('pro');
             }}
             disabled={currentPlan === 'pro'}
             className={`w-full py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${
@@ -86,15 +190,23 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
                 : 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/20 ' + (currentPlan === 'pro' ? 'opacity-50 cursor-default' : 'hover:bg-emerald-500')
             }`}
           >
-            {currentPlan === 'builder' ? 'DOWNGRADE' : 'UPGRADE TO PRO'}
+            {currentPlan === 'pro' ? 'CURRENT PLAN' : currentPlan === 'builder' ? 'DOWNGRADE' : 'UPGRADE TO PRO'}
           </button>
         </div>
 
         {/* Builder Plan */}
-        <div className={`p-6 rounded-3xl border ${currentPlan === 'builder' ? 'border-amber-500 bg-amber-500/5' : 'border-zinc-800 bg-zinc-900/50'} space-y-6 flex flex-col`}>
-          <div className="space-y-1">
-            <h4 className="text-lg font-black uppercase italic">Builder</h4>
-            <p className="text-3xl font-black">$19<span className="text-sm text-zinc-500">/mo</span></p>
+        <div 
+          onClick={() => setSelectedTier('builder')}
+          className={`p-6 rounded-3xl border ${getCardStyle('builder')} space-y-6 flex flex-col cursor-pointer transition-all duration-200`}
+        >
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <h4 className="text-lg font-black uppercase italic">Builder</h4>
+              <p className="text-3xl font-black">$19<span className="text-sm text-zinc-500">/mo</span></p>
+            </div>
+            {currentPlan === 'builder' && (
+              <span className="text-[9px] font-bold uppercase tracking-widest text-amber-500 bg-amber-500/10 px-2 py-1 rounded-full">Current</span>
+            )}
           </div>
           <ul className="space-y-3 flex-1">
             <li className="flex items-center gap-2 text-xs text-zinc-300">
@@ -117,7 +229,7 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
             </li>
           </ul>
           <button 
-            onClick={() => currentPlan !== 'builder' && onUpgrade('builder')}
+            onClick={(e) => { e.stopPropagation(); currentPlan !== 'builder' && onUpgrade('builder'); }}
             disabled={currentPlan === 'builder'}
             className={`w-full py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${
               currentPlan === 'builder' 
@@ -130,27 +242,129 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
         </div>
       </div>
 
-      {/* Additional Builder Features Grid */}
-      {currentPlan === 'builder' && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-8">
-          <div className="p-4 bg-zinc-900/50 border border-zinc-800 rounded-2xl text-center space-y-2">
-            <Bell className="w-5 h-5 text-amber-500 mx-auto" />
-            <p className="text-[10px] font-bold uppercase tracking-widest">Real-time Alerts</p>
+      {/* Tier Feature Showcase (dynamic based on selected/previewed tier) */}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={selectedTier}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }}
+          transition={{ duration: 0.2 }}
+          className="space-y-3 pt-4"
+        >
+          <p className={`text-center text-xs font-bold uppercase tracking-widest text-${showcaseColor}-500/70`}>
+            {selectedTier === currentPlan 
+              ? `Your ${selectedTier.toUpperCase()} Features` 
+              : `Preview: ${selectedTier.toUpperCase()} Features`}
+          </p>
+          <div className={`grid grid-cols-2 md:grid-cols-${Math.max(TIER_SHOWCASE[selectedTier].length, 3)} gap-4`}>
+            {TIER_SHOWCASE[selectedTier].map((item, i) => {
+              const isClickable = item.onClick && currentPlan === 'builder';
+              const Wrapper = isClickable ? 'button' : 'div';
+              return (
+                <Wrapper
+                  key={item.label}
+                  onClick={isClickable ? () => handleShowcaseClick(item) : undefined}
+                  className={`p-4 bg-zinc-900/50 border border-zinc-800 rounded-2xl text-center space-y-2 transition-all ${
+                    isClickable ? 'hover:bg-zinc-800/80 hover:border-emerald-500/50 cursor-pointer' : ''
+                  } ${selectedTier !== currentPlan ? 'opacity-60' : ''}`}
+                >
+                  {item.icon}
+                  <p className="text-[10px] font-bold uppercase tracking-widest">{item.label}</p>
+                </Wrapper>
+              );
+            })}
           </div>
-          <div className="p-4 bg-zinc-900/50 border border-zinc-800 rounded-2xl text-center space-y-2">
-            <Users className="w-5 h-5 text-amber-500 mx-auto" />
-            <p className="text-[10px] font-bold uppercase tracking-widest">Team-up Access</p>
-          </div>
-          <button onClick={onOpenTE100} className="p-4 bg-zinc-900/50 hover:bg-zinc-800/80 border border-zinc-800 hover:border-emerald-500/50 transition-all rounded-2xl text-center space-y-2 cursor-pointer w-full">
-            <Trophy className="w-5 h-5 text-amber-500 mx-auto group-hover:scale-110 transition-transform" />
-            <p className="text-[10px] font-bold uppercase tracking-widest">TE-100 Submission</p>
-          </button>
-          <button onClick={onOpenApiAccess} className="p-4 bg-zinc-900/50 hover:bg-zinc-800/80 border border-zinc-800 hover:border-emerald-500/50 transition-all rounded-2xl text-center space-y-2 cursor-pointer w-full">
-            <Settings className="w-5 h-5 text-amber-500 mx-auto group-hover:scale-110 transition-transform" />
-            <p className="text-[10px] font-bold uppercase tracking-widest">API Access</p>
-          </button>
-        </div>
-      )}
+          {selectedTier !== currentPlan && (
+            <p className="text-center text-[10px] text-zinc-600 italic">
+              {(['free', 'pro', 'builder'].indexOf(selectedTier) > ['free', 'pro', 'builder'].indexOf(currentPlan))
+                ? 'Upgrade to unlock these features'
+                : 'These are the features available on this plan'}
+            </p>
+          )}
+        </motion.div>
+      </AnimatePresence>
+
+      {/* Downgrade Confirmation Modal */}
+      <AnimatePresence>
+        {pendingDowngrade && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+            onClick={() => setPendingDowngrade(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              transition={{ type: 'spring', damping: 25 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-lg bg-zinc-900 border border-zinc-700 rounded-3xl shadow-2xl overflow-hidden"
+            >
+              {/* Header */}
+              <div className="p-6 border-b border-zinc-800 flex items-start justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-amber-500/10 rounded-xl">
+                    <AlertTriangle className="w-6 h-6 text-amber-500" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-black uppercase italic tracking-tight">Confirm Downgrade</h3>
+                    <p className="text-xs text-zinc-500 mt-0.5">
+                      {currentPlan.toUpperCase()} → {pendingDowngrade.toUpperCase()}
+                    </p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setPendingDowngrade(null)} 
+                  className="p-1 text-zinc-500 hover:text-white transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Features You'll Lose */}
+              <div className="p-6 space-y-4">
+                <p className="text-sm text-zinc-300 font-medium">
+                  You will lose access to <span className="text-amber-400 font-bold">{featuresLost.length} features</span>:
+                </p>
+                <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
+                  {featuresLost.map((feature, i) => (
+                    <motion.div
+                      key={feature}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: i * 0.05 }}
+                      className="flex items-center gap-3 p-3 bg-red-500/5 border border-red-500/10 rounded-xl"
+                    >
+                      <X className="w-4 h-4 text-red-400 shrink-0" />
+                      <span className="text-sm text-zinc-300">{feature}</span>
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="p-6 border-t border-zinc-800 flex gap-3">
+                <button
+                  onClick={() => setPendingDowngrade(null)}
+                  className="flex-1 py-3 rounded-xl text-xs font-bold uppercase tracking-widest bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition-all"
+                >
+                  Keep {currentPlan.toUpperCase()}
+                </button>
+                <button
+                  onClick={confirmDowngrade}
+                  className="flex-1 py-3 rounded-xl text-xs font-bold uppercase tracking-widest bg-red-600/80 hover:bg-red-500 text-white transition-all flex items-center justify-center gap-2"
+                >
+                  <ArrowDown className="w-3.5 h-3.5" />
+                  Downgrade to {pendingDowngrade.toUpperCase()}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

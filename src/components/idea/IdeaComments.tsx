@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MessageSquare, Send, User, ChevronDown, ChevronUp } from 'lucide-react';
+import { MessageSquare, Send, User, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useComments } from '../../hooks/useComments';
 
@@ -12,7 +12,7 @@ interface IdeaCommentsProps {
 export const IdeaComments: React.FC<IdeaCommentsProps> = ({ ideaId, user, handleLogin }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [text, setText] = useState('');
-  const { comments, loading, postComment } = useComments(ideaId);
+  const { comments, loading, postComment, deleteComment } = useComments(ideaId);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,9 +89,20 @@ export const IdeaComments: React.FC<IdeaCommentsProps> = ({ ideaId, user, handle
                     <div className="flex-1 space-y-1">
                       <div className="flex items-center justify-between">
                         <span className="text-[10px] font-bold text-white uppercase tracking-tight">{comment.userName}</span>
-                        <span className="text-[8px] text-zinc-600 font-bold uppercase tracking-widest">
-                          {comment.timestamp ? 'JUST NOW' : 'PENDING...'}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[8px] text-zinc-600 font-bold uppercase tracking-widest">
+                            {comment.timestamp ? 'JUST NOW' : 'PENDING...'}
+                          </span>
+                          {user && user.uid === comment.userId && (
+                            <button
+                              onClick={() => deleteComment(comment.id, comment.userId, user)}
+                              className="text-zinc-700 hover:text-red-500 transition-colors"
+                              title="Delete comment"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          )}
+                        </div>
                       </div>
                       <p className="text-xs text-zinc-400 leading-relaxed font-medium">{comment.text}</p>
                     </div>

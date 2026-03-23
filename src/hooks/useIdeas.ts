@@ -37,6 +37,35 @@ export function useIdeas(user: User | null, tier: Tier, authReady: boolean) {
 
   const today = new Date().toISOString().split('T')[0];
 
+  // --- localStorage Cache Helpers ---
+  const CACHE_KEY = 'te_daily_feed';
+
+  const getCachedFeed = (): DailyGeneration | null => {
+    try {
+      const raw = localStorage.getItem(CACHE_KEY);
+      if (!raw) return null;
+      const cached = JSON.parse(raw);
+      if (cached?.date === today && cached?.ideas?.length > 0) {
+        return cached as DailyGeneration;
+      }
+      // Stale cache (different date) — clear it
+      localStorage.removeItem(CACHE_KEY);
+    } catch {
+      localStorage.removeItem(CACHE_KEY);
+    }
+    return null;
+  };
+
+  const setCachedFeed = (gen: DailyGeneration) => {
+    try {
+      // Strip serverTimestamp (non-serializable) before caching
+      const serializable = { ...gen, generatedAt: new Date().toISOString() };
+      localStorage.setItem(CACHE_KEY, JSON.stringify(serializable));
+    } catch {
+      // localStorage full or disabled — silently ignore
+    }
+  };
+
   // --- Fetch Daily ---
   const triggerGeneration = useCallback(async () => {
     if (generating) return;
@@ -79,6 +108,7 @@ export function useIdeas(user: User | null, tier: Tier, authReady: boolean) {
         handleFirestoreError(err, OperationType.WRITE, `daily_generations/${today}`);
       }
       setDailyGen(newGen);
+      setCachedFeed(newGen);
     } catch (err: any) {
       console.error("Generation Error:", err);
       setError("AI generation failed. Please refresh to try again.");
@@ -90,6 +120,16 @@ export function useIdeas(user: User | null, tier: Tier, authReady: boolean) {
   const fetchDaily = useCallback(async (isRetry = false) => {
     if (!isRetry) setLoading(true);
     setError(null);
+
+    // 1. Check localStorage first (instant, zero network)
+    const cached = getCachedFeed();
+    if (cached) {
+      setDailyGen(cached);
+      setLoading(false);
+      return;
+    }
+
+    // 2. Try Firestore
     try {
       const docRef = doc(db, 'daily_generations', today);
       let docSnap;
@@ -106,7 +146,9 @@ export function useIdeas(user: User | null, tier: Tier, authReady: boolean) {
       }
 
       if (docSnap.exists()) {
-        setDailyGen(docSnap.data() as DailyGeneration);
+        const data = docSnap.data() as DailyGeneration;
+        setDailyGen(data);
+        setCachedFeed(data);
       } else {
         await triggerGeneration();
       }
@@ -134,29 +176,32 @@ export function useIdeas(user: User | null, tier: Tier, authReady: boolean) {
   useEffect(() => {
     if (!user) return;
 
-    const userRef = doc(db, 'users', user.uid);
-    const unsubscribe = onSnapshot(userRef, (docSnap) => {
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        if (data.filters) {
-          setFilters(prev => ({
-            ...prev,
-            ...data.filters,
-            industries: data.filters.industries || [],
-            productTypes: data.filters.productTypes || [],
-            riskLevels: data.filters.riskLevels || [],
-            effortLevels: data.filters.effortLevels || [],
-            marketFocus: data.filters.marketFocus || [],
-            teamSize: data.filters.teamSize || [],
-            excludeCategories: data.filters.excludeCategories || []
-          }));
+    const fetchInitialFilters = async () => {
+      const userRef = doc(db, 'users', user.uid);
+      try {
+        const docSnap = await getDoc(userRef);
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          if (data.filters) {
+            setFilters(prev => ({
+              ...prev,
+              ...data.filters,
+              industries: data.filters.industries || [],
+              productTypes: data.filters.productTypes || [],
+              riskLevels: data.filters.riskLevels || [],
+              effortLevels: data.filters.effortLevels || [],
+              marketFocus: data.filters.marketFocus || [],
+              teamSize: data.filters.teamSize || [],
+              excludeCategories: data.filters.excludeCategories || []
+            }));
+          }
         }
+      } catch (err) {
+        handleFirestoreError(err, OperationType.GET, `users/${user.uid}`);
       }
-    }, (err) => {
-      handleFirestoreError(err, OperationType.GET, `users/${user.uid}`);
-    });
+    };
 
-    return () => unsubscribe();
+    fetchInitialFilters();
   }, [user]);
 
   // --- Save Filters ---
@@ -304,11 +349,14 @@ export function useIdeas(user: User | null, tier: Tier, authReady: boolean) {
 
     if (filters.marketFocus?.length > 0) {
       filtered = filtered.filter(idea =>
-        filters.marketFocus.some(m =>
-          idea.pitch.toLowerCase().includes(m.toLowerCase()) ||
-          idea.trendSources.some(s => s.toLowerCase().includes(m.toLowerCase())) ||
-          idea.vcJustification.toLowerCase().includes(m.toLowerCase())
-        )
+        filters.marketFocus.some(m => {
+          if (m === 'Local Market') {
+            return idea.categoryTags.some(tag => tag.toLowerCase().includes('local market'));
+          }
+          return idea.pitch.toLowerCase().includes(m.toLowerCase()) ||
+                 idea.trendSources.some(s => s.toLowerCase().includes(m.toLowerCase())) ||
+                 idea.vcJustification.toLowerCase().includes(m.toLowerCase());
+        })
       );
     }
 

@@ -19,6 +19,8 @@ interface FilterBarProps {
   tier: Tier;
   onExportCSV?: () => void;
   onExportPDF?: () => void;
+  resultCount?: number;
+  totalCount?: number;
 }
 
 const INDUSTRIES = [
@@ -28,11 +30,11 @@ const INDUSTRIES = [
 
 const RISK_LEVELS = ['Low', 'Medium', 'High'];
 const EFFORT_LEVELS = ['Low', 'Medium', 'High'];
-const MARKET_FOCUS = ['Global', 'US-centric', 'EU-focused', 'Emerging Markets', 'Hyper-local/Regional'];
+const MARKET_FOCUS = ['Local Market', 'Global', 'US-centric', 'EU-focused', 'Emerging Markets', 'Hyper-local/Regional'];
 const TEAM_SIZE = ['Solo-friendly', 'Small team (2–5)', 'Needs co-founder/funding round'];
 const PRODUCT_TYPES = ['Digital', 'Physical'];
 
-export function FilterBar({ filters, setFilters, tier, onExportCSV, onExportPDF }: FilterBarProps) {
+export function FilterBar({ filters, setFilters, tier, onExportCSV, onExportPDF, resultCount, totalCount }: FilterBarProps) {
   const [isOpen, setIsOpen] = useState(false);
   const isFree = tier === 'free';
   const isPro = tier === 'pro';
@@ -114,6 +116,12 @@ export function FilterBar({ filters, setFilters, tier, onExportCSV, onExportPDF 
                 <RotateCcw className="w-3 h-3" />
                 Reset
               </button>
+            )}
+            {activeCount > 0 && resultCount !== undefined && totalCount !== undefined && (
+              <span className="text-xs font-medium text-zinc-400 ml-1">
+                <span className={resultCount === 0 ? 'text-amber-400' : 'text-emerald-400'}>{resultCount}</span>
+                <span className="text-zinc-600"> / {totalCount} results</span>
+              </span>
             )}
           </div>
 

@@ -14,11 +14,19 @@ export function useTier(user: User | null) {
   const [tier, setTier] = useState<Tier>('free');
 
   useEffect(() => {
+    // Allows E2E testing tools like Playwright to force a specific tier
+    const searchParams = new URLSearchParams(window.location.search);
+    const mockTier = searchParams.get('mockTier') as Tier;
+    if (mockTier && ['free', 'pro', 'builder'].includes(mockTier)) {
+      setTier(mockTier);
+      return;
+    }
+
     if (user) {
       const userRef = doc(db, 'users', user.uid);
       getDoc(userRef).then(docSnap => {
-        if (docSnap.exists()) {
-          setTier(docSnap.data().tier || 'free');
+        if (docSnap.exists() && docSnap.data().tier) {
+          setTier(docSnap.data().tier);
         } else {
           setTier('free');
         }

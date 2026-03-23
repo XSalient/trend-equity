@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
-import { 
-  collection, 
-  query, 
-  where, 
-  onSnapshot, 
-  addDoc, 
-  serverTimestamp 
+import {
+  collection,
+  query,
+  where,
+  onSnapshot,
+  addDoc,
+  deleteDoc,
+  doc,
+  serverTimestamp
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { Comment } from '../types';
@@ -55,5 +57,10 @@ export function useComments(ideaId: string) {
     });
   };
 
-  return { comments, loading, postComment };
+  const deleteComment = async (commentId: string, userId: string, currentUser: any) => {
+    if (!currentUser || currentUser.uid !== userId) return;
+    await deleteDoc(doc(db, 'comments', commentId));
+  };
+
+  return { comments, loading, postComment, deleteComment };
 }

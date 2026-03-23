@@ -37,7 +37,7 @@ import { EmailDigestTab } from './components/tabs/EmailDigest';
 import { SavedIdeasTab } from './components/tabs/SavedIdeas';
 
 // --- Utils ---
-import { generateWeeklyTrendRadar, generateFuturecasting } from './services/geminiService';
+import { generateWeeklyTrendRadar, generateFuturecasting, setCurrentUser, setCurrentTier } from './services/geminiService';
 import { exportDocument, exportListToCSV, exportListToPDF } from './utils/exportUtils';
 
 export default function App() {
@@ -59,6 +59,15 @@ export default function App() {
     triggerGeneration,
     fetchDaily
   } = useIdeas(user, tier, authReady);
+
+  // Sync auth context into geminiService for per-user rate limiting
+  useEffect(() => {
+    setCurrentUser(user?.uid ?? null);
+  }, [user]);
+
+  useEffect(() => {
+    setCurrentTier(tier);
+  }, [tier]);
 
   const [activeTab, setActiveTab] = useState<'feed' | 'saved' | 'pro' | 'radar' | 'future' | 'digest'>('feed');
   const [weeklyRadar, setWeeklyRadar] = useState<WeeklyTrendRadar | null>(null);

@@ -41,6 +41,13 @@ export const IdeaFeed: React.FC<IdeaFeedProps> = ({
   user,
   handleLogin
 }) => {
+  const allIdeas = dailyGen?.ideas || [];
+  const filteredIdeas = getFilteredIdeas(allIdeas).slice(0, TIER_LIMITS[tier].dailyIdeas);
+  const hasActiveFilters = filters.industries.length > 0 || filters.productTypes.length > 0 || 
+    filters.riskLevels.length > 0 || filters.effortLevels.length > 0 || 
+    filters.marketFocus.length > 0 || filters.teamSize.length > 0 || 
+    filters.customKeywords.length > 0;
+
   return (
     <>
       <FilterBar
@@ -49,26 +56,35 @@ export const IdeaFeed: React.FC<IdeaFeedProps> = ({
         tier={tier}
         onExportCSV={onExportCSV}
         onExportPDF={onExportPDF}
+        resultCount={hasActiveFilters ? filteredIdeas.length : undefined}
+        totalCount={hasActiveFilters ? Math.min(allIdeas.length, TIER_LIMITS[tier].dailyIdeas) : undefined}
       />
 
       {loading ? (
         <IdeaFeedSkeleton />
       ) : (
         <>
-          {getFilteredIdeas(dailyGen?.ideas || []).slice(0, TIER_LIMITS[tier].dailyIdeas).map((idea) => (
-            <IdeaCard
-              key={idea.id}
-              idea={idea}
-              isSaved={userSaves.some(s => s.idea.id === idea.id)}
-              onToggleSave={() => toggleSave(idea)}
-              onUpdateIdea={updateIdea}
-              isSaving={false}
-              tier={tier}
-              onExport={(fmt) => exportToPDF(idea, fmt)}
-              user={user}
-              handleLogin={handleLogin}
-            />
-          ))}
+          {filteredIdeas.length === 0 && hasActiveFilters ? (
+            <div className="p-8 bg-zinc-900/50 border border-zinc-800 rounded-2xl text-center space-y-3">
+              <p className="text-zinc-400 text-sm font-medium">No ideas match your current filters.</p>
+              <p className="text-zinc-600 text-xs">Try adjusting or resetting your filters to see results.</p>
+            </div>
+          ) : (
+            filteredIdeas.map((idea) => (
+              <IdeaCard
+                key={idea.id}
+                idea={idea}
+                isSaved={userSaves.some(s => s.idea.id === idea.id)}
+                onToggleSave={() => toggleSave(idea)}
+                onUpdateIdea={updateIdea}
+                isSaving={false}
+                tier={tier}
+                onExport={(fmt) => exportToPDF(idea, fmt)}
+                user={user}
+                handleLogin={handleLogin}
+              />
+            ))
+          )}
 
           {tier === 'free' && dailyGen && dailyGen.ideas.length > TIER_LIMITS.free.dailyIdeas && (
             <div className="p-8 bg-zinc-900 border border-zinc-800 rounded-3xl text-center space-y-4 shadow-2xl relative overflow-hidden">
