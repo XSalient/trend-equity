@@ -26,6 +26,8 @@ import { PricingSection } from './components/PricingSection';
 import { Header } from './components/layout/Header';
 import { AlertsPanel } from './components/layout/AlertsPanel';
 import { IdeaFeedSkeleton, RadarSkeleton } from './components/layout/SkeletonLoaders';
+import { TE100Modal } from './components/builder/TE100Modal';
+import { ApiAccessModal } from './components/builder/ApiAccessModal';
 
 // --- Tab Views ---
 import { IdeaFeed } from './components/tabs/IdeaFeed';
@@ -63,6 +65,10 @@ export default function App() {
   const [futurecasting, setFuturecasting] = useState<Futurecasting | null>(null);
   const [loadingRadar, setLoadingRadar] = useState(false);
   const [loadingFuture, setLoadingFuture] = useState(false);
+  
+  // Builder Modal States
+  const [showTE100, setShowTE100] = useState(false);
+  const [showApiAccess, setShowApiAccess] = useState(false);
 
   const error = authError || ideasError;
   const today = new Date().toISOString().split('T')[0];
@@ -268,6 +274,8 @@ export default function App() {
                 currentPlan={tier}
                 onUpgrade={handleUpgrade}
                 onDowngrade={handleDowngrade}
+                onOpenTE100={() => setShowTE100(true)}
+                onOpenApiAccess={() => setShowApiAccess(true)}
               />
             )}
           </div>
@@ -307,6 +315,17 @@ export default function App() {
             </button>
           </div>
         )}
+
+        <TE100Modal 
+          user={user} 
+          isOpen={showTE100} 
+          onClose={() => setShowTE100(false)} 
+        />
+        <ApiAccessModal 
+          user={user} 
+          isOpen={showApiAccess} 
+          onClose={() => setShowApiAccess(false)} 
+        />
       </div>
     </ErrorBoundary>
   );

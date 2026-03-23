@@ -5,12 +5,16 @@ interface PricingSectionProps {
   currentPlan: 'free' | 'pro' | 'builder';
   onUpgrade: (plan: 'pro' | 'builder') => void;
   onDowngrade: (plan: 'free' | 'pro') => void;
+  onOpenTE100?: () => void;
+  onOpenApiAccess?: () => void;
 }
 
 export const PricingSection: React.FC<PricingSectionProps> = ({ 
   currentPlan, 
   onUpgrade, 
-  onDowngrade 
+  onDowngrade,
+  onOpenTE100,
+  onOpenApiAccess
 }) => {
   return (
     <div className="space-y-8 py-4">
@@ -137,14 +141,14 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
             <Users className="w-5 h-5 text-amber-500 mx-auto" />
             <p className="text-[10px] font-bold uppercase tracking-widest">Team-up Access</p>
           </div>
-          <div className="p-4 bg-zinc-900/50 border border-zinc-800 rounded-2xl text-center space-y-2">
-            <Trophy className="w-5 h-5 text-amber-500 mx-auto" />
+          <button onClick={onOpenTE100} className="p-4 bg-zinc-900/50 hover:bg-zinc-800/80 border border-zinc-800 hover:border-emerald-500/50 transition-all rounded-2xl text-center space-y-2 cursor-pointer w-full">
+            <Trophy className="w-5 h-5 text-amber-500 mx-auto group-hover:scale-110 transition-transform" />
             <p className="text-[10px] font-bold uppercase tracking-widest">TE-100 Submission</p>
-          </div>
-          <div className="p-4 bg-zinc-900/50 border border-zinc-800 rounded-2xl text-center space-y-2">
-            <Settings className="w-5 h-5 text-amber-500 mx-auto" />
+          </button>
+          <button onClick={onOpenApiAccess} className="p-4 bg-zinc-900/50 hover:bg-zinc-800/80 border border-zinc-800 hover:border-emerald-500/50 transition-all rounded-2xl text-center space-y-2 cursor-pointer w-full">
+            <Settings className="w-5 h-5 text-amber-500 mx-auto group-hover:scale-110 transition-transform" />
             <p className="text-[10px] font-bold uppercase tracking-widest">API Access</p>
-          </div>
+          </button>
         </div>
       )}
     </div>
