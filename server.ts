@@ -322,3 +322,5 @@ app.post('/api/generate/vetting', async (req, res) => {
 app.listen(port, () => {
   console.log(`BFF Server running on port ${port}`);
 });
+/ /   D o p p l e r   a u t o m a t i o n   v e r i f i e d  
+ 
