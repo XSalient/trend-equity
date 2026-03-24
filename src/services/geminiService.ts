@@ -1,5 +1,9 @@
 import { Idea } from "../types";
 
+// Base URL for API calls. Empty string on web (relative URLs work via same origin).
+// Set VITE_API_BASE=https://trend-equity.vercel.app when building for native (Capacitor).
+const API_BASE = import.meta.env.VITE_API_BASE ?? '';
+
 // --- Auth context (set once by App on auth state change) ---
 let _currentUid: string | null = null;
 let _currentTier: string = 'free';
@@ -39,7 +43,7 @@ function authBody(): Record<string, string> {
 }
 
 export async function generateDailyIdeas(date: string, country?: string, countryCount?: number) {
-  const response = await fetch('/api/generate/daily', {
+  const response = await fetch(`${API_BASE}/api/generate/daily`, {
     method: 'POST',
     headers: authHeaders(),
     body: JSON.stringify({ date, country, countryCount })
@@ -49,7 +53,7 @@ export async function generateDailyIdeas(date: string, country?: string, country
 }
 
 export async function generateFullActionPlan(idea: Idea) {
-  const response = await fetch('/api/generate/action-plan', {
+  const response = await fetch(`${API_BASE}/api/generate/action-plan`, {
     method: 'POST',
     headers: authHeaders(),
     body: JSON.stringify({ idea, ...authBody() })
@@ -65,7 +69,7 @@ export async function generateFullActionPlan(idea: Idea) {
 }
 
 export async function explainPlanSection(idea: Idea, section: string, context: string) {
-  const response = await fetch('/api/generate/explain', {
+  const response = await fetch(`${API_BASE}/api/generate/explain`, {
     method: 'POST',
     headers: authHeaders(),
     body: JSON.stringify({ idea, section, context, ...authBody() })
@@ -76,7 +80,7 @@ export async function explainPlanSection(idea: Idea, section: string, context: s
 }
 
 export async function generateBuildWithMe(idea: Idea) {
-  const response = await fetch('/api/generate/build-me', {
+  const response = await fetch(`${API_BASE}/api/generate/build-me`, {
     method: 'POST',
     headers: authHeaders(),
     body: JSON.stringify({ idea, ...authBody() })
@@ -92,7 +96,7 @@ export async function generateBuildWithMe(idea: Idea) {
 }
 
 export async function generateValidationToolkit(idea: Idea) {
-  const response = await fetch('/api/generate/validation', {
+  const response = await fetch(`${API_BASE}/api/generate/validation`, {
     method: 'POST',
     headers: authHeaders(),
     body: JSON.stringify({ idea, ...authBody() })
@@ -108,7 +112,7 @@ export async function generateValidationToolkit(idea: Idea) {
 }
 
 export async function generateAlerts() {
-  const response = await fetch('/api/generate/alerts', {
+  const response = await fetch(`${API_BASE}/api/generate/alerts`, {
     method: 'POST',
     headers: authHeaders(),
     body: JSON.stringify({ ...authBody() })
@@ -118,7 +122,7 @@ export async function generateAlerts() {
 }
 
 export async function generateExpertVetting(idea: Idea) {
-  const response = await fetch('/api/generate/vetting', {
+  const response = await fetch(`${API_BASE}/api/generate/vetting`, {
     method: 'POST',
     headers: authHeaders(),
     body: JSON.stringify({ idea, ...authBody() })
@@ -134,7 +138,7 @@ export async function generateExpertVetting(idea: Idea) {
 }
 
 export async function generateWeeklyTrendRadar() {
-  const response = await fetch('/api/generate/radar', {
+  const response = await fetch(`${API_BASE}/api/generate/radar`, {
     method: 'POST',
     headers: authHeaders(),
     body: JSON.stringify({ ...authBody() })
@@ -150,7 +154,7 @@ export async function generateWeeklyTrendRadar() {
 }
 
 export async function generateFuturecasting(horizon: '2027' | '2030' | '2035') {
-  const response = await fetch('/api/generate/futurecasting', {
+  const response = await fetch(`${API_BASE}/api/generate/futurecasting`, {
     method: 'POST',
     headers: authHeaders(),
     body: JSON.stringify({ horizon, ...authBody() })

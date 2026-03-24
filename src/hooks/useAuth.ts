@@ -1,11 +1,14 @@
 import { useState, useEffect } from 'react';
-import { 
-  onAuthStateChanged, 
-  signInWithPopup, 
-  GoogleAuthProvider, 
-  signOut, 
-  User 
+import {
+  onAuthStateChanged,
+  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
+  GoogleAuthProvider,
+  signOut,
+  User
 } from 'firebase/auth';
+import { Capacitor } from '@capacitor/core';
 import { auth } from '../firebase';
 
 export function useAuth() {
@@ -14,6 +17,11 @@ export function useAuth() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // On native, pick up the Google sign-in result after redirect completes
+    if (Capacitor.isNativePlatform()) {
+      getRedirectResult(auth).catch(() => {});
+    }
+
     const unsubscribe = onAuthStateChanged(auth, (u) => {
       setUser(u);
       setAuthReady(true);
@@ -24,7 +32,12 @@ export function useAuth() {
   const handleLogin = async () => {
     try {
       const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
+      if (Capacitor.isNativePlatform()) {
+        // Popups are blocked in native WebViews — use full-page redirect instead
+        await signInWithRedirect(auth, provider);
+      } else {
+        await signInWithPopup(auth, provider);
+      }
     } catch (err: any) {
       if (err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request') {
         console.log("Sign-in popup closed by user.");
