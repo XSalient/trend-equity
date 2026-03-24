@@ -31,7 +31,7 @@ export function useAuth() {
         return;
       }
       if (err.code === 'auth/unauthorized-domain') {
-        setError("Sign-in failed: Localhost is not authorized. Please add 'localhost' to your Authorized Domains in the Firebase Console (Authentication > Settings).");
+        setError(`Sign-in failed: ${window.location.hostname} is not authorized. Please add it to Authorized Domains in the Firebase Console (Authentication > Settings).`);
         return;
       }
       console.error("Login Error:", err);
