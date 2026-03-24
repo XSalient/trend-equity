@@ -1,15 +1,22 @@
-import { Redis } from '@upstash/redis';
+import { cert, getApps, initializeApp } from 'firebase-admin/app';
+import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 
-let redis: Redis | null = null;
-
-function getRedis(): Redis | null {
-  if (redis) return redis;
-  const url = process.env.UPSTASH_REDIS_REST_URL;
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
-  if (!url || !token) return null;
-  redis = new Redis({ url, token });
-  return redis;
+function getAdminDb() {
+  if (getApps().length === 0) {
+    const serviceAccountKey = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+    if (serviceAccountKey) {
+      initializeApp({
+        credential: cert(JSON.parse(serviceAccountKey)),
+        projectId: process.env.FIREBASE_PROJECT_ID,
+      });
+    } else {
+      initializeApp({ projectId: process.env.FIREBASE_PROJECT_ID || 'trend-equity-63c48' });
+    }
+  }
+  return getFirestore();
 }
+
+const USAGE_COLLECTION = 'api_usage';
 
 const FEATURE_DAILY_LIMITS: Record<string, number> = {
   free: 3,
@@ -21,10 +28,14 @@ function getToday(): string {
   return new Date().toISOString().split('T')[0];
 }
 
-function usageKey(uid: string, featureType: string): string {
-  return `usage:${uid}:${featureType}:${getToday()}`;
+function usageDocId(uid: string, featureType: string): string {
+  return `${uid}_${featureType}_${getToday()}`;
 }
 
+/**
+ * Atomically increment usage counter.
+ * Returns { allowed, remaining, limit }.
+ */
 export async function checkAndIncrementUsage(
   uid: string,
   tier: string,
@@ -32,41 +43,43 @@ export async function checkAndIncrementUsage(
 ): Promise<{ allowed: boolean; remaining: number; limit: number }> {
   const limit = FEATURE_DAILY_LIMITS[tier] ?? FEATURE_DAILY_LIMITS.free;
 
-  // Builder has unlimited access
   if (!isFinite(limit)) return { allowed: true, remaining: Infinity, limit };
 
-  const client = getRedis();
-
-  // No Redis → fail open (allow) but log
-  if (!client) {
-    console.warn('[usage] Redis unavailable — allowing request without tracking.');
-    return { allowed: true, remaining: limit, limit };
-  }
-
-  const key = usageKey(uid, featureType);
   try {
-    const current = await client.incr(key);
-    // Set TTL on first increment (expires at midnight + buffer)
-    if (current === 1) {
-      await client.expire(key, 26 * 60 * 60); // 26h to be safe
-    }
-    if (current > limit) {
+    const db = getAdminDb();
+    const docRef = db.collection(USAGE_COLLECTION).doc(usageDocId(uid, featureType));
+
+    // Atomic increment via Firestore transaction
+    const newCount = await db.runTransaction(async (tx) => {
+      const snap = await tx.get(docRef);
+      const current: number = snap.exists ? (snap.data()!.count ?? 0) : 0;
+      const next = current + 1;
+      tx.set(docRef, {
+        uid,
+        featureType,
+        date: getToday(),
+        count: next,
+        updatedAt: FieldValue.serverTimestamp(),
+      }, { merge: true });
+      return next;
+    });
+
+    if (newCount > limit) {
       return { allowed: false, remaining: 0, limit };
     }
-    return { allowed: true, remaining: limit - current, limit };
+    return { allowed: true, remaining: limit - newCount, limit };
   } catch (e) {
-    console.error('[usage] Redis error:', e);
-    // Fail open on Redis errors
+    console.error('[usage] checkAndIncrementUsage error:', e);
+    // Fail open on errors — don't block the user due to DB issues
     return { allowed: true, remaining: limit, limit };
   }
 }
 
 export async function getUserUsageCount(uid: string, featureType: string): Promise<number> {
-  const client = getRedis();
-  if (!client) return 0;
   try {
-    const val = await client.get<number>(usageKey(uid, featureType));
-    return val ?? 0;
+    const db = getAdminDb();
+    const snap = await db.collection(USAGE_COLLECTION).doc(usageDocId(uid, featureType)).get();
+    return snap.exists ? (snap.data()!.count ?? 0) : 0;
   } catch {
     return 0;
   }
