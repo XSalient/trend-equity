@@ -16,7 +16,7 @@ export default defineConfig(({mode}) => {
   return {
     plugins: [react(), tailwindcss()],
     define: {
-      __FIREBASE_CONFIG__: firebaseConfigStr,
+      __FIREBASE_CONFIG__: JSON.stringify(firebaseConfigStr),
       ...(env.GEMINI_API_KEY && {
         'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
       }),
