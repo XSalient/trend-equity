@@ -6,5 +6,7 @@ declare const __FIREBASE_CONFIG__: string;
 const firebaseConfig = JSON.parse(__FIREBASE_CONFIG__);
 
 const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+export const db = firebaseConfig.firestoreDatabaseId
+  ? getFirestore(app, firebaseConfig.firestoreDatabaseId)
+  : getFirestore(app);
 export const auth = getAuth(app);
