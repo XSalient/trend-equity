@@ -6,6 +6,13 @@ coverage/
 *.log
 .env*
 !.env.example
+!.env.android
+# Android build artifacts and secrets (track the project, not these)
+android/.gradle/
+android/app/release/
+android/local.properties
+*.jks
+*.keystore
 firebase-applet-config.json
 PRD.md
 metadata.json
@@ -15,3 +22,4 @@ src/services/prompts.json
 .secrets_backup/
 playwright-report/
 test-results/
+.vercel

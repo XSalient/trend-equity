@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "478646198460",
+    "project_id": "trend-equity-63c48",
+    "storage_bucket": "trend-equity-63c48.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:478646198460:android:6081c8cc9143afaa4b30b9",
+        "android_client_info": {
+          "package_name": "org.trendequity.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCwrMJ3Due4B0ZWJf8PS_BLStMvcxUE30A"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
