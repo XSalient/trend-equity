@@ -4,9 +4,10 @@
     "module": "CommonJS",
     "moduleResolution": "node",
     "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
     "strict": true,
-    "outDir": ".vercel/output",
     "skipLibCheck": true
   },
-  "include": ["api/**/*"]
+  "include": ["**/*"],
+  "exclude": ["node_modules", "dist"]
 }
