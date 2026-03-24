@@ -51,8 +51,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const data = await generateWithGemini(
       `Perform deep-future simulation for: ${horizon}.`,
-      schema,
-      'You are a futurist and startup strategist.'
+      schema
     );
     await setCached(cacheKey, data);
     return res.json({ ...data, _usage: await buildUsageResponse(uid, tier, featureType) });

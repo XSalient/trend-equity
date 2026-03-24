@@ -28,8 +28,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const data = await generateWithGemini(
       'Perform a VC-grade market analysis. Provide 5 top trends, a core market shift, and 5 opportunity areas.',
-      radarSchema,
-      'You are a top-tier Venture Capital market analyst.'
+      radarSchema
     );
     await setCached(cacheKey, data);
     return res.json({ ...data, _usage: await buildUsageResponse(uid, tier, featureType) });
