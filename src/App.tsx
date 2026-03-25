@@ -173,16 +173,9 @@ export default function App() {
 
         <main className="max-w-3xl mx-auto px-4 py-8 space-y-8">
           {/* Intro Section */}
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <h2 className="text-3xl md:text-4xl font-bold tracking-tight leading-tight">
-                Today's <span className="text-emerald-400">Top {TIER_LIMITS[tier].dailyIdeas}</span> Ideas
-              </h2>
-              <p className="text-zinc-500 text-sm leading-relaxed max-w-xl">
-                {getDynamicIntro()}
-              </p>
-            </div>
-          </div>
+          <h2 className="text-4xl md:text-5xl font-black tracking-tight leading-[0.9] uppercase italic">
+            Today's <br /><span className="text-emerald-500">Top {TIER_LIMITS[tier].dailyIdeas}</span> Ideas
+          </h2>
 
           {/* Tabs */}
           <div className="flex flex-wrap gap-1 p-1 bg-zinc-900/60 border border-zinc-800/60 rounded-xl w-fit">
