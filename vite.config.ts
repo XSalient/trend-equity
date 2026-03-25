@@ -10,7 +10,7 @@ export default defineConfig(({mode}) => {
   // Firebase client config: prefer local file (dev), fall back to env var (CI/prod)
   const localConfigPath = path.resolve(__dirname, 'firebase-applet-config.json');
   const firebaseConfigStr = existsSync(localConfigPath)
-    ? readFileSync(localConfigPath, 'utf-8')
+    ? readFileSync(localConfigPath, 'utf-8').replace(/^\uFEFF/, '')
     : (env.FIREBASE_CONFIG ?? '{}');
 
   return {

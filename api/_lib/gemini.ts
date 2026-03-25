@@ -54,11 +54,15 @@ export const ideaSchema = {
     saturationLabel: { type: Type.STRING },
     heatBadge: { type: Type.STRING },
     nextSteps: { type: Type.ARRAY, items: { type: Type.STRING } },
+    marketSize: { type: Type.STRING },
+    competitorLandscape: { type: Type.STRING },
+    regulatoryFlags: { type: Type.STRING },
   },
   required: [
     'headline', 'pitch', 'vcJustification', 'categoryTags', 'costEffort',
     'revenuePotentialScore', 'revenueSkeleton', 'unfairAdvantage',
     'potentialExit', 'trendSources', 'saturationLabel', 'heatBadge', 'nextSteps',
+    'marketSize', 'competitorLandscape', 'regulatoryFlags',
   ],
 };
 

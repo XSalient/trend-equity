@@ -37,13 +37,13 @@ export const Header: React.FC<HeaderProps> = ({
             <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center">
               <TrendingUp className="w-5 h-5 text-white" />
             </div>
-            <h1 className="text-lg font-black tracking-tighter uppercase italic hidden sm:block">Trend Equity</h1>
+            <h1 className="text-base font-bold tracking-tight text-white hidden sm:block">Trend Equity</h1>
           </div>
           <div className="h-4 w-px bg-zinc-800 hidden sm:block" />
-          <div className="flex items-center gap-2 text-emerald-500">
+          <div className="flex items-center gap-1.5 text-zinc-500">
             <Calendar className="w-3.5 h-3.5" />
-            <span className="text-[10px] font-bold uppercase tracking-widest">
-              {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+            <span className="text-xs font-medium">
+              {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
             </span>
           </div>
         </div>

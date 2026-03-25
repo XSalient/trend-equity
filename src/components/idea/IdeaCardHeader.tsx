@@ -22,18 +22,18 @@ export const IdeaCardHeader: React.FC<IdeaCardHeaderProps> = ({
   return (
     <div className="flex justify-between items-start gap-4">
       <div className="space-y-1">
-        <div className="flex flex-wrap gap-2 items-center">
+        <div className="flex flex-wrap gap-1.5 items-center">
           {(idea.categoryTags || []).map(tag => (
-            <span key={tag} className="text-[10px] uppercase tracking-wider font-bold text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded">
+            <span key={tag} className="text-xs font-medium text-emerald-500 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20">
               {tag}
             </span>
           ))}
-          <span className="text-[10px] uppercase tracking-wider font-bold text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded flex items-center gap-1">
+          <span className="text-xs font-medium text-amber-400 bg-amber-500/10 px-2.5 py-0.5 rounded-full border border-amber-500/20 flex items-center gap-1">
             <Zap className="w-3 h-3" />
             {idea.heatBadge || 'Early Bird'}
           </span>
         </div>
-        <h3 className="text-xl font-bold text-white leading-tight group-hover:text-emerald-400 transition-colors">{idea.headline}</h3>
+        <h3 className="text-lg font-semibold text-white leading-snug group-hover:text-emerald-400 transition-colors">{idea.headline}</h3>
       </div>
       <div className="flex items-center gap-2">
         {onExport && (
@@ -68,7 +68,7 @@ export const IdeaCardHeader: React.FC<IdeaCardHeaderProps> = ({
                 </>
               ) : (
                 <div className="px-3 py-2 border-t border-zinc-800 mt-1">
-                  <p className="text-[9px] text-zinc-500 uppercase font-bold tracking-widest">Upgrade for Notion/GDocs</p>
+                  <p className="text-xs text-zinc-500">Upgrade for Notion/GDocs</p>
                 </div>
               )}
             </div>

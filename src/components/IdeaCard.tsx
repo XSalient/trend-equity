@@ -122,9 +122,9 @@ export const IdeaCard: React.FC<IdeaCardProps> = ({
       layout
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-zinc-900/50 border border-zinc-800 rounded-2xl overflow-hidden hover:border-zinc-700 transition-colors group"
+      className="bg-zinc-900/60 border border-zinc-800/80 rounded-2xl overflow-hidden hover:border-zinc-600/80 hover:shadow-lg hover:shadow-black/20 transition-all duration-200 group"
     >
-      <div className="p-5 md:p-6 space-y-4">
+      <div className="p-5 md:p-7 space-y-5">
         <IdeaCardHeader
           idea={idea}
           isSaved={isSaved}
@@ -135,29 +135,29 @@ export const IdeaCard: React.FC<IdeaCardProps> = ({
         />
 
         {/* Pitch */}
-        <div className="bg-zinc-800/30 p-4 rounded-xl border border-zinc-800/50">
-          <p className="text-zinc-300 text-sm leading-relaxed italic">
-            "{idea.pitch}"
+        <div className="pl-3 border-l-2 border-emerald-500/40">
+          <p className="text-zinc-300 text-sm leading-relaxed">
+            {idea.pitch}
           </p>
         </div>
 
         <IdeaCardStats idea={idea} />
 
         {/* Expandable Sections */}
-        <div className="space-y-2 pt-2 border-t border-zinc-800/50">
+        <div className="space-y-2 pt-2 border-t border-zinc-800/40">
           <div className="flex items-center gap-2">
             <button
               onClick={() => setIsExpanded(!isExpanded)}
-              className="flex-1 flex items-center justify-between text-xs font-bold text-zinc-400 hover:text-white transition-colors py-2 px-3 bg-zinc-800/30 rounded-lg"
+              className="flex-1 flex items-center justify-between text-sm font-medium text-zinc-400 hover:text-white transition-colors py-2.5 px-4 bg-zinc-800/40 hover:bg-zinc-800/70 rounded-xl border border-zinc-700/30 hover:border-zinc-600/50"
             >
-              {isExpanded ? 'HIDE VC ANALYSIS' : 'VIEW VC ANALYSIS & SOURCES'}
+              <span>{isExpanded ? 'Hide Analysis' : 'View VC Analysis & Sources'}</span>
               {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
             </button>
 
             {isBuilder && (
               <div className="flex items-center gap-2">
                 <button
-                  className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg transition-all shadow-lg shadow-emerald-900/20 disabled:opacity-50"
+                  className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-xl transition-all shadow-md shadow-emerald-900/30 disabled:opacity-50"
                   onClick={() => {
                     setIsExpanded(true);
                     if (idea.buildWithMe) setActiveToolkit(activeToolkit === 'build' ? null : 'build');
@@ -166,18 +166,18 @@ export const IdeaCard: React.FC<IdeaCardProps> = ({
                   disabled={isGeneratingBuild}
                 >
                   {isGeneratingBuild ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
-                  {idea.buildWithMe ? (activeToolkit === 'build' ? 'HIDE BUILD PACK' : 'VIEW BUILD PACK') : 'BUILD WITH ME'}
+                  {idea.buildWithMe ? (activeToolkit === 'build' ? 'Hide Build Pack' : 'Build Pack') : 'Build with me'}
                 </button>
                 <button
-                  className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-lg transition-all border ${vettingResult
-                    ? 'bg-amber-500/10 border-amber-500/30 text-amber-500'
-                    : 'bg-zinc-800/50 hover:bg-zinc-800 text-zinc-400 hover:text-white border-white/5'
+                  className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-xl transition-all border ${vettingResult
+                    ? 'bg-amber-500/10 border-amber-500/30 text-amber-400'
+                    : 'bg-zinc-800/50 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 border-zinc-700/50'
                     }`}
                   onClick={handleExpertVetting}
                   disabled={isVetting}
                 >
                   {isVetting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Shield className="w-4 h-4" />}
-                  {vettingResult ? 'VETTING COMPLETE' : 'EXPERT VETTING'}
+                  {vettingResult ? 'Vetting done' : 'Expert vetting'}
                 </button>
               </div>
             )}
@@ -227,23 +227,21 @@ export const IdeaCard: React.FC<IdeaCardProps> = ({
         </div>
 
         {/* Community & Collaboration Footer */}
-        <div className="pt-4 border-t border-zinc-900 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => {
-                if (!onUpdateIdea) return;
-                onUpdateIdea({ ...idea, seekingPartner: !idea.seekingPartner });
-              }}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest transition-all ${
-                idea.seekingPartner 
-                  ? 'bg-emerald-500 text-black border-transparent' 
-                  : 'bg-zinc-800 text-zinc-500 border border-zinc-700 hover:border-zinc-600'
-              }`}
-            >
-              <Users className="w-3 h-3" />
-              {idea.seekingPartner ? 'LOOKING FOR CO-FOUNDER' : 'FIND CO-FOUNDER'}
-            </button>
-          </div>
+        <div className="pt-3 border-t border-zinc-800/40 flex items-center justify-between">
+          <button
+            onClick={() => {
+              if (!onUpdateIdea) return;
+              onUpdateIdea({ ...idea, seekingPartner: !idea.seekingPartner });
+            }}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-medium transition-all ${
+              idea.seekingPartner
+                ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+                : 'text-zinc-500 border border-zinc-800 hover:border-zinc-600 hover:text-zinc-300'
+            }`}
+          >
+            <Users className="w-3.5 h-3.5" />
+            {idea.seekingPartner ? 'Seeking co-founder' : 'Find co-founder'}
+          </button>
         </div>
 
         <IdeaComments ideaId={idea.id} user={user} handleLogin={handleLogin} />

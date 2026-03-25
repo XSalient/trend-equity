@@ -49,6 +49,9 @@ export interface Idea {
   };
   expertVetting?: ExpertVetting;
   seekingPartner?: boolean;
+  marketSize?: string;
+  competitorLandscape?: string;
+  regulatoryFlags?: string;
 }
 
 export interface DailyGeneration {

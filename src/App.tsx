@@ -136,8 +136,8 @@ export default function App() {
           />
           <Rocket className="w-6 h-6 text-emerald-500 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
         </div>
-        <h2 className="mt-8 text-xl font-bold text-white tracking-tight italic uppercase">
-          Generating Daily VC Feed...
+        <h2 className="mt-8 text-xl font-semibold text-white tracking-tight">
+          Generating today's feed...
         </h2>
         <p className="mt-2 text-zinc-500 text-sm max-w-xs mx-auto">
           Our AI is scanning real-time signals from Google, X, and Reddit to find today's top {TIER_LIMITS[tier].dailyIdeas} opportunities.
@@ -174,62 +174,62 @@ export default function App() {
         <main className="max-w-3xl mx-auto px-4 py-8 space-y-8">
           {/* Intro Section */}
           <div className="space-y-4">
-            <div className="space-y-1">
-              <h2 className="text-4xl md:text-5xl font-black tracking-tight leading-[0.9] uppercase italic">
-                Today's <br /> <span className="text-emerald-500">Top {TIER_LIMITS[tier].dailyIdeas}</span> Ideas
+            <div className="space-y-2">
+              <h2 className="text-3xl md:text-4xl font-bold tracking-tight leading-tight">
+                Today's <span className="text-emerald-400">Top {TIER_LIMITS[tier].dailyIdeas}</span> Ideas
               </h2>
-              <p className="text-zinc-400 text-sm leading-relaxed max-w-xl">
+              <p className="text-zinc-500 text-sm leading-relaxed max-w-xl">
                 {getDynamicIntro()}
               </p>
             </div>
           </div>
 
           {/* Tabs */}
-          <div className="flex flex-wrap gap-2 p-1 bg-zinc-900 rounded-xl w-fit">
+          <div className="flex flex-wrap gap-1 p-1 bg-zinc-900/60 border border-zinc-800/60 rounded-xl w-fit">
             <button
               onClick={() => setActiveTab('feed')}
-              className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === 'feed' ? 'bg-zinc-800 text-white shadow-lg' : 'text-zinc-500 hover:text-zinc-300'}`}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'feed' ? 'bg-zinc-800 text-white shadow-md' : 'text-zinc-500 hover:text-zinc-300'}`}
             >
-              DAILY FEED
+              Daily Feed
             </button>
             <button
               onClick={() => setActiveTab('saved')}
-              className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === 'saved' ? 'bg-zinc-800 text-white shadow-lg' : 'text-zinc-500 hover:text-zinc-300'}`}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'saved' ? 'bg-zinc-800 text-white shadow-md' : 'text-zinc-500 hover:text-zinc-300'}`}
             >
-              SAVED ({userSaves.length}{tier === 'free' ? `/${TIER_LIMITS.free.monthlySaves}` : ''})
+              Saved {userSaves.length > 0 && <span className="ml-1 text-xs bg-zinc-700 text-zinc-300 px-1.5 py-0.5 rounded-full">{userSaves.length}{tier === 'free' ? `/${TIER_LIMITS.free.monthlySaves}` : ''}</span>}
             </button>
             {tier === 'builder' && (
               <button
                 onClick={() => setActiveTab('radar')}
-                className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === 'radar' ? 'bg-zinc-800 text-white shadow-lg' : 'text-zinc-500 hover:text-zinc-300'}`}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'radar' ? 'bg-zinc-800 text-white shadow-md' : 'text-zinc-500 hover:text-zinc-300'}`}
               >
-                WEEKLY RADAR
+                Radar
               </button>
             )}
             {tier === 'builder' && (
               <button
                 onClick={() => setActiveTab('future')}
-                className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === 'future' ? 'bg-zinc-800 text-white shadow-lg' : 'text-zinc-500 hover:text-zinc-300'}`}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'future' ? 'bg-zinc-800 text-white shadow-md' : 'text-zinc-500 hover:text-zinc-300'}`}
               >
-                FUTURECASTING
+                Futurecasting
               </button>
             )}
             {tier !== 'free' && (
               <button
                 onClick={() => setActiveTab('digest')}
-                className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === 'digest' ? 'bg-zinc-800 text-white shadow-lg' : 'text-zinc-500 hover:text-zinc-300'}`}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'digest' ? 'bg-zinc-800 text-white shadow-md' : 'text-zinc-500 hover:text-zinc-300'}`}
               >
-                DIGEST
+                Digest
               </button>
             )}
             <button
               onClick={() => setActiveTab('pro')}
-              className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === 'pro'
-                  ? 'bg-zinc-800 text-white shadow-lg'
-                  : tier === 'builder' ? 'text-zinc-500 hover:text-zinc-300' : 'text-emerald-500 hover:text-emerald-400'
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'pro'
+                  ? 'bg-zinc-800 text-white shadow-md'
+                  : tier === 'builder' ? 'text-zinc-500 hover:text-zinc-300' : 'text-emerald-400 hover:text-emerald-300'
                 }`}
             >
-              MANAGE PLAN
+              {tier === 'free' ? 'Upgrade' : 'Plan'}
             </button>
           </div>
 
@@ -294,7 +294,7 @@ export default function App() {
             <div className="bg-zinc-900/30 p-6 rounded-2xl border border-zinc-800/50 space-y-3">
               <div className="flex items-center gap-2 text-zinc-500">
                 <AlertCircle className="w-4 h-4" />
-                <span className="text-[10px] font-bold uppercase tracking-widest">Disclaimer</span>
+                <span className="text-xs font-medium">Disclaimer</span>
               </div>
               <p className="text-xs text-zinc-500 leading-relaxed italic">
                 {dailyGen?.disclaimer || "All ideas cite real signals. Inspiration only — do your own diligence."}

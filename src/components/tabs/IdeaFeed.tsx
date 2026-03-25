@@ -91,14 +91,14 @@ export const IdeaFeed: React.FC<IdeaFeedProps> = ({
               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-500 via-amber-500 to-emerald-500" />
               <Lock className="w-10 h-10 text-zinc-700 mx-auto" />
               <div className="space-y-2">
-                <h3 className="text-xl font-black uppercase italic tracking-tight">Unlock {dailyGen.ideas.length - TIER_LIMITS.free.dailyIdeas} More Ideas</h3>
+                <h3 className="text-xl font-bold tracking-tight">Unlock {dailyGen.ideas.length - TIER_LIMITS.free.dailyIdeas} more ideas</h3>
                 <p className="text-zinc-500 text-sm max-w-xs mx-auto">
                   Pro & Builder users get up to {TIER_LIMITS.builder.dailyIdeas} ideas daily, unlimited saves, and priority email digests.
                 </p>
               </div>
               <button
                 onClick={() => setActiveTab('pro')}
-                className="px-8 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-black uppercase italic tracking-widest rounded-full transition-all shadow-lg shadow-emerald-900/40"
+                className="px-8 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-full transition-all shadow-lg shadow-emerald-900/40"
               >
                 View Pricing
               </button>

@@ -2,6 +2,12 @@ import express from 'express';
 import dotenv from 'dotenv';
 import { GoogleGenAI, Type } from "@google/genai";
 import rateLimit from 'express-rate-limit';
+// Signals module loaded dynamically to support tsx ESM resolution
+let _signals: typeof import('./api/_lib/signals.ts') | null = null;
+async function getSignalsModule() {
+  if (!_signals) _signals = await import('./api/_lib/signals.ts');
+  return _signals;
+}
 
 dotenv.config();
 
@@ -174,12 +180,16 @@ const ideaSchema = {
     trendSources: { type: Type.ARRAY, items: { type: Type.STRING } },
     saturationLabel: { type: Type.STRING },
     heatBadge: { type: Type.STRING },
-    nextSteps: { type: Type.ARRAY, items: { type: Type.STRING } }
+    nextSteps: { type: Type.ARRAY, items: { type: Type.STRING } },
+    marketSize: { type: Type.STRING },
+    competitorLandscape: { type: Type.STRING },
+    regulatoryFlags: { type: Type.STRING },
   },
   required: [
     "headline", "pitch", "vcJustification", "categoryTags", "costEffort",
     "revenuePotentialScore", "revenueSkeleton", "unfairAdvantage",
-    "potentialExit", "trendSources", "saturationLabel", "heatBadge", "nextSteps"
+    "potentialExit", "trendSources", "saturationLabel", "heatBadge", "nextSteps",
+    "marketSize", "competitorLandscape", "regulatoryFlags",
   ]
 };
 
@@ -221,7 +231,15 @@ const radarSchema = {
 app.post('/api/generate/daily', async (req, res) => {
   const { date, country, countryCount } = req.body;
   try {
-    let promptStr = `Generate 35 business ideas for ${date}. Today context: ${date}.`;
+    // Pre-fetch live market signals to ground generation in real current data
+    const { fetchLiveSignals, formatSignalsForPrompt } = await getSignalsModule();
+    const signals = await fetchLiveSignals();
+    const signalContext = formatSignalsForPrompt(signals);
+
+    let promptStr = signalContext
+      ? `${signalContext}Generate 35 business ideas for ${date}. Today context: ${date}.`
+      : `Generate 35 business ideas for ${date}. Today context: ${date}.`;
+
     if (country && country !== 'Global' && countryCount > 0) {
       promptStr += ` Include exactly ${countryCount} ideas heavily tailored specifically for the market and demographics in ${country}. The rest should be global/US-centric as usual. Ensure the localized ideas explicitly include the exact string "Local Market" in their categoryTags array.`;
     }
@@ -249,19 +267,19 @@ app.post('/api/generate/daily', async (req, res) => {
           nextSteps: ["Define 3 core 'magic' tools | 2 weeks | Dev costs | Replit", "Build MVP waitlist | 1 week | Low traction | Beehiiv", "Onboard alpha testers | 4 weeks | Engagement | X"]
         },
         {
-          headline: "Autonomous Drone Delivery for Rural Pharmacies",
-          pitch: "Last-mile prescription delivery via autonomous drones for underserved rural communities.",
-          vcJustification: "Healthcare access gaps drive policy support and grant funding.",
-          categoryTags: ["HealthTech", "Hardware", "Deep-Tech/Moonshot"],
-          costEffort: "High Capital, High Technical",
-          revenuePotentialScore: 9,
-          revenueSkeleton: "Per-delivery fees plus pharmacy SaaS subscriptions.",
-          unfairAdvantage: "FAA exemption pipeline and partnerships with rural hospital networks.",
-          potentialExit: "Acquisition by Amazon Pharmacy or UPS Health.",
-          trendSources: ["FAA Drone Regulations 2026", "Rural Health Equity Report"],
-          saturationLabel: "Pre-Market",
-          heatBadge: "Hot",
-          nextSteps: ["Secure FAA Part 135 exemption | 12 weeks | Legal | FAA Portal", "Pilot with 3 rural pharmacies | 8 weeks | Partnerships | Cold outreach"]
+          headline: "AI Symptom-to-Supplement Recommendation Engine",
+          pitch: "A B2C app that maps chronic symptoms to evidence-backed supplement stacks, personalized by biomarkers and lifestyle inputs.",
+          vcJustification: "The $180B supplement industry is plagued by consumer confusion; personalization commands 3x average order value.",
+          categoryTags: ["HealthTech", "AI", "Consumer Apps"],
+          costEffort: "Low Capital, Medium Technical",
+          revenuePotentialScore: 8,
+          revenueSkeleton: "Freemium at $12/mo plus affiliate commissions from supplement partners.",
+          unfairAdvantage: "Proprietary symptom-supplement mapping trained on PubMed abstracts with user outcome feedback loops.",
+          potentialExit: "Acquisition by Thorne, Ritual, or Care/of.",
+          trendSources: ["Global Wellness Institute Report 2026"],
+          saturationLabel: "Early Adopter Stage",
+          heatBadge: "Trending",
+          nextSteps: ["Build symptom intake + recommendation engine | 3 weeks | Replit + Gemini API", "Onboard 5 affiliate supplement brands | 2 weeks | Cold email"]
         },
         {
           headline: "Green Subscription Boxes for Gen-Z",
@@ -339,19 +357,19 @@ app.post('/api/generate/daily', async (req, res) => {
           nextSteps: ["Train voice models for top 5 regional languages | 6 weeks | ML | GCP", "Partner with 3 regional e-commerce platforms | 4 weeks | BD | Email"]
         },
         {
-          headline: "Peer-to-Peer EV Charging Network",
-          pitch: "A platform that lets homeowners rent out their EV chargers to nearby drivers, Airbnb-style.",
-          vcJustification: "EV adoption is outpacing charging infrastructure 4:1.",
-          categoryTags: ["Hardware", "Service/Local/On-Demand", "Climate/Sustainability"],
-          costEffort: "Medium Capital, Medium Technical",
+          headline: "White-Label Carbon Offset Widget for DTC Brands",
+          pitch: "A plug-and-play Shopify/WooCommerce widget that adds carbon offsetting at checkout, auto-calculating shipping emissions and routing funds to verified projects.",
+          vcJustification: "73% of Gen-Z consumers prefer sustainable brands; DTC founders want low-effort ESG signals without engineering overhead.",
+          categoryTags: ["Climate/Sustainability", "SaaS", "FinTech"],
+          costEffort: "Low Capital, Medium Technical",
           revenuePotentialScore: 8,
-          revenueSkeleton: "20% platform fee on each charging session.",
-          unfairAdvantage: "Smart pricing algorithm based on grid demand and local EV density.",
-          potentialExit: "Acquisition by ChargePoint, Tesla, or Shell Recharge.",
-          trendSources: ["IEA Global EV Outlook 2026"],
+          revenueSkeleton: "8% platform fee on offset purchases plus $49/mo SaaS for premium analytics.",
+          unfairAdvantage: "One-click Shopify plugin with pre-vetted offset project network — zero merchant dev work required.",
+          potentialExit: "Acquisition by Stripe, Shopify, or EcoVadis.",
+          trendSources: ["Shopify Sustainability Report 2026"],
           saturationLabel: "Early Adopter Stage",
-          heatBadge: "Hot",
-          nextSteps: ["Build IoT smart lock for chargers | 6 weeks | Hardware | Arduino", "Launch in 3 high-EV-density neighborhoods | 4 weeks | Geo-targeted ads"]
+          heatBadge: "Trending",
+          nextSteps: ["Build Shopify app + emissions calculator | 3 weeks | Node.js", "Get listed on Shopify App Store | 1 week | Submission"]
         },
         {
           headline: "Local Artisan Marketplace with AR Try-On",
@@ -369,19 +387,19 @@ app.post('/api/generate/daily', async (req, res) => {
           nextSteps: ["Onboard 50 local artisans | 3 weeks | Outreach | Instagram DMs", "Build WebAR try-on prototype | 5 weeks | Dev | Three.js"]
         },
         {
-          headline: "Neighborhood Micro-Investment Platform",
-          pitch: "Let residents invest small amounts ($50-$500) in local businesses like cafes, gyms, and shops in exchange for revenue share and perks.",
-          vcJustification: "Community-driven finance is surging as trust in traditional banking erodes.",
-          categoryTags: ["FinTech", "Service/Local/On-Demand", "Local Market"],
-          costEffort: "High Capital, Medium Technical",
+          headline: "AI Menu Optimizer for Independent Restaurants",
+          pitch: "A SaaS tool that connects to POS systems and analyzes sales data, food costs, and local trends to recommend menu pruning, dynamic pricing, and seasonal specials.",
+          vcJustification: "Independent restaurants lack the analytics infrastructure of chains; food cost control is the #1 lever on profitability.",
+          categoryTags: ["AI", "SaaS", "Service/Local/On-Demand"],
+          costEffort: "Low Capital, Medium Technical",
           revenuePotentialScore: 8,
-          revenueSkeleton: "2.5% platform fee on investments plus premium business analytics tier.",
-          unfairAdvantage: "Hyperlocal trust graph built from neighborhood social data.",
-          potentialExit: "Acquisition by Republic, Wefunder, or Block (Square).",
-          trendSources: ["Community Finance Survey 2026", "SEC Reg CF Updates"],
+          revenueSkeleton: "$99-$299/mo SaaS per restaurant location.",
+          unfairAdvantage: "Pre-built integrations with Square and Toast POS — data flows in on day one with no manual entry.",
+          potentialExit: "Acquisition by Toast, Square, or OpenTable.",
+          trendSources: ["National Restaurant Association Tech Report 2026"],
           saturationLabel: "Low Competition",
-          heatBadge: "Hot",
-          nextSteps: ["Obtain SEC Reg CF compliance | 8 weeks | Legal | Attorney", "Pilot in 2 neighborhoods with 10 businesses each | 6 weeks | Outreach"]
+          heatBadge: "Trending",
+          nextSteps: ["Build Square POS integration + cost dashboard | 3 weeks | Square API", "Onboard 10 restaurants via local restaurant owner Facebook groups | 2 weeks"]
         }
       ],
       disclaimer: "These are illustrative ideas based on recent market shifts. Do your own diligence."
