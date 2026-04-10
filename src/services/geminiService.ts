@@ -46,7 +46,7 @@ export async function generateDailyIdeas(date: string, country?: string, country
   const response = await fetch(`${API_BASE}/api/generate/daily`, {
     method: 'POST',
     headers: authHeaders(),
-    body: JSON.stringify({ date, country, countryCount })
+    body: JSON.stringify({ date, country, countryCount, ...authBody() })
   });
   if (!response.ok) throw new Error('Failed to generate ideas');
   return response.json();

@@ -42,10 +42,11 @@ export const IdeaFeed: React.FC<IdeaFeedProps> = ({
   handleLogin
 }) => {
   const allIdeas = dailyGen?.ideas || [];
-  const filteredIdeas = getFilteredIdeas(allIdeas).slice(0, TIER_LIMITS[tier].dailyIdeas);
-  const hasActiveFilters = filters.industries.length > 0 || filters.productTypes.length > 0 || 
-    filters.riskLevels.length > 0 || filters.effortLevels.length > 0 || 
-    filters.marketFocus.length > 0 || filters.teamSize.length > 0 || 
+  const tierIdeas = allIdeas.slice(0, TIER_LIMITS[tier].dailyIdeas);
+  const filteredIdeas = getFilteredIdeas(tierIdeas);
+  const hasActiveFilters = filters.industries.length > 0 || filters.productTypes.length > 0 ||
+    filters.riskLevels.length > 0 || filters.effortLevels.length > 0 ||
+    filters.marketFocus.length > 0 || filters.teamSize.length > 0 ||
     filters.customKeywords.length > 0;
 
   return (
@@ -57,7 +58,7 @@ export const IdeaFeed: React.FC<IdeaFeedProps> = ({
         onExportCSV={onExportCSV}
         onExportPDF={onExportPDF}
         resultCount={hasActiveFilters ? filteredIdeas.length : undefined}
-        totalCount={hasActiveFilters ? Math.min(allIdeas.length, TIER_LIMITS[tier].dailyIdeas) : undefined}
+        totalCount={hasActiveFilters ? tierIdeas.length : undefined}
       />
 
       {loading ? (

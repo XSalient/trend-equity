@@ -115,7 +115,7 @@ export function useIdeas(user: User | null, tier: Tier, authReady: boolean) {
     } finally {
       setGenerating(false);
     }
-  }, [today, generating, tier]);
+  }, [today, tier]);
 
   const fetchDaily = useCallback(async (isRetry = false) => {
     if (!isRetry) setLoading(true);

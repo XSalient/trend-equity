@@ -135,7 +135,7 @@ async function generateWithGemini(prompt: string, schema?: any, systemInstructio
   if (!apiKey) throw new Error("GEMINI_API_KEY missing from environment.");
 
   const ai = new GoogleGenAI({ apiKey });
-  const modelToUse = "gemini-3-flash-preview";
+  const modelToUse = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
 
   try {
     const response = await ai.models.generateContent({
