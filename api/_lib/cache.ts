@@ -52,3 +52,38 @@ export async function setCached(key: string, value: any): Promise<void> {
     console.error('[cache] setCached error:', e);
   }
 }
+
+/**
+ * Returns headline strings from daily_generations docs for the `lookbackDays`
+ * days immediately before `excludeDate` (ISO yyyy-mm-dd). Used to build a
+ * deduplication block so the AI doesn't repeat recent idea spaces.
+ */
+export async function getRecentIdeaHeadlines(excludeDate: string, lookbackDays = 3): Promise<string[]> {
+  try {
+    const db = getAdminDb();
+    const base = new Date(excludeDate);
+    const headlines: string[] = [];
+
+    const fetches = Array.from({ length: lookbackDays }, (_, i) => {
+      const d = new Date(base);
+      d.setDate(base.getDate() - (i + 1));
+      const key = d.toISOString().split('T')[0];
+      return db.collection('daily_generations').doc(key).get();
+    });
+
+    const snaps = await Promise.all(fetches);
+    for (const snap of snaps) {
+      if (!snap.exists) continue;
+      const data = snap.data();
+      if (Array.isArray(data?.ideas)) {
+        for (const idea of data.ideas) {
+          if (idea?.headline) headlines.push(idea.headline as string);
+        }
+      }
+    }
+    return headlines;
+  } catch (e) {
+    console.error('[cache] getRecentIdeaHeadlines error:', e);
+    return [];
+  }
+}

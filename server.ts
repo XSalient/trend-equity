@@ -16,6 +16,15 @@ const port = process.env.PORT || 3001;
 
 app.use(express.json());
 
+const DEFAULT_SYSTEM_PROMPT = `You are Trend-Equity's principal venture scout — a seasoned analyst with deep expertise in early-stage VC, product strategy, and emerging markets. Your mission: surface business ideas that serious founders and investors would act on today.
+
+QUALITY STANDARDS — every idea must pass all three tests:
+1. SIGNAL-GROUNDED: Cite a specific, verifiable market event, data point, or regulatory shift from 2025–2026 in trendSources. Generic trends ("AI is growing") are not acceptable.
+2. NON-OBVIOUS: Target second or third-order opportunities created by the trend — not the obvious direct play. If everyone sees the trend, find the problem it creates that nobody is solving yet.
+3. STRUCTURAL EDGE: The unfairAdvantage field must describe a real, defensible moat — proprietary data, regulatory position, distribution lock-in, or network effects. "Better UX" and "first mover advantage" are not moats.
+
+OUTPUT FORMAT: Respond with valid JSON matching the provided schema exactly. No markdown, no commentary outside the JSON.`;
+
 // Load prompts with fallback
 let localPrompts = { SYSTEM_PROMPT: '' };
 try {
@@ -26,7 +35,7 @@ try {
   console.log('--- Notice: No local prompts.json found. Relying on environment variables. ---');
 }
 
-const SYSTEM_PROMPT = process.env.SYSTEM_PROMPT || localPrompts.SYSTEM_PROMPT;
+const SYSTEM_PROMPT = process.env.SYSTEM_PROMPT || localPrompts.SYSTEM_PROMPT || DEFAULT_SYSTEM_PROMPT;
 
 // --- Rate Limiting (Strategy C: IP-based shield) ---
 
@@ -237,173 +246,18 @@ app.post('/api/generate/daily', async (req, res) => {
     const signalContext = formatSignalsForPrompt(signals);
 
     let promptStr = signalContext
-      ? `${signalContext}Generate 35 business ideas for ${date}. Today context: ${date}.`
-      : `Generate 35 business ideas for ${date}. Today context: ${date}.`;
+      ? `${signalContext}\nUsing the live market signals above as your PRIMARY source, generate exactly 35 high-conviction business ideas for ${date}.\n\nREQUIREMENTS:\n- Every idea MUST cite ≥1 specific signal in trendSources — include the actual data point, not just the source name\n- Identify SECOND-ORDER opportunities: what problem does each trending signal CREATE that is currently undersolved?\n- Enforce sector diversity: no more than 3 ideas from any single sector (AI/ML, FinTech, HealthTech, EdTech, CleanTech, Consumer, B2B SaaS, Marketplace, PropTech, AgriTech, LegalTech, etc.)\n- The unfairAdvantage field must describe a STRUCTURAL edge (proprietary data, regulatory moat, distribution lock-in, network effects) — never "better UX" or "first mover"\n- Cover all effort levels: at least 8 ideas buildable solo in under 6 weeks, at least 8 requiring a small team, the rest for well-funded teams\n- At least 20% of ideas should address markets outside the US\n- AVOID: generic AI assistants without proprietary data, basic CRUD SaaS, copycat marketplaces without structural differentiation`
+      : `Generate exactly 35 high-conviction business ideas for ${date}.\n\nREQUIREMENTS:\n- Enforce sector diversity: no more than 3 ideas from any single sector\n- Each idea must have a STRUCTURAL unfair advantage (proprietary data, regulatory moat, distribution lock-in, network effects)\n- Cover all effort levels: mix of solo-buildable, small team, and well-funded team ideas\n- At least 20% of ideas should address markets outside the US\n- AVOID: generic AI assistants without proprietary data, basic CRUD SaaS, copycat marketplaces without structural differentiation`;
 
     if (country && country !== 'Global' && countryCount > 0) {
-      promptStr += ` Include exactly ${countryCount} ideas heavily tailored specifically for the market and demographics in ${country}. The rest should be global/US-centric as usual. Ensure the localized ideas explicitly include the exact string "Local Market" in their categoryTags array.`;
+      promptStr += ` Include exactly ${countryCount} ideas heavily tailored for the market and demographics in ${country}. Ensure those ideas include the exact string "Local Market" in their categoryTags array.`;
     }
 
     const data = await generateWithGemini(promptStr, responseSchema);
     res.json(data);
   } catch (err: any) {
-    console.error("Daily Generation Error (Falling back to mock):", err);
-    res.json({
-      intro: "Welcome to Trend-Equity. (Currently using cached market signals due to high demand)",
-      ideas: [
-        {
-          headline: "AI-Powered Micro-SaaS for Niche Content Creators",
-          pitch: "A suite of specific AI tools for newsletter authors and small-scale publishers to automate research and cross-platform promotion.",
-          vcJustification: "Strong tailwinds in the solo-creator economy and high willingness to pay for productivity tools.",
-          categoryTags: ["AI", "SaaS", "Creator Economy"],
-          costEffort: "Low Capital, Medium Technical",
-          revenuePotentialScore: 8,
-          revenueSkeleton: "Tiered subscription model based on usage volume.",
-          unfairAdvantage: "Proprietary fine-tuning on creator-specific content datasets.",
-          potentialExit: "Acquisition by larger creator platforms (Substack, Beehiiv).",
-          trendSources: ["Substack Growth Statistics 2026"],
-          saturationLabel: "Early Adopter Stage",
-          heatBadge: "Trending",
-          nextSteps: ["Define 3 core 'magic' tools | 2 weeks | Dev costs | Replit", "Build MVP waitlist | 1 week | Low traction | Beehiiv", "Onboard alpha testers | 4 weeks | Engagement | X"]
-        },
-        {
-          headline: "AI Symptom-to-Supplement Recommendation Engine",
-          pitch: "A B2C app that maps chronic symptoms to evidence-backed supplement stacks, personalized by biomarkers and lifestyle inputs.",
-          vcJustification: "The $180B supplement industry is plagued by consumer confusion; personalization commands 3x average order value.",
-          categoryTags: ["HealthTech", "AI", "Consumer Apps"],
-          costEffort: "Low Capital, Medium Technical",
-          revenuePotentialScore: 8,
-          revenueSkeleton: "Freemium at $12/mo plus affiliate commissions from supplement partners.",
-          unfairAdvantage: "Proprietary symptom-supplement mapping trained on PubMed abstracts with user outcome feedback loops.",
-          potentialExit: "Acquisition by Thorne, Ritual, or Care/of.",
-          trendSources: ["Global Wellness Institute Report 2026"],
-          saturationLabel: "Early Adopter Stage",
-          heatBadge: "Trending",
-          nextSteps: ["Build symptom intake + recommendation engine | 3 weeks | Replit + Gemini API", "Onboard 5 affiliate supplement brands | 2 weeks | Cold email"]
-        },
-        {
-          headline: "Green Subscription Boxes for Gen-Z",
-          pitch: "Monthly curated sustainable product boxes with carbon-offset tracking and social sharing built in.",
-          vcJustification: "Gen-Z spending on sustainable goods is growing 3x faster than general retail.",
-          categoryTags: ["Consumer Apps", "Climate/Sustainability"],
-          costEffort: "Medium Capital, Low Technical",
-          revenuePotentialScore: 7,
-          revenueSkeleton: "Monthly subscriptions at $29-$49/mo with 60% margins on curated goods.",
-          unfairAdvantage: "TikTok-native unboxing virality engine.",
-          potentialExit: "Acquisition by Grove Collaborative or Thrive Market.",
-          trendSources: ["Deloitte Gen-Z Sustainability Survey 2026"],
-          saturationLabel: "Growing",
-          heatBadge: "Warm",
-          nextSteps: ["Source 10 sustainable brands | 3 weeks | Partnerships | LinkedIn", "Launch TikTok pre-order campaign | 2 weeks | Low | TikTok Ads"]
-        },
-        {
-          headline: "AI Study Buddy for Competitive Exam Prep",
-          pitch: "A personalized AI tutor that adapts to individual learning patterns for national competitive exams.",
-          vcJustification: "Massive TAM in education-focused markets with high willingness to pay for exam prep.",
-          categoryTags: ["EdTech", "AI", "Local Market"],
-          costEffort: "Medium Capital, Medium Technical",
-          revenuePotentialScore: 8,
-          revenueSkeleton: "Freemium with premium tiers at $15-$30/month.",
-          unfairAdvantage: "Proprietary question bank trained on decade of past exam data.",
-          potentialExit: "Acquisition by Byju's, Unacademy, or Chegg.",
-          trendSources: ["EdTech Market Report 2026", "National Education Statistics"],
-          saturationLabel: "Growing",
-          heatBadge: "Trending",
-          nextSteps: ["Build question bank for top 3 exams | 4 weeks | Dev | OpenAI API", "Beta launch with 500 students | 6 weeks | Marketing | Instagram"]
-        },
-        {
-          headline: "Hyperlocal Food Waste Marketplace",
-          pitch: "A marketplace connecting restaurants and grocery stores with surplus food to budget-conscious consumers at 70% discounts.",
-          vcJustification: "Food waste regulation is tightening globally, creating compliance-driven demand.",
-          categoryTags: ["Service/Local/On-Demand", "Climate/Sustainability", "Local Market"],
-          costEffort: "Low Capital, Medium Technical",
-          revenuePotentialScore: 7,
-          revenueSkeleton: "15% commission on each transaction plus premium restaurant listings.",
-          unfairAdvantage: "Real-time inventory integration with POS systems.",
-          potentialExit: "Acquisition by DoorDash, Too Good To Go, or Uber Eats.",
-          trendSources: ["EU Food Waste Directive 2026", "USDA Food Loss Report"],
-          saturationLabel: "Early Adopter Stage",
-          heatBadge: "Warm",
-          nextSteps: ["Partner with 20 local restaurants | 3 weeks | Outreach | Google Maps", "Build mobile app MVP | 4 weeks | Dev costs | Flutter"]
-        },
-        {
-          headline: "B2B Carbon Credit Verification Platform",
-          pitch: "An AI-powered platform that automates carbon credit verification and trading for mid-market enterprises.",
-          vcJustification: "Carbon markets are projected to reach $50B by 2030 with increasing regulatory pressure.",
-          categoryTags: ["FinTech", "Climate/Sustainability", "SaaS"],
-          costEffort: "High Capital, High Technical",
-          revenuePotentialScore: 9,
-          revenueSkeleton: "Per-verification fees plus annual platform subscriptions.",
-          unfairAdvantage: "Satellite imagery AI that detects greenwashing in real-time.",
-          potentialExit: "IPO or acquisition by Bloomberg or Refinitiv.",
-          trendSources: ["World Bank Carbon Pricing Report 2026"],
-          saturationLabel: "Low Competition",
-          heatBadge: "Hot",
-          nextSteps: ["Build satellite data pipeline | 8 weeks | Heavy Dev | AWS", "Pilot with 5 mid-market companies | 6 weeks | Sales | LinkedIn"]
-        },
-        {
-          headline: "Regional Language Voice Commerce Assistant",
-          pitch: "A voice-first shopping assistant that lets users browse and buy from local e-commerce in their native regional language.",
-          vcJustification: "Voice commerce is the fastest-growing channel in multilingual markets.",
-          categoryTags: ["AI", "Consumer Apps", "Local Market"],
-          costEffort: "Medium Capital, High Technical",
-          revenuePotentialScore: 8,
-          revenueSkeleton: "Affiliate commissions plus premium merchant partnerships.",
-          unfairAdvantage: "Fine-tuned ASR models for underserved regional dialects.",
-          potentialExit: "Acquisition by Amazon Alexa or Google Assistant.",
-          trendSources: ["Voice Commerce Trends 2026", "Regional Internet Adoption Report"],
-          saturationLabel: "Pre-Market",
-          heatBadge: "Trending",
-          nextSteps: ["Train voice models for top 5 regional languages | 6 weeks | ML | GCP", "Partner with 3 regional e-commerce platforms | 4 weeks | BD | Email"]
-        },
-        {
-          headline: "White-Label Carbon Offset Widget for DTC Brands",
-          pitch: "A plug-and-play Shopify/WooCommerce widget that adds carbon offsetting at checkout, auto-calculating shipping emissions and routing funds to verified projects.",
-          vcJustification: "73% of Gen-Z consumers prefer sustainable brands; DTC founders want low-effort ESG signals without engineering overhead.",
-          categoryTags: ["Climate/Sustainability", "SaaS", "FinTech"],
-          costEffort: "Low Capital, Medium Technical",
-          revenuePotentialScore: 8,
-          revenueSkeleton: "8% platform fee on offset purchases plus $49/mo SaaS for premium analytics.",
-          unfairAdvantage: "One-click Shopify plugin with pre-vetted offset project network — zero merchant dev work required.",
-          potentialExit: "Acquisition by Stripe, Shopify, or EcoVadis.",
-          trendSources: ["Shopify Sustainability Report 2026"],
-          saturationLabel: "Early Adopter Stage",
-          heatBadge: "Trending",
-          nextSteps: ["Build Shopify app + emissions calculator | 3 weeks | Node.js", "Get listed on Shopify App Store | 1 week | Submission"]
-        },
-        {
-          headline: "Local Artisan Marketplace with AR Try-On",
-          pitch: "An e-commerce platform for local artisans featuring AR-powered product visualization for handmade goods.",
-          vcJustification: "The handmade goods market is booming as consumers shift away from mass production.",
-          categoryTags: ["Consumer Apps", "Local Market"],
-          costEffort: "Medium Capital, Medium Technical",
-          revenuePotentialScore: 7,
-          revenueSkeleton: "12% marketplace commission plus premium storefront subscriptions.",
-          unfairAdvantage: "AR pipeline that works on low-end devices without app download.",
-          potentialExit: "Acquisition by Etsy or Shopify.",
-          trendSources: ["Handmade Economy Report 2026", "AR Commerce Trends"],
-          saturationLabel: "Growing",
-          heatBadge: "Warm",
-          nextSteps: ["Onboard 50 local artisans | 3 weeks | Outreach | Instagram DMs", "Build WebAR try-on prototype | 5 weeks | Dev | Three.js"]
-        },
-        {
-          headline: "AI Menu Optimizer for Independent Restaurants",
-          pitch: "A SaaS tool that connects to POS systems and analyzes sales data, food costs, and local trends to recommend menu pruning, dynamic pricing, and seasonal specials.",
-          vcJustification: "Independent restaurants lack the analytics infrastructure of chains; food cost control is the #1 lever on profitability.",
-          categoryTags: ["AI", "SaaS", "Service/Local/On-Demand"],
-          costEffort: "Low Capital, Medium Technical",
-          revenuePotentialScore: 8,
-          revenueSkeleton: "$99-$299/mo SaaS per restaurant location.",
-          unfairAdvantage: "Pre-built integrations with Square and Toast POS — data flows in on day one with no manual entry.",
-          potentialExit: "Acquisition by Toast, Square, or OpenTable.",
-          trendSources: ["National Restaurant Association Tech Report 2026"],
-          saturationLabel: "Low Competition",
-          heatBadge: "Trending",
-          nextSteps: ["Build Square POS integration + cost dashboard | 3 weeks | Square API", "Onboard 10 restaurants via local restaurant owner Facebook groups | 2 weeks"]
-        }
-      ],
-      disclaimer: "These are illustrative ideas based on recent market shifts. Do your own diligence."
-    });
+    console.error("Daily Generation Error:", err);
+    res.status(503).json({ error: 'AI generation temporarily unavailable. Please try again later.' });
   }
 });
 
@@ -437,16 +291,8 @@ app.post('/api/generate/radar', featureLimiter, async (req, res) => {
     setCached(cacheKey, data);
     res.json({ ...data, _usage: buildUsageResponse(uid, tier, featureType) });
   } catch (err: any) {
-    console.error("Radar Error (Falling back to mock):", err);
-    res.json({
-      week: "March 2026",
-      topTrends: [
-        { title: "Autonomous Grid Balancers", description: "AI-driven local energy storage and distribution optimization.", impact: "High", sector: "Energy" },
-        { title: "Verticalized AI Law Assistants", description: "Hyper-specialized LLMs for specific niche legal code (e.g., Maritime Law).", impact: "Medium", sector: "LegalTech" }
-      ],
-      marketShift: "Transition from 'Chat-based AI' to 'Agentic-native Workflows' across all B2B sectors.",
-      opportunityAreas: ["Micro-storage systems", "Privacy-first training data sets", "Agent orchestration layers"]
-    });
+    console.error("Radar Error:", err);
+    res.status(503).json({ error: 'AI generation temporarily unavailable. Please try again later.' });
   }
 });
 
@@ -502,14 +348,8 @@ app.post('/api/generate/futurecasting', featureLimiter, async (req, res) => {
     setCached(cacheKey, data);
     res.json({ ...data, _usage: buildUsageResponse(uid, tier, featureType) });
   } catch (err: any) {
-    console.error("Futurecasting Error (Falling back to mock):", err);
-    res.json({
-      horizon: horizon || '2030',
-      predictions: [
-        { title: "Personal AI Companionship Market Peaks", probability: 85, rationale: "Saturation of loneliness-driven tech in urban centers.", winners: ["Personalized LLM providers"], losers: ["Generic social media apps"] }
-      ],
-      paradigmShifts: ["Post-labor economy in service sectors", "Ubiquitous AR integration"]
-    });
+    console.error("Futurecasting Error:", err);
+    res.status(503).json({ error: 'AI generation temporarily unavailable. Please try again later.' });
   }
 });
 

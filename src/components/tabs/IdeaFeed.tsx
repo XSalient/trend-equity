@@ -1,5 +1,5 @@
 import React from 'react';
-import { Lock } from 'lucide-react';
+import { Lock, RefreshCw, AlertCircle } from 'lucide-react';
 import { Idea, DailyGeneration, FilterState, UserSave, Tier } from '../../types';
 import { IdeaCard } from '../IdeaCard';
 import { FilterBar } from '../FilterBar';
@@ -19,6 +19,7 @@ interface IdeaFeedProps {
   getFilteredIdeas: (ideas: Idea[]) => Idea[];
   exportToPDF: (idea: Idea, format: string) => void;
   setActiveTab: (tab: any) => void;
+  triggerGeneration: () => void;
   loading?: boolean;
   user: any;
   handleLogin: () => void;
@@ -37,6 +38,7 @@ export const IdeaFeed: React.FC<IdeaFeedProps> = ({
   getFilteredIdeas,
   exportToPDF,
   setActiveTab,
+  triggerGeneration,
   loading,
   user,
   handleLogin
@@ -63,6 +65,23 @@ export const IdeaFeed: React.FC<IdeaFeedProps> = ({
 
       {loading ? (
         <IdeaFeedSkeleton />
+      ) : !dailyGen ? (
+        <div className="p-10 bg-zinc-900/50 border border-zinc-800 rounded-2xl text-center space-y-4">
+          <AlertCircle className="w-10 h-10 text-zinc-600 mx-auto" />
+          <div className="space-y-1">
+            <p className="text-zinc-300 font-semibold">Today's ideas couldn't be generated</p>
+            <p className="text-zinc-500 text-sm max-w-xs mx-auto">
+              The AI service is temporarily unavailable. This is usually resolved within a few minutes.
+            </p>
+          </div>
+          <button
+            onClick={triggerGeneration}
+            className="inline-flex items-center gap-2 px-5 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-white text-sm font-medium rounded-full transition-all"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+            Try Again
+          </button>
+        </div>
       ) : (
         <>
           {filteredIdeas.length === 0 && hasActiveFilters ? (

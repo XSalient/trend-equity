@@ -33,15 +33,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     await setCached(cacheKey, data);
     return res.json({ ...data, _usage: await buildUsageResponse(uid, tier, featureType) });
   } catch (err: any) {
-    console.error('Radar Error (Falling back to mock):', err);
-    return res.json({
-      week: 'March 2026',
-      topTrends: [
-        { title: 'Autonomous Grid Balancers', description: 'AI-driven local energy storage and distribution optimization.', impact: 'High', sector: 'Energy' },
-        { title: 'Verticalized AI Law Assistants', description: 'Hyper-specialized LLMs for niche legal code.', impact: 'Medium', sector: 'LegalTech' },
-      ],
-      marketShift: "Transition from 'Chat-based AI' to 'Agentic-native Workflows' across all B2B sectors.",
-      opportunityAreas: ['Micro-storage systems', 'Privacy-first training data sets', 'Agent orchestration layers'],
-    });
+    console.error('Radar Error:', err);
+    return res.status(503).json({ error: 'AI generation temporarily unavailable. Please try again later.' });
   }
 }

@@ -19,6 +19,7 @@ import { useAuth } from './hooks/useAuth';
 import { useTier } from './hooks/useTier';
 import { useAlerts } from './hooks/useAlerts';
 import { useIdeas } from './hooks/useIdeas';
+import { useWeeklyBest } from './hooks/useWeeklyBest';
 
 // --- Components ---
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -31,6 +32,7 @@ import { ApiAccessModal } from './components/builder/ApiAccessModal';
 
 // --- Tab Views ---
 import { IdeaFeed } from './components/tabs/IdeaFeed';
+import { WeeklyBestTab } from './components/tabs/WeeklyBest';
 import { WeeklyRadarTab } from './components/tabs/WeeklyRadar';
 import { FuturecastingTab } from './components/tabs/Futurecasting';
 import { EmailDigestTab } from './components/tabs/EmailDigest';
@@ -69,7 +71,8 @@ export default function App() {
     setCurrentTier(tier);
   }, [tier]);
 
-  const [activeTab, setActiveTab] = useState<'feed' | 'saved' | 'pro' | 'radar' | 'future' | 'digest'>('feed');
+  const [activeTab, setActiveTab] = useState<'feed' | 'saved' | 'weekly' | 'pro' | 'radar' | 'future' | 'digest'>('feed');
+  const { weeklyBest, loading: loadingWeekly, error: errorWeekly, fetched: fetchedWeekly, fetchWeeklyBest } = useWeeklyBest();
   const [weeklyRadar, setWeeklyRadar] = useState<WeeklyTrendRadar | null>(null);
   const [futurecasting, setFuturecasting] = useState<Futurecasting | null>(null);
   const [loadingRadar, setLoadingRadar] = useState(false);
@@ -191,6 +194,12 @@ export default function App() {
             >
               Saved {userSaves.length > 0 && <span className="ml-1 text-xs bg-zinc-700 text-zinc-300 px-1.5 py-0.5 rounded-full">{userSaves.length}{tier === 'free' ? `/${TIER_LIMITS.free.monthlySaves}` : ''}</span>}
             </button>
+            <button
+              onClick={() => setActiveTab('weekly')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'weekly' ? 'bg-zinc-800 text-white shadow-md' : 'text-zinc-500 hover:text-zinc-300'}`}
+            >
+              Weekly Best
+            </button>
             {tier === 'builder' && (
               <button
                 onClick={() => setActiveTab('radar')}
@@ -229,7 +238,7 @@ export default function App() {
           {/* Feed Content */}
           <div className="space-y-6">
             {activeTab === 'feed' ? (
-              <IdeaFeed 
+              <IdeaFeed
                 dailyGen={dailyGen}
                 userSaves={userSaves}
                 filters={filters}
@@ -242,6 +251,7 @@ export default function App() {
                 getFilteredIdeas={getFilteredIdeas}
                 exportToPDF={exportDocument}
                 setActiveTab={setActiveTab}
+                triggerGeneration={triggerGeneration}
                 loading={loading}
                 user={user}
                 handleLogin={handleLogin}
@@ -261,13 +271,28 @@ export default function App() {
             ) : activeTab === 'digest' ? (
               <EmailDigestTab user={user} />
             ) : activeTab === 'saved' ? (
-              <SavedIdeasTab 
+              <SavedIdeasTab
                 userSaves={userSaves}
                 toggleSave={onToggleSaveLocal}
                 updateIdea={updateIdea}
                 tier={tier}
                 exportToPDF={exportDocument}
                 loading={loading}
+                user={user}
+                handleLogin={handleLogin}
+              />
+            ) : activeTab === 'weekly' ? (
+              <WeeklyBestTab
+                weeklyBest={weeklyBest}
+                loading={loadingWeekly}
+                error={errorWeekly}
+                fetched={fetchedWeekly}
+                onFetch={fetchWeeklyBest}
+                userSaves={userSaves}
+                toggleSave={onToggleSaveLocal}
+                updateIdea={updateIdea}
+                tier={tier}
+                exportToPDF={exportDocument}
                 user={user}
                 handleLogin={handleLogin}
               />

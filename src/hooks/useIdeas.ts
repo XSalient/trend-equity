@@ -99,7 +99,7 @@ export function useIdeas(user: User | null, tier: Tier, authReady: boolean) {
           id: `${today}-${index}`
         })),
         disclaimer: result.disclaimer,
-        generatedAt: serverTimestamp()
+        generatedAt: serverTimestamp(),
       };
 
       try {

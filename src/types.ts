@@ -105,6 +105,8 @@ export interface ExpertVetting {
   generatedAt: any;
 }
 
+export type WeeklyBestIdea = Idea & { recurrenceCount: number };
+
 export interface Comment {
   id: string;
   ideaId: string;

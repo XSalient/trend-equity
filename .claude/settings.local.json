@@ -6,7 +6,9 @@
       "Bash(npx tsc:*)",
       "mcp__Claude_Preview__preview_start",
       "Bash(where npm:*)",
-      "Bash(find /j/repositories/trend-equity -name firestore.rules -o -name *firestore* -o -name *security*)"
+      "Bash(find /j/repositories/trend-equity -name firestore.rules -o -name *firestore* -o -name *security*)",
+      "Bash(curl -s -X POST http://localhost:3001/api/generate/daily -H \"Content-Type: application/json\" -d \"{\\\\\"date\\\\\":\\\\\"2026-04-11\\\\\"}\")",
+      "Bash(node -e ':*)"
     ]
   }
 }

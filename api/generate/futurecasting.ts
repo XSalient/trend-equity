@@ -56,13 +56,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     await setCached(cacheKey, data);
     return res.json({ ...data, _usage: await buildUsageResponse(uid, tier, featureType) });
   } catch (err: any) {
-    console.error('Futurecasting Error (Falling back to mock):', err);
-    return res.json({
-      horizon: horizon || '2030',
-      predictions: [
-        { title: 'Personal AI Companionship Market Peaks', probability: 85, rationale: 'Saturation of loneliness-driven tech in urban centers.', winners: ['Personalized LLM providers'], losers: ['Generic social media apps'] },
-      ],
-      paradigmShifts: ['Post-labor economy in service sectors', 'Ubiquitous AR integration'],
-    });
+    console.error('Futurecasting Error:', err);
+    return res.status(503).json({ error: 'AI generation temporarily unavailable. Please try again later.' });
   }
 }
