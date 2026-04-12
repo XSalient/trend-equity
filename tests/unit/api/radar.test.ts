@@ -25,12 +25,14 @@ const {
   mockSetCached,
   mockCheckAndIncrementUsage,
   mockBuildUsageResponse,
+  mockGetAuthContext,
 } = vi.hoisted(() => ({
   mockGenerateWithGemini: vi.fn(),
   mockGetCached: vi.fn(),
   mockSetCached: vi.fn(),
   mockCheckAndIncrementUsage: vi.fn(),
   mockBuildUsageResponse: vi.fn(),
+  mockGetAuthContext: vi.fn(),
 }));
 
 vi.mock('../../../api/_lib/gemini', () => ({
@@ -49,6 +51,10 @@ vi.mock('../../../api/_lib/usage', () => ({
   buildUsageResponse: mockBuildUsageResponse,
 }));
 
+vi.mock('../../../api/_lib/auth', () => ({
+  getAuthContext: mockGetAuthContext,
+}));
+
 import handler from '../../../api/generate/radar';
 
 describe('POST /api/generate/radar', () => {
@@ -59,6 +65,7 @@ describe('POST /api/generate/radar', () => {
     mockCheckAndIncrementUsage.mockResolvedValue({ allowed: true, remaining: 2, limit: 3 });
     mockBuildUsageResponse.mockResolvedValue({ ...MOCK_USAGE_RESPONSE, featureType: 'radar' });
     mockGenerateWithGemini.mockResolvedValue(MOCK_RADAR_RESPONSE);
+    mockGetAuthContext.mockResolvedValue(null);      // unauthenticated by default
   });
 
   // ── Positive cases ────────────────────────────────────────────────
@@ -80,8 +87,9 @@ describe('POST /api/generate/radar', () => {
 
   it('returns cached result with _cached:true when cache hit', async () => {
     mockGetCached.mockResolvedValue(MOCK_RADAR_RESPONSE);
+    mockGetAuthContext.mockResolvedValue({ uid: 'user-1', tier: 'free' });
 
-    const req = createMockRequest({ body: { uid: 'user-1', tier: 'free' } });
+    const req = createMockRequest({ body: {} });
     const res = createMockResponse();
 
     await handler(req, res);
@@ -104,7 +112,9 @@ describe('POST /api/generate/radar', () => {
   });
 
   it('attaches _usage response for authenticated user', async () => {
-    const req = createMockRequest({ body: { uid: 'user-1', tier: 'free' } });
+    mockGetAuthContext.mockResolvedValue({ uid: 'user-1', tier: 'free' });
+
+    const req = createMockRequest({ body: {} });
     const res = createMockResponse();
 
     await handler(req, res);
@@ -147,8 +157,9 @@ describe('POST /api/generate/radar', () => {
 
   it('returns 429 when free tier usage limit is exceeded', async () => {
     mockCheckAndIncrementUsage.mockResolvedValue({ allowed: false, remaining: 0, limit: 3 });
+    mockGetAuthContext.mockResolvedValue({ uid: 'user-1', tier: 'free' });
 
-    const req = createMockRequest({ body: { uid: 'user-1', tier: 'free' } });
+    const req = createMockRequest({ body: {} });
     const res = createMockResponse();
 
     await handler(req, res);

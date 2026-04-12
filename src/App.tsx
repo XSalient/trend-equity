@@ -39,12 +39,12 @@ import { EmailDigestTab } from './components/tabs/EmailDigest';
 import { SavedIdeasTab } from './components/tabs/SavedIdeas';
 
 // --- Utils ---
-import { generateWeeklyTrendRadar, generateFuturecasting, setCurrentUser, setCurrentTier } from './services/geminiService';
+import { generateWeeklyTrendRadar, generateFuturecasting, setCurrentIdToken } from './services/geminiService';
 import { exportDocument, exportListToCSV, exportListToPDF } from './utils/exportUtils';
 
 export default function App() {
   const { user, authReady, handleLogin, handleLogout, error: authError } = useAuth();
-  const { tier, handleUpgrade, handleDowngrade, upgradeToBuilder } = useTier(user);
+  const { tier, handleUpgrade, handleDowngrade, upgradeToBuilder, tierNotification } = useTier(user);
   const { alerts, showAlerts, setShowAlerts, markAlertAsRead, unreadAlertsCount, loading: alertsLoading } = useAlerts(user);
   
   const { 
@@ -62,14 +62,19 @@ export default function App() {
     fetchDaily
   } = useIdeas(user, tier, authReady);
 
-  // Sync auth context into geminiService for per-user rate limiting
+  // FIX (S-2): Sync Firebase ID token into geminiService for server-side auth.
+  // Token refreshes every 50 min (Firebase tokens expire in 1 hour).
   useEffect(() => {
-    setCurrentUser(user?.uid ?? null);
+    if (user) {
+      user.getIdToken().then(setCurrentIdToken).catch(() => setCurrentIdToken(null));
+      const interval = setInterval(() => {
+        user.getIdToken(true).then(setCurrentIdToken).catch(() => setCurrentIdToken(null));
+      }, 50 * 60 * 1000);
+      return () => clearInterval(interval);
+    } else {
+      setCurrentIdToken(null);
+    }
   }, [user]);
-
-  useEffect(() => {
-    setCurrentTier(tier);
-  }, [tier]);
 
   const [activeTab, setActiveTab] = useState<'feed' | 'saved' | 'weekly' | 'pro' | 'radar' | 'future' | 'digest'>('feed');
   const { weeklyBest, loading: loadingWeekly, error: errorWeekly, fetched: fetchedWeekly, fetchWeeklyBest } = useWeeklyBest();
@@ -77,43 +82,63 @@ export default function App() {
   const [futurecasting, setFuturecasting] = useState<Futurecasting | null>(null);
   const [loadingRadar, setLoadingRadar] = useState(false);
   const [loadingFuture, setLoadingFuture] = useState(false);
+  // FIX (U-3): Track radar/futurecasting error states so UI can show them
+  const [radarError, setRadarError] = useState<string | null>(null);
+  const [futureError, setFutureError] = useState<string | null>(null);
   
   // Builder Modal States
   const [showTE100, setShowTE100] = useState(false);
   const [showApiAccess, setShowApiAccess] = useState(false);
 
   const error = authError || ideasError;
+
+  // FIX (U-4): Show a minimal loading screen while Firebase resolves auth state
+  // to prevent a flash of "free tier" UI for paying users
+  if (!authReady) {
+    return (
+      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin" />
+      </div>
+    );
+  }
+
   const today = new Date().toISOString().split('T')[0];
 
   // --- Tab Specific Actions ---
-  const fetchWeeklyRadar = async () => {
+  // FIX (B-3, U-3): useCallback prevents stale closure re-creation and tracks error state
+  const fetchWeeklyRadar = useCallback(async () => {
     setLoadingRadar(true);
+    setRadarError(null);
     try {
       const radar = await generateWeeklyTrendRadar();
       setWeeklyRadar(radar);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to fetch radar:", err);
+      setRadarError(err?.message || "Radar analysis unavailable. Please try again.");
     } finally {
       setLoadingRadar(false);
     }
-  };
+  }, []);
 
-  const fetchFuturecasting = async (horizon: '2027' | '2030' | '2035' = '2030') => {
+  const fetchFuturecasting = useCallback(async (horizon: '2027' | '2030' | '2035' = '2030') => {
     setLoadingFuture(true);
+    setFutureError(null);
     try {
       const fc = await generateFuturecasting(horizon);
       setFuturecasting(fc);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to fetch futurecasting:", err);
+      setFutureError(err?.message || "Futurecasting unavailable. Please try again.");
     } finally {
       setLoadingFuture(false);
     }
-  };
+  }, []);
 
+  // FIX (B-3): Only fetch if not already loaded and no ongoing error (prevents retry storm)
   useEffect(() => {
-    if (activeTab === 'radar' && !weeklyRadar) fetchWeeklyRadar();
-    if (activeTab === 'future' && !futurecasting) fetchFuturecasting();
-  }, [activeTab]);
+    if (activeTab === 'radar' && !weeklyRadar && !loadingRadar && !radarError) fetchWeeklyRadar();
+    if (activeTab === 'future' && !futurecasting && !loadingFuture && !futureError) fetchFuturecasting();
+  }, [activeTab, weeklyRadar, futurecasting, loadingRadar, loadingFuture, radarError, futureError, fetchWeeklyRadar, fetchFuturecasting]);
 
   const onToggleSaveLocal = (idea: Idea) => {
     toggleSave(idea, TIER_LIMITS, handleLogin, () => setActiveTab('pro'));
@@ -180,21 +205,37 @@ export default function App() {
             Today's <br /><span className="text-emerald-500">Top {TIER_LIMITS[tier].dailyIdeas}</span> Ideas
           </h2>
 
-          {/* Tabs */}
-          <div className="flex flex-wrap gap-1 p-1 bg-zinc-900/60 border border-zinc-800/60 rounded-xl w-fit">
+          {/* FIX (U-2): Tier notification toast — replaces alert() */}
+          {tierNotification && (
+            <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-full shadow-xl animate-fade-in">
+              {tierNotification}
+            </div>
+          )}
+
+          {/* Tabs — FIX (U-6): Added role="tablist" and ARIA attributes */}
+          <div role="tablist" aria-label="Navigation tabs" className="flex flex-wrap gap-1 p-1 bg-zinc-900/60 border border-zinc-800/60 rounded-xl w-fit">
             <button
+              role="tab"
+              aria-selected={activeTab === 'feed'}
+              aria-controls="tabpanel-feed"
               onClick={() => setActiveTab('feed')}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'feed' ? 'bg-zinc-800 text-white shadow-md' : 'text-zinc-500 hover:text-zinc-300'}`}
             >
               Daily Feed
             </button>
             <button
+              role="tab"
+              aria-selected={activeTab === 'saved'}
+              aria-controls="tabpanel-saved"
               onClick={() => setActiveTab('saved')}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'saved' ? 'bg-zinc-800 text-white shadow-md' : 'text-zinc-500 hover:text-zinc-300'}`}
             >
               Saved {userSaves.length > 0 && <span className="ml-1 text-xs bg-zinc-700 text-zinc-300 px-1.5 py-0.5 rounded-full">{userSaves.length}{tier === 'free' ? `/${TIER_LIMITS.free.monthlySaves}` : ''}</span>}
             </button>
             <button
+              role="tab"
+              aria-selected={activeTab === 'weekly'}
+              aria-controls="tabpanel-weekly"
               onClick={() => setActiveTab('weekly')}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'weekly' ? 'bg-zinc-800 text-white shadow-md' : 'text-zinc-500 hover:text-zinc-300'}`}
             >
@@ -202,6 +243,9 @@ export default function App() {
             </button>
             {tier === 'builder' && (
               <button
+                role="tab"
+                aria-selected={activeTab === 'radar'}
+                aria-controls="tabpanel-radar"
                 onClick={() => setActiveTab('radar')}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'radar' ? 'bg-zinc-800 text-white shadow-md' : 'text-zinc-500 hover:text-zinc-300'}`}
               >
@@ -210,6 +254,9 @@ export default function App() {
             )}
             {tier === 'builder' && (
               <button
+                role="tab"
+                aria-selected={activeTab === 'future'}
+                aria-controls="tabpanel-future"
                 onClick={() => setActiveTab('future')}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'future' ? 'bg-zinc-800 text-white shadow-md' : 'text-zinc-500 hover:text-zinc-300'}`}
               >
@@ -218,6 +265,9 @@ export default function App() {
             )}
             {tier !== 'free' && (
               <button
+                role="tab"
+                aria-selected={activeTab === 'digest'}
+                aria-controls="tabpanel-digest"
                 onClick={() => setActiveTab('digest')}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'digest' ? 'bg-zinc-800 text-white shadow-md' : 'text-zinc-500 hover:text-zinc-300'}`}
               >
@@ -225,6 +275,9 @@ export default function App() {
               </button>
             )}
             <button
+              role="tab"
+              aria-selected={activeTab === 'pro'}
+              aria-controls="tabpanel-pro"
               onClick={() => setActiveTab('pro')}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'pro'
                   ? 'bg-zinc-800 text-white shadow-md'
@@ -235,8 +288,8 @@ export default function App() {
             </button>
           </div>
 
-          {/* Feed Content */}
-          <div className="space-y-6">
+          {/* Feed Content — FIX (U-6): role="tabpanel" for accessibility */}
+          <div role="tabpanel" id={`tabpanel-${activeTab}`} className="space-y-6">
             {activeTab === 'feed' ? (
               <IdeaFeed
                 dailyGen={dailyGen}
@@ -257,16 +310,20 @@ export default function App() {
                 handleLogin={handleLogin}
               />
             ) : activeTab === 'radar' ? (
-              <WeeklyRadarTab 
+              <WeeklyRadarTab
                 weeklyRadar={weeklyRadar}
                 loadingRadar={loadingRadar}
                 fetchWeeklyRadar={fetchWeeklyRadar}
+                error={radarError}
+                onRetry={() => { setRadarError(null); fetchWeeklyRadar(); }}
               />
             ) : activeTab === 'future' ? (
-              <FuturecastingTab 
+              <FuturecastingTab
                 futurecasting={futurecasting}
                 loadingFuture={loadingFuture}
                 fetchFuturecasting={fetchFuturecasting}
+                error={futureError}
+                onRetry={() => { setFutureError(null); fetchFuturecasting(); }}
               />
             ) : activeTab === 'digest' ? (
               <EmailDigestTab user={user} />

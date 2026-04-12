@@ -1,6 +1,29 @@
 {
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "https://trend-equity.vercel.app"
+        },
+        {
+          "key": "Access-Control-Allow-Methods",
+          "value": "POST, OPTIONS"
+        },
+        {
+          "key": "Access-Control-Allow-Headers",
+          "value": "Content-Type, Authorization"
+        },
+        {
+          "key": "Access-Control-Max-Age",
+          "value": "86400"
+        }
+      ]
+    }
+  ],
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/$1" },
     { "source": "/(.*)", "destination": "/index.html" }

@@ -7,12 +7,17 @@ interface WeeklyRadarTabProps {
   weeklyRadar: WeeklyTrendRadar | null;
   loadingRadar: boolean;
   fetchWeeklyRadar: () => void;
+  // FIX (U-3): Error state so failures are visible instead of silently swallowed
+  error?: string | null;
+  onRetry?: () => void;
 }
 
 export const WeeklyRadarTab: React.FC<WeeklyRadarTabProps> = ({
   weeklyRadar,
   loadingRadar,
-  fetchWeeklyRadar
+  fetchWeeklyRadar,
+  error,
+  onRetry,
 }) => {
   return (
     <div className="space-y-6">
@@ -22,8 +27,21 @@ export const WeeklyRadarTab: React.FC<WeeklyRadarTabProps> = ({
             <h3 className="text-2xl font-black uppercase italic tracking-tight">Weekly Trend Radar</h3>
             <p className="text-zinc-500 text-xs uppercase font-bold tracking-widest">{weeklyRadar?.week || 'Analyzing current signals...'}</p>
           </div>
-          <RefreshCw className={`w-5 h-5 text-emerald-500 ${loadingRadar ? 'animate-spin' : ''}`} onClick={fetchWeeklyRadar} />
+          <RefreshCw className={`w-5 h-5 text-emerald-500 cursor-pointer ${loadingRadar ? 'animate-spin' : ''}`} onClick={fetchWeeklyRadar} />
         </div>
+
+        {/* FIX (U-3): Show error state with retry button */}
+        {error && !loadingRadar && (
+          <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl space-y-2 text-center">
+            <p className="text-red-400 text-sm">{error}</p>
+            <button
+              onClick={onRetry}
+              className="px-4 py-1.5 text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-lg transition-all"
+            >
+              Try Again
+            </button>
+          </div>
+        )}
 
         {loadingRadar ? (
           <RadarSkeleton />

@@ -7,7 +7,7 @@
 // Fields:
 //   - date: string (required)
 //   - ideas: array of objects (required)
-//   - generatedAt: timestamp (required)
+//   - generatedAt: string ISO date (required)
 //
 // Collection: user_saves
 // Document ID: auto-generated
@@ -33,16 +33,6 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == userId;
     }
 
-    function hasRequiredFields(fields) {
-      return request.resource.data.keys().hasAll(fields);
-    }
-
-    function isValidDailyGeneration(data) {
-      return data.date is string &&
-             data.ideas is list &&
-             data.generatedAt == request.time;
-    }
-
     function isValidUserSave(data) {
       return data.userId is string &&
              data.idea is map &&
@@ -57,10 +47,19 @@ service cloud.firestore {
              data.updatedAt == request.time;
     }
 
-    function isValidUserProfile(data) {
-      return data.userId is string &&
-             data.tier in ['free', 'pro', 'builder'] &&
+    // Profile update: allows changing filters and other fields
+    // FIX (S-9): The `tier` field CANNOT be changed by the client.
+    // Tier changes must be performed server-side via Admin SDK after payment verification.
+    function isValidProfileUpdate(data, existingData) {
+      // If tier is present in the update, it must not change
+      return (!('tier' in data) || data.tier == existingData.tier) &&
              data.updatedAt is timestamp;
+    }
+
+    // New profile creation: only allowed with 'free' tier
+    function isValidProfileCreate(data) {
+      return data.updatedAt is timestamp &&
+             (!('tier' in data) || data.tier == 'free');
     }
 
     // ===============================================================
@@ -68,54 +67,53 @@ service cloud.firestore {
     // ===============================================================
 
     match /users/{userId} {
-      // Users can only read and write their own profile
       allow read: if isOwner(userId);
-      allow create, update: if isOwner(userId) && 
-                              isValidUserProfile(request.resource.data);
+      // FIX (S-9): Create only with free tier; update cannot change tier
+      allow create: if isOwner(userId) && isValidProfileCreate(request.resource.data);
+      allow update: if isOwner(userId) && isValidProfileUpdate(request.resource.data, resource.data);
       allow delete: if false;
     }
 
     match /daily_generations/{date} {
       // Anyone can read daily generations (public feed)
       allow read: if true;
-      // Anyone can trigger today's generation if it doesn't exist yet.
-      // This handles the "first visitor of the day" case gracefully.
-      // Once created, it cannot be updated or deleted (idempotent).
-      allow create: if isValidDailyGeneration(request.resource.data) && 
-                      request.resource.data.date == date;
-      // No updates or deletes for daily generations
-      allow update, delete: if false;
+      // FIX (S-8, B-2): Only server-side Admin SDK writes daily_generations
+      // (Admin SDK bypasses these rules entirely; setting to false prevents
+      // any malicious client from injecting a fake daily feed)
+      allow create, update, delete: if false;
     }
 
     match /comments/{commentId} {
-      // Anyone can read comments (public discussion)
       allow read: if true;
-      // Authenticated users can post comments
       allow create: if isAuthenticated() &&
                       request.resource.data.userId == request.auth.uid &&
                       request.resource.data.ideaId is string &&
                       request.resource.data.text is string &&
                       request.resource.data.text.size() > 0 &&
                       request.resource.data.text.size() <= 500;
-      // Only the comment author can delete their own comment
       allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
-      // No edits allowed
       allow update: if false;
     }
 
     match /user_saves/{saveId} {
-      // Users can only read their own saves
       allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
-      // Users can create their own saves
       allow create: if isAuthenticated() &&
                       request.resource.data.userId == request.auth.uid &&
                       isValidUserSave(request.resource.data);
-      // Users can update their own saves
-      allow update: if isAuthenticated() && 
+      allow update: if isAuthenticated() &&
                       resource.data.userId == request.auth.uid &&
                       isValidUserSaveUpdate(request.resource.data, resource.data);
-      // Users can delete their own saves
       allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+    }
+
+    match /api_usage/{docId} {
+      // Only server-side Admin SDK reads/writes usage docs
+      allow read, write: if false;
+    }
+
+    match /api_cache/{docId} {
+      // Only server-side Admin SDK reads/writes cache docs
+      allow read, write: if false;
     }
   }
 }

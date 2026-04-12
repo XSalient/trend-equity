@@ -25,16 +25,23 @@ const {
   mockFetchLiveSignals,
   mockFormatSignalsForPrompt,
   mockGetRecentIdeaHeadlines,
+  mockGetAuthContext,
+  mockGetAdminDb,
+  mockCheckAndIncrementUsage,
 } = vi.hoisted(() => ({
   mockGenerateWithGemini: vi.fn(),
   mockFetchLiveSignals: vi.fn(),
   mockFormatSignalsForPrompt: vi.fn(),
   mockGetRecentIdeaHeadlines: vi.fn(),
+  mockGetAuthContext: vi.fn(),
+  mockGetAdminDb: vi.fn(),
+  mockCheckAndIncrementUsage: vi.fn(),
 }));
 
 vi.mock('../../../api/_lib/gemini', () => ({
   generateWithGemini: mockGenerateWithGemini,
   dailyResponseSchema: { type: 'OBJECT' },
+  getToday: vi.fn(() => '2026-04-11'),
 }));
 
 vi.mock('../../../api/_lib/signals', () => ({
@@ -44,6 +51,18 @@ vi.mock('../../../api/_lib/signals', () => ({
 
 vi.mock('../../../api/_lib/cache', () => ({
   getRecentIdeaHeadlines: mockGetRecentIdeaHeadlines,
+}));
+
+vi.mock('../../../api/_lib/auth', () => ({
+  getAuthContext: mockGetAuthContext,
+}));
+
+vi.mock('../../../api/_lib/admin', () => ({
+  getAdminDb: mockGetAdminDb,
+}));
+
+vi.mock('../../../api/_lib/usage', () => ({
+  checkAndIncrementUsage: mockCheckAndIncrementUsage,
 }));
 
 import handler from '../../../api/generate/daily';
@@ -60,6 +79,17 @@ describe('POST /api/generate/daily', () => {
     mockFormatSignalsForPrompt.mockReturnValue('');
     mockGetRecentIdeaHeadlines.mockResolvedValue([]);
     mockGenerateWithGemini.mockResolvedValue(MOCK_DAILY_GENERATION);
+    // Auth: authenticated by default to bypass IP rate limiter (module-level state)
+    mockGetAuthContext.mockResolvedValue({ uid: 'user-1', tier: 'free' });
+    mockCheckAndIncrementUsage.mockResolvedValue({ allowed: true, remaining: 10, limit: null });
+    // Admin Firestore: idempotent persist stub
+    const mockDocRef = {
+      get: vi.fn().mockResolvedValue({ exists: false }),
+      set: vi.fn().mockResolvedValue(undefined),
+    };
+    mockGetAdminDb.mockReturnValue({
+      collection: vi.fn().mockReturnValue({ doc: vi.fn().mockReturnValue(mockDocRef) }),
+    });
   });
 
   // ── Positive cases ────────────────────────────────────────────────

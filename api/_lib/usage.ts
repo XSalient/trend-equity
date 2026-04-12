@@ -1,20 +1,5 @@
-import { cert, getApps, initializeApp } from 'firebase-admin/app';
-import { getFirestore, FieldValue } from 'firebase-admin/firestore';
-
-function getAdminDb() {
-  if (getApps().length === 0) {
-    const serviceAccountKey = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
-    if (serviceAccountKey) {
-      initializeApp({
-        credential: cert(JSON.parse(serviceAccountKey)),
-        projectId: process.env.FIREBASE_PROJECT_ID,
-      });
-    } else {
-      initializeApp({ projectId: process.env.FIREBASE_PROJECT_ID || 'trend-equity-63c48' });
-    }
-  }
-  return getFirestore();
-}
+import { FieldValue } from 'firebase-admin/firestore';
+import { getAdminDb } from './admin';
 
 const USAGE_COLLECTION = 'api_usage';
 
@@ -33,8 +18,9 @@ function usageDocId(uid: string, featureType: string): string {
 }
 
 /**
- * Atomically increment usage counter.
- * Returns { allowed, remaining, limit }.
+ * Checks whether the user is within their daily limit, then atomically increments.
+ * FIX (B-1): Check is performed BEFORE incrementing so the counter never inflates
+ * beyond the limit on denied requests.
  */
 export async function checkAndIncrementUsage(
   uid: string,
@@ -49,10 +35,15 @@ export async function checkAndIncrementUsage(
     const db = getAdminDb();
     const docRef = db.collection(USAGE_COLLECTION).doc(usageDocId(uid, featureType));
 
-    // Atomic increment via Firestore transaction
-    const newCount = await db.runTransaction(async (tx) => {
+    const result = await db.runTransaction(async (tx) => {
       const snap = await tx.get(docRef);
       const current: number = snap.exists ? (snap.data()!.count ?? 0) : 0;
+
+      // Check BEFORE incrementing — counter must not inflate on denied requests
+      if (current >= limit) {
+        return { allowed: false, count: current };
+      }
+
       const next = current + 1;
       tx.set(docRef, {
         uid,
@@ -61,16 +52,17 @@ export async function checkAndIncrementUsage(
         count: next,
         updatedAt: FieldValue.serverTimestamp(),
       }, { merge: true });
-      return next;
+
+      return { allowed: true, count: next };
     });
 
-    if (newCount > limit) {
+    if (!result.allowed) {
       return { allowed: false, remaining: 0, limit };
     }
-    return { allowed: true, remaining: limit - newCount, limit };
+    return { allowed: true, remaining: limit - result.count, limit };
   } catch (e) {
     console.error('[usage] checkAndIncrementUsage error:', e);
-    // Fail open on errors — don't block the user due to DB issues
+    // Fail open on DB errors — don't block the user due to infrastructure issues
     return { allowed: true, remaining: limit, limit };
   }
 }

@@ -13,15 +13,24 @@ OUTPUT FORMAT: Respond with valid JSON matching the provided schema exactly. No 
 
 const SYSTEM_PROMPT = process.env.SYSTEM_PROMPT || DEFAULT_SYSTEM_PROMPT;
 
+// Singleton client — reused across warm invocations (P-5)
+let _aiClient: GoogleGenAI | null = null;
+
+function getAiClient(): GoogleGenAI {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new Error('GEMINI_API_KEY missing from environment.');
+  if (!_aiClient) {
+    _aiClient = new GoogleGenAI({ apiKey });
+  }
+  return _aiClient;
+}
+
 export async function generateWithGemini(
   prompt: string,
   schema?: any,
   systemInstruction?: string
 ): Promise<any> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new Error('GEMINI_API_KEY missing from environment.');
-
-  const ai = new GoogleGenAI({ apiKey });
+  const ai = getAiClient();
   const modelToUse = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
 
   const response = await ai.models.generateContent({
@@ -34,11 +43,16 @@ export async function generateWithGemini(
     },
   });
 
+  // Guard against null/empty response (D-3)
+  if (!response.text) {
+    throw new Error('AI returned an empty response. Please try again.');
+  }
+
   if (schema) {
     try {
       return JSON.parse(response.text);
     } catch {
-      console.error('JSON Parse Error:', response.text);
+      console.error('JSON Parse Error:', response.text?.slice(0, 200));
       throw new Error('AI returned invalid JSON structure.');
     }
   }

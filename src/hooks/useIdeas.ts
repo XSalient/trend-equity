@@ -1,17 +1,18 @@
 import { useState, useEffect, useCallback } from 'react';
 import { User } from 'firebase/auth';
-import { 
-  doc, 
-  getDoc, 
-  setDoc, 
-  collection, 
-  query, 
-  where, 
-  onSnapshot, 
-  serverTimestamp, 
+import {
+  doc,
+  getDoc,
+  setDoc,
+  collection,
+  query,
+  where,
+  onSnapshot,
+  serverTimestamp,
   deleteDoc,
   addDoc
 } from 'firebase/firestore';
+import { TIER_LIMITS } from '../constants';
 import { db } from '../firebase';
 import { Idea, DailyGeneration, UserSave, FilterState, Tier } from '../types';
 import { generateDailyIdeas } from '../services/geminiService';
@@ -90,7 +91,9 @@ export function useIdeas(user: User | null, tier: Tier, authReady: boolean) {
       const country = getCountryName();
       const countryCount = tier === 'builder' ? 5 : tier === 'pro' ? 3 : 1;
 
-      const result = await generateDailyIdeas(today, country, countryCount);
+      // FIX (B-2): Server now persists to daily_generations via Admin SDK.
+      // Client no longer writes to Firestore (was blocked by rules anyway).
+      const result = await generateDailyIdeas(country, countryCount);
       const newGen: DailyGeneration = {
         date: today,
         intro: result.intro,
@@ -99,14 +102,9 @@ export function useIdeas(user: User | null, tier: Tier, authReady: boolean) {
           id: `${today}-${index}`
         })),
         disclaimer: result.disclaimer,
-        generatedAt: serverTimestamp(),
+        generatedAt: new Date().toISOString(),
       };
 
-      try {
-        await setDoc(doc(db, 'daily_generations', today), newGen);
-      } catch (err) {
-        handleFirestoreError(err, OperationType.WRITE, `daily_generations/${today}`);
-      }
       setDailyGen(newGen);
       setCachedFeed(newGen);
     } catch (err: any) {
@@ -250,8 +248,9 @@ export function useIdeas(user: User | null, tier: Tier, authReady: boolean) {
       return;
     }
 
-    const isFree = tier === 'free';
-    if (isFree && userSaves.length >= 5) {
+    // FIX (B-5/B-6): Use TIER_LIMITS constant instead of hardcoded 5
+    const saveLimit = TIER_LIMITS[tier]?.monthlySaves ?? Infinity;
+    if (isFinite(saveLimit) && userSaves.length >= saveLimit) {
       onUpgradeNeeded();
       return;
     }

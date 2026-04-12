@@ -5,16 +5,19 @@ import { Idea } from "../types";
 const API_BASE = import.meta.env.VITE_API_BASE ?? '';
 
 // --- Auth context (set once by App on auth state change) ---
-let _currentUid: string | null = null;
-let _currentTier: string = 'free';
+let _currentIdToken: string | null = null;
 
-export function setCurrentUser(uid: string | null) {
-  _currentUid = uid;
+/**
+ * Store the current Firebase ID token for use in API Authorization headers.
+ * The server verifies this token; uid and tier are derived server-side only.
+ */
+export function setCurrentIdToken(token: string | null) {
+  _currentIdToken = token;
 }
 
-export function setCurrentTier(tier: string) {
-  _currentTier = tier;
-}
+// Keep these for any legacy compatibility but server ignores them now
+export function setCurrentUser(_uid: string | null) {}
+export function setCurrentTier(_tier: string) {}
 
 // --- Last known usage per feature type (readable by UI) ---
 type UsageInfo = { featureType: string; used: number; limit: number | null; remaining: number | null };
@@ -32,23 +35,25 @@ function storeUsage(response: any) {
 }
 
 function authHeaders(): Record<string, string> {
-  return { 'Content-Type': 'application/json' };
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  // FIX (S-2): Send verified ID token in Authorization header.
+  // Server derives uid and tier from this — never from the body.
+  if (_currentIdToken) {
+    headers['Authorization'] = `Bearer ${_currentIdToken}`;
+  }
+  return headers;
 }
 
-function authBody(): Record<string, string> {
-  const body: Record<string, string> = {};
-  if (_currentUid) body.uid = _currentUid;
-  if (_currentTier) body.tier = _currentTier;
-  return body;
-}
-
-export async function generateDailyIdeas(date: string, country?: string, countryCount?: number) {
+export async function generateDailyIdeas(country?: string, countryCount?: number) {
   const response = await fetch(`${API_BASE}/api/generate/daily`, {
     method: 'POST',
     headers: authHeaders(),
-    body: JSON.stringify({ date, country, countryCount, ...authBody() })
+    body: JSON.stringify({ country, countryCount }),
   });
-  if (!response.ok) throw new Error('Failed to generate ideas');
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to generate ideas');
+  }
   return response.json();
 }
 
@@ -56,7 +61,7 @@ export async function generateFullActionPlan(idea: Idea) {
   const response = await fetch(`${API_BASE}/api/generate/action-plan`, {
     method: 'POST',
     headers: authHeaders(),
-    body: JSON.stringify({ idea, ...authBody() })
+    body: JSON.stringify({ idea }),
   });
   if (!response.ok) {
     const err = await response.json().catch(() => ({}));
@@ -72,7 +77,7 @@ export async function explainPlanSection(idea: Idea, section: string, context: s
   const response = await fetch(`${API_BASE}/api/generate/explain`, {
     method: 'POST',
     headers: authHeaders(),
-    body: JSON.stringify({ idea, section, context, ...authBody() })
+    body: JSON.stringify({ idea, section, context }),
   });
   if (!response.ok) return "Expert advice unavailable at the moment.";
   const data = await response.json();
@@ -83,7 +88,7 @@ export async function generateBuildWithMe(idea: Idea) {
   const response = await fetch(`${API_BASE}/api/generate/build-me`, {
     method: 'POST',
     headers: authHeaders(),
-    body: JSON.stringify({ idea, ...authBody() })
+    body: JSON.stringify({ idea }),
   });
   if (!response.ok) {
     const err = await response.json().catch(() => ({}));
@@ -99,7 +104,7 @@ export async function generateValidationToolkit(idea: Idea) {
   const response = await fetch(`${API_BASE}/api/generate/validation`, {
     method: 'POST',
     headers: authHeaders(),
-    body: JSON.stringify({ idea, ...authBody() })
+    body: JSON.stringify({ idea }),
   });
   if (!response.ok) {
     const err = await response.json().catch(() => ({}));
@@ -115,9 +120,9 @@ export async function generateAlerts() {
   const response = await fetch(`${API_BASE}/api/generate/alerts`, {
     method: 'POST',
     headers: authHeaders(),
-    body: JSON.stringify({ ...authBody() })
+    body: JSON.stringify({}),
   });
-  if (!response.ok) throw new Error('Failed to generate alerts');
+  if (!response.ok) return [];
   return response.json();
 }
 
@@ -125,7 +130,7 @@ export async function generateExpertVetting(idea: Idea) {
   const response = await fetch(`${API_BASE}/api/generate/vetting`, {
     method: 'POST',
     headers: authHeaders(),
-    body: JSON.stringify({ idea, ...authBody() })
+    body: JSON.stringify({ idea }),
   });
   if (!response.ok) {
     const err = await response.json().catch(() => ({}));
@@ -141,7 +146,7 @@ export async function generateWeeklyTrendRadar() {
   const response = await fetch(`${API_BASE}/api/generate/radar`, {
     method: 'POST',
     headers: authHeaders(),
-    body: JSON.stringify({ ...authBody() })
+    body: JSON.stringify({}),
   });
   if (!response.ok) {
     const err = await response.json().catch(() => ({}));
@@ -157,7 +162,7 @@ export async function generateFuturecasting(horizon: '2027' | '2030' | '2035') {
   const response = await fetch(`${API_BASE}/api/generate/futurecasting`, {
     method: 'POST',
     headers: authHeaders(),
-    body: JSON.stringify({ horizon, ...authBody() })
+    body: JSON.stringify({ horizon }),
   });
   if (!response.ok) {
     const err = await response.json().catch(() => ({}));

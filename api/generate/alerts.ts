@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { generateWithGemini, Type, getToday } from '../_lib/gemini';
 import { getCached, setCached } from '../_lib/cache';
+import { getAuthContext } from '../_lib/auth';
 import { checkAndIncrementUsage } from '../_lib/usage';
 
 const schema = {
@@ -19,18 +20,20 @@ const schema = {
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { uid, tier } = req.body;
+  // Auth context from verified token (never from body)
+  const authCtx = await getAuthContext(req);
+  const uid = authCtx?.uid;
+  const tier = authCtx?.tier || 'free';
+
   const featureType = 'alerts';
   const cacheKey = `alerts_${getToday()}`;
 
   try {
     const cached = await getCached(cacheKey);
-    if (cached) {
-      return res.json(cached);
-    }
+    if (cached) return res.json(cached);
 
     if (uid) {
-      const usage = await checkAndIncrementUsage(uid, tier || 'free', featureType);
+      const usage = await checkAndIncrementUsage(uid, tier, featureType);
       if (!usage.allowed) {
         return res.status(429).json({ error: 'Alert limit reached.' });
       }
@@ -40,6 +43,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     await setCached(cacheKey, data);
     return res.json(data);
   } catch (err: any) {
-    return res.json([{ title: 'AI Spike', message: 'Market signals active.', type: 'success' }]);
+    // FIX (B-7): Return empty array on error — never fabricate fake market data
+    console.error('[alerts] Generation error:', err);
+    return res.json([]);
   }
 }

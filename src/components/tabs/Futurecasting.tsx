@@ -6,12 +6,17 @@ interface FuturecastingTabProps {
   futurecasting: Futurecasting | null;
   loadingFuture: boolean;
   fetchFuturecasting: (horizon?: '2027' | '2030' | '2035') => void;
+  // FIX (U-3): Error state
+  error?: string | null;
+  onRetry?: () => void;
 }
 
 export const FuturecastingTab: React.FC<FuturecastingTabProps> = ({
   futurecasting,
   loadingFuture,
-  fetchFuturecasting
+  fetchFuturecasting,
+  error,
+  onRetry,
 }) => {
   return (
     <div className="space-y-6">
@@ -44,6 +49,19 @@ export const FuturecastingTab: React.FC<FuturecastingTabProps> = ({
             </button>
           </div>
         </div>
+
+        {/* FIX (U-3): Show error state with retry */}
+        {error && !loadingFuture && (
+          <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl space-y-2 text-center">
+            <p className="text-red-400 text-sm">{error}</p>
+            <button
+              onClick={onRetry}
+              className="px-4 py-1.5 text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-lg transition-all"
+            >
+              Try Again
+            </button>
+          </div>
+        )}
 
         {loadingFuture ? (
           <div className="py-12 text-center space-y-4">

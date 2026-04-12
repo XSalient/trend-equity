@@ -26,12 +26,14 @@ const {
   mockSetCached,
   mockCheckAndIncrementUsage,
   mockBuildUsageResponse,
+  mockGetAuthContext,
 } = vi.hoisted(() => ({
   mockGenerateWithGemini: vi.fn(),
   mockGetCached: vi.fn(),
   mockSetCached: vi.fn(),
   mockCheckAndIncrementUsage: vi.fn(),
   mockBuildUsageResponse: vi.fn(),
+  mockGetAuthContext: vi.fn(),
 }));
 
 vi.mock('../../../api/_lib/gemini', () => ({
@@ -49,6 +51,10 @@ vi.mock('../../../api/_lib/usage', () => ({
   buildUsageResponse: mockBuildUsageResponse,
 }));
 
+vi.mock('../../../api/_lib/auth', () => ({
+  getAuthContext: mockGetAuthContext,
+}));
+
 import handler from '../../../api/generate/action-plan';
 
 describe('POST /api/generate/action-plan', () => {
@@ -59,12 +65,14 @@ describe('POST /api/generate/action-plan', () => {
     mockCheckAndIncrementUsage.mockResolvedValue({ allowed: true, remaining: 2, limit: 3 });
     mockBuildUsageResponse.mockResolvedValue(MOCK_USAGE_RESPONSE);
     mockGenerateWithGemini.mockResolvedValue(MOCK_ACTION_PLAN_RESPONSE);
+    // Auth: authenticated user by default (most action tests use a uid)
+    mockGetAuthContext.mockResolvedValue({ uid: 'user-1', tier: 'free' });
   });
 
   // ── Positive cases ────────────────────────────────────────────────
 
   it('returns action plan with correct shape on success', async () => {
-    const req = createMockRequest({ body: { idea: MOCK_IDEA, uid: 'user-1', tier: 'free' } });
+    const req = createMockRequest({ body: { idea: MOCK_IDEA } });
     const res = createMockResponse();
 
     await handler(req, res);
@@ -81,7 +89,7 @@ describe('POST /api/generate/action-plan', () => {
   it('returns cached result with _cached:true on cache hit', async () => {
     mockGetCached.mockResolvedValue(MOCK_ACTION_PLAN_RESPONSE);
 
-    const req = createMockRequest({ body: { idea: MOCK_IDEA, uid: 'user-1', tier: 'free' } });
+    const req = createMockRequest({ body: { idea: MOCK_IDEA } });
     const res = createMockResponse();
 
     await handler(req, res);
@@ -92,7 +100,7 @@ describe('POST /api/generate/action-plan', () => {
   });
 
   it('uses idea.id as cache key', async () => {
-    const req = createMockRequest({ body: { idea: MOCK_IDEA, uid: 'user-1', tier: 'free' } });
+    const req = createMockRequest({ body: { idea: MOCK_IDEA } });
     const res = createMockResponse();
 
     await handler(req, res);
@@ -103,7 +111,7 @@ describe('POST /api/generate/action-plan', () => {
   });
 
   it('writes to cache after successful generation', async () => {
-    const req = createMockRequest({ body: { idea: MOCK_IDEA, uid: 'user-1', tier: 'free' } });
+    const req = createMockRequest({ body: { idea: MOCK_IDEA } });
     const res = createMockResponse();
 
     await handler(req, res);
@@ -113,7 +121,7 @@ describe('POST /api/generate/action-plan', () => {
   });
 
   it('attaches _usage to response', async () => {
-    const req = createMockRequest({ body: { idea: MOCK_IDEA, uid: 'user-1', tier: 'free' } });
+    const req = createMockRequest({ body: { idea: MOCK_IDEA } });
     const res = createMockResponse();
 
     await handler(req, res);
@@ -123,7 +131,7 @@ describe('POST /api/generate/action-plan', () => {
   });
 
   it('includes idea headline in the generation prompt', async () => {
-    const req = createMockRequest({ body: { idea: MOCK_IDEA, uid: 'user-1', tier: 'free' } });
+    const req = createMockRequest({ body: { idea: MOCK_IDEA } });
     const res = createMockResponse();
 
     await handler(req, res);
@@ -158,7 +166,7 @@ describe('POST /api/generate/action-plan', () => {
   it('returns 429 when free tier limit is exceeded', async () => {
     mockCheckAndIncrementUsage.mockResolvedValue({ allowed: false, remaining: 0, limit: 3 });
 
-    const req = createMockRequest({ body: { idea: MOCK_IDEA, uid: 'user-1', tier: 'free' } });
+    const req = createMockRequest({ body: { idea: MOCK_IDEA } });
     const res = createMockResponse();
 
     await handler(req, res);
@@ -171,19 +179,19 @@ describe('POST /api/generate/action-plan', () => {
   it('returns 500 when Gemini throws', async () => {
     mockGenerateWithGemini.mockRejectedValue(new Error('Generation failed'));
 
-    const req = createMockRequest({ body: { idea: MOCK_IDEA, uid: 'user-1', tier: 'free' } });
+    const req = createMockRequest({ body: { idea: MOCK_IDEA } });
     const res = createMockResponse();
 
     await handler(req, res);
 
     expect(res._status).toBe(500);
-    expect(res._body.error).toContain('Action plan failed');
+    expect(res._body.error).toContain('Action plan generation failed');
   });
 
   it('does NOT write to cache when Gemini throws', async () => {
     mockGenerateWithGemini.mockRejectedValue(new Error('Error'));
 
-    const req = createMockRequest({ body: { idea: MOCK_IDEA, uid: 'user-1', tier: 'free' } });
+    const req = createMockRequest({ body: { idea: MOCK_IDEA } });
     const res = createMockResponse();
 
     await handler(req, res);
