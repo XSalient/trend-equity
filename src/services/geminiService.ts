@@ -79,7 +79,10 @@ export async function explainPlanSection(idea: Idea, section: string, context: s
     headers: authHeaders(),
     body: JSON.stringify({ idea, section, context }),
   });
-  if (!response.ok) return "Expert advice unavailable at the moment.";
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.error || 'Explanation unavailable. Please try again.');
+  }
   const data = await response.json();
   return data.text;
 }
@@ -122,7 +125,10 @@ export async function generateAlerts() {
     headers: authHeaders(),
     body: JSON.stringify({}),
   });
-  if (!response.ok) return [];
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to generate alerts');
+  }
   return response.json();
 }
 

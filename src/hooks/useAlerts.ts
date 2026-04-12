@@ -37,33 +37,38 @@ export function useAlerts(user: FirebaseUser | null) {
 
     const unsubscribe = onSnapshot(q, async (snapshot) => {
       if (snapshot.empty) {
-        // No alerts for this user yet, let's generate some initial ones
+        // No alerts for this user yet — generate some initial ones
         setLoading(true);
         try {
           const generated = await generateAlerts();
-          const batch = generated.map(async (a: any) => {
-            await addDoc(collection(db, 'user_alerts'), {
-              ...a,
-              userId: user.uid,
-              timestamp: serverTimestamp(),
-              isRead: false
-            });
-          });
-          await Promise.all(batch);
+          if (Array.isArray(generated) && generated.length > 0) {
+            await Promise.all(
+              generated.map((a: any) =>
+                addDoc(collection(db, 'user_alerts'), {
+                  ...a,
+                  userId: user.uid,
+                  timestamp: serverTimestamp(),
+                  isRead: false,
+                })
+              )
+            );
+          }
         } catch (err) {
+          // Generation failed — leave alerts empty; UI shows no-alerts state
           console.error("Failed to generate initial alerts:", err);
         } finally {
           setLoading(false);
         }
       } else {
-        const fetchedAlerts = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        } as Alert));
+        const fetchedAlerts = snapshot.docs
+          .map(d => ({ id: d.id, ...d.data() } as Alert))
+          .filter(a => a.id && a.title); // discard malformed docs
         setAlerts(fetchedAlerts);
+        setLoading(false); // ensure loading is cleared even on subsequent snapshots
       }
     }, (err) => {
       console.error("Alerts Sync Error:", err);
+      setLoading(false); // prevent stuck loading spinner on Firestore error
     });
 
     return () => unsubscribe();

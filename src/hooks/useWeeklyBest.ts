@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { Idea, WeeklyBestIdea } from '../types';
@@ -8,9 +8,12 @@ export function useWeeklyBest() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fetched, setFetched] = useState(false);
+  // Use a ref for the in-flight guard so the callback has a stable identity
+  const loadingRef = useRef(false);
 
   const fetchWeeklyBest = useCallback(async () => {
-    if (loading) return;
+    if (loadingRef.current) return;
+    loadingRef.current = true;
     setLoading(true);
     setError(null);
     try {
@@ -65,8 +68,9 @@ export function useWeeklyBest() {
       setError('Failed to load weekly best ideas. Please try again.');
     } finally {
       setLoading(false);
+      loadingRef.current = false;
     }
-  }, [loading]);
+  }, []); // stable — uses ref for in-flight guard
 
   return { weeklyBest, loading, error, fetched, fetchWeeklyBest };
 }

@@ -92,19 +92,10 @@ export default function App() {
 
   const error = authError || ideasError;
 
-  // FIX (U-4): Show a minimal loading screen while Firebase resolves auth state
-  // to prevent a flash of "free tier" UI for paying users
-  if (!authReady) {
-    return (
-      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin" />
-      </div>
-    );
-  }
-
   const today = new Date().toISOString().split('T')[0];
 
   // --- Tab Specific Actions ---
+  // IMPORTANT: All hooks must be declared before any conditional return (React Rules of Hooks).
   // FIX (B-3, U-3): useCallback prevents stale closure re-creation and tracks error state
   const fetchWeeklyRadar = useCallback(async () => {
     setLoadingRadar(true);
@@ -134,11 +125,24 @@ export default function App() {
     }
   }, []);
 
-  // FIX (B-3): Only fetch if not already loaded and no ongoing error (prevents retry storm)
+  // FIX (B-3): Only fetch if not already loaded and no ongoing error (prevents retry storm).
+  // Guard with authReady so this never fires during the loading splash.
   useEffect(() => {
+    if (!authReady) return;
     if (activeTab === 'radar' && !weeklyRadar && !loadingRadar && !radarError) fetchWeeklyRadar();
     if (activeTab === 'future' && !futurecasting && !loadingFuture && !futureError) fetchFuturecasting();
-  }, [activeTab, weeklyRadar, futurecasting, loadingRadar, loadingFuture, radarError, futureError, fetchWeeklyRadar, fetchFuturecasting]);
+  }, [authReady, activeTab, weeklyRadar, futurecasting, loadingRadar, loadingFuture, radarError, futureError, fetchWeeklyRadar, fetchFuturecasting]);
+
+  // FIX (U-4): Show a minimal loading screen while Firebase resolves auth state
+  // to prevent a flash of "free tier" UI for paying users.
+  // Must be AFTER all hooks above.
+  if (!authReady) {
+    return (
+      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   const onToggleSaveLocal = (idea: Idea) => {
     toggleSave(idea, TIER_LIMITS, handleLogin, () => setActiveTab('pro'));

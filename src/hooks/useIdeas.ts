@@ -268,6 +268,7 @@ export function useIdeas(user: User | null, tier: Tier, authReady: boolean) {
       }
     } catch (err: any) {
       console.error("Save Error:", err);
+      setError("Failed to save idea. Please try again.");
     }
   };
 
