@@ -147,8 +147,13 @@ export function useIdeas(user: User | null, tier: Tier, authReady: boolean) {
 
       if (docSnap.exists()) {
         const data = docSnap.data() as DailyGeneration;
-        setDailyGen(data);
-        setCachedFeed(data);
+        // Stale mock doc from before mock removal — discard and regenerate
+        if (data._isMock) {
+          await triggerGeneration();
+        } else {
+          setDailyGen(data);
+          setCachedFeed(data);
+        }
       } else {
         await triggerGeneration();
       }

@@ -60,6 +60,7 @@ export interface DailyGeneration {
   ideas: Idea[];
   disclaimer: string;
   generatedAt: any;
+  _isMock?: boolean; // legacy flag — stale docs from before mock removal
 }
 
 export interface UserSave {
