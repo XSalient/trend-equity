@@ -1,5 +1,20 @@
 import React, { useState } from 'react';
-import { CheckCircle2, Sparkles, Bell, Users, Trophy, Settings, AlertTriangle, X, ArrowDown, FileText, Bookmark, Mail, Wrench, Eye } from 'lucide-react';
+import {
+  CheckCircle2,
+  Sparkles,
+  Bell,
+  Users,
+  Trophy,
+  Settings,
+  AlertTriangle,
+  X,
+  ArrowDown,
+  FileText,
+  Bookmark,
+  Mail,
+  Wrench,
+  Eye,
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface PricingSectionProps {
@@ -37,38 +52,50 @@ const TIER_FEATURES: Record<string, { label: string; tiers: string[] }[]> = {
 function getFeaturesLost(from: string, to: string): string[] {
   const allFeatures = [...TIER_FEATURES.builder, ...TIER_FEATURES.pro];
   return allFeatures
-    .filter(f => f.tiers.includes(from) && !f.tiers.includes(to))
-    .map(f => f.label);
+    .filter((f) => f.tiers.includes(from) && !f.tiers.includes(to))
+    .map((f) => f.label);
 }
 
 // Feature showcase items per tier (displayed below the cards)
-const TIER_SHOWCASE: Record<PlanKey, { icon: React.ReactNode; label: string; onClick?: string }[]> = {
-  free: [
-    { icon: <Eye className="w-5 h-5 text-emerald-500 mx-auto" />, label: '10 Ideas Daily' },
-    { icon: <Bookmark className="w-5 h-5 text-emerald-500 mx-auto" />, label: '5 Saves / Month' },
-    { icon: <FileText className="w-5 h-5 text-emerald-500 mx-auto" />, label: 'PDF Export' },
-  ],
-  pro: [
-    { icon: <Eye className="w-5 h-5 text-emerald-500 mx-auto" />, label: '25 Ideas Daily' },
-    { icon: <Bookmark className="w-5 h-5 text-emerald-500 mx-auto" />, label: 'Unlimited Saves' },
-    { icon: <FileText className="w-5 h-5 text-emerald-500 mx-auto" />, label: 'Notion / GDocs' },
-    { icon: <Mail className="w-5 h-5 text-emerald-500 mx-auto" />, label: 'Email Digest' },
-    { icon: <Wrench className="w-5 h-5 text-emerald-500 mx-auto" />, label: 'Validation Toolkit' },
-  ],
-  builder: [
-    { icon: <Bell className="w-5 h-5 text-amber-500 mx-auto" />, label: 'Real-time Alerts' },
-    { icon: <Users className="w-5 h-5 text-amber-500 mx-auto" />, label: 'Team-up Access' },
-    { icon: <Trophy className="w-5 h-5 text-amber-500 mx-auto" />, label: 'TE-100 Submission', onClick: 'te100' },
-    { icon: <Settings className="w-5 h-5 text-amber-500 mx-auto" />, label: 'API Access', onClick: 'api' },
-  ],
-};
+const TIER_SHOWCASE: Record<PlanKey, { icon: React.ReactNode; label: string; onClick?: string }[]> =
+  {
+    free: [
+      { icon: <Eye className="w-5 h-5 text-emerald-500 mx-auto" />, label: '10 Ideas Daily' },
+      { icon: <Bookmark className="w-5 h-5 text-emerald-500 mx-auto" />, label: '5 Saves / Month' },
+      { icon: <FileText className="w-5 h-5 text-emerald-500 mx-auto" />, label: 'PDF Export' },
+    ],
+    pro: [
+      { icon: <Eye className="w-5 h-5 text-emerald-500 mx-auto" />, label: '25 Ideas Daily' },
+      { icon: <Bookmark className="w-5 h-5 text-emerald-500 mx-auto" />, label: 'Unlimited Saves' },
+      { icon: <FileText className="w-5 h-5 text-emerald-500 mx-auto" />, label: 'Notion / GDocs' },
+      { icon: <Mail className="w-5 h-5 text-emerald-500 mx-auto" />, label: 'Email Digest' },
+      {
+        icon: <Wrench className="w-5 h-5 text-emerald-500 mx-auto" />,
+        label: 'Validation Toolkit',
+      },
+    ],
+    builder: [
+      { icon: <Bell className="w-5 h-5 text-amber-500 mx-auto" />, label: 'Real-time Alerts' },
+      { icon: <Users className="w-5 h-5 text-amber-500 mx-auto" />, label: 'Team-up Access' },
+      {
+        icon: <Trophy className="w-5 h-5 text-amber-500 mx-auto" />,
+        label: 'TE-100 Submission',
+        onClick: 'te100',
+      },
+      {
+        icon: <Settings className="w-5 h-5 text-amber-500 mx-auto" />,
+        label: 'API Access',
+        onClick: 'api',
+      },
+    ],
+  };
 
-export const PricingSection: React.FC<PricingSectionProps> = ({ 
-  currentPlan, 
-  onUpgrade, 
+export const PricingSection: React.FC<PricingSectionProps> = ({
+  currentPlan,
+  onUpgrade,
   onDowngrade,
   onOpenTE100,
-  onOpenApiAccess
+  onOpenApiAccess,
 }) => {
   const [pendingDowngrade, setPendingDowngrade] = useState<'free' | 'pro' | null>(null);
   const [selectedTier, setSelectedTier] = useState<PlanKey>(currentPlan);
@@ -95,7 +122,8 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
   const getCardStyle = (tier: PlanKey) => {
     const isSelected = selectedTier === tier;
     const isCurrent = currentPlan === tier;
-    if (isSelected && tier === 'builder') return 'border-amber-500 bg-amber-500/5 ring-1 ring-amber-500/30';
+    if (isSelected && tier === 'builder')
+      return 'border-amber-500 bg-amber-500/5 ring-1 ring-amber-500/30';
     if (isSelected) return 'border-emerald-500 bg-emerald-500/5 ring-1 ring-emerald-500/30';
     if (isCurrent) return 'border-zinc-600 bg-zinc-900/50';
     return 'border-zinc-800 bg-zinc-900/50 hover:border-zinc-600';
@@ -112,7 +140,7 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
 
       <div className="grid md:grid-cols-3 gap-6">
         {/* Free Plan */}
-        <div 
+        <div
           onClick={() => setSelectedTier('free')}
           className={`p-6 rounded-3xl border ${getCardStyle('free')} space-y-6 flex flex-col cursor-pointer transition-all duration-200`}
         >
@@ -122,7 +150,9 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
               <p className="text-3xl font-black">$0</p>
             </div>
             {currentPlan === 'free' && (
-              <span className="text-[9px] font-bold uppercase tracking-widest text-emerald-500 bg-emerald-500/10 px-2 py-1 rounded-full">Current</span>
+              <span className="text-[9px] font-bold uppercase tracking-widest text-emerald-500 bg-emerald-500/10 px-2 py-1 rounded-full">
+                Current
+              </span>
             )}
           </div>
           <ul className="space-y-3 flex-1">
@@ -136,8 +166,11 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
               <CheckCircle2 className="w-4 h-4 text-emerald-500" /> PDF Export
             </li>
           </ul>
-          <button 
-            onClick={(e) => { e.stopPropagation(); currentPlan !== 'free' && handleDowngradeClick('free'); }}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              if (currentPlan !== 'free') handleDowngradeClick('free');
+            }}
             disabled={currentPlan === 'free'}
             className={`w-full py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${currentPlan === 'free' ? 'bg-zinc-800 text-zinc-500 cursor-default' : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-300'}`}
           >
@@ -146,18 +179,24 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
         </div>
 
         {/* Pro Plan */}
-        <div 
+        <div
           onClick={() => setSelectedTier('pro')}
           className={`p-6 rounded-3xl border ${getCardStyle('pro')} space-y-6 relative overflow-hidden flex flex-col cursor-pointer transition-all duration-200`}
         >
-          <div className="absolute top-0 right-0 px-3 py-1 bg-emerald-500 text-black text-[8px] font-black uppercase tracking-widest rounded-bl-xl">Popular</div>
+          <div className="absolute top-0 right-0 px-3 py-1 bg-emerald-500 text-black text-[8px] font-black uppercase tracking-widest rounded-bl-xl">
+            Popular
+          </div>
           <div className="flex items-center justify-between">
             <div className="space-y-1">
               <h4 className="text-lg font-black uppercase italic">Pro</h4>
-              <p className="text-3xl font-black">$9<span className="text-sm text-zinc-500">/mo</span></p>
+              <p className="text-3xl font-black">
+                $9<span className="text-sm text-zinc-500">/mo</span>
+              </p>
             </div>
             {currentPlan === 'pro' && (
-              <span className="text-[9px] font-bold uppercase tracking-widest text-emerald-500 bg-emerald-500/10 px-2 py-1 rounded-full">Current</span>
+              <span className="text-[9px] font-bold uppercase tracking-widest text-emerald-500 bg-emerald-500/10 px-2 py-1 rounded-full">
+                Current
+              </span>
             )}
           </div>
           <ul className="space-y-3 flex-1">
@@ -177,7 +216,7 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
               <CheckCircle2 className="w-4 h-4 text-emerald-500" /> Validation Toolkit
             </li>
           </ul>
-          <button 
+          <button
             onClick={(e) => {
               e.stopPropagation();
               if (currentPlan === 'free') onUpgrade('pro');
@@ -187,25 +226,34 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
             className={`w-full py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${
               currentPlan === 'builder'
                 ? 'bg-zinc-800 hover:bg-zinc-700 text-zinc-300'
-                : 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/20 ' + (currentPlan === 'pro' ? 'opacity-50 cursor-default' : 'hover:bg-emerald-500')
+                : 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/20 ' +
+                  (currentPlan === 'pro' ? 'opacity-50 cursor-default' : 'hover:bg-emerald-500')
             }`}
           >
-            {currentPlan === 'pro' ? 'CURRENT PLAN' : currentPlan === 'builder' ? 'DOWNGRADE' : 'UPGRADE TO PRO'}
+            {currentPlan === 'pro'
+              ? 'CURRENT PLAN'
+              : currentPlan === 'builder'
+                ? 'DOWNGRADE'
+                : 'UPGRADE TO PRO'}
           </button>
         </div>
 
         {/* Builder Plan */}
-        <div 
+        <div
           onClick={() => setSelectedTier('builder')}
           className={`p-6 rounded-3xl border ${getCardStyle('builder')} space-y-6 flex flex-col cursor-pointer transition-all duration-200`}
         >
           <div className="flex items-center justify-between">
             <div className="space-y-1">
               <h4 className="text-lg font-black uppercase italic">Builder</h4>
-              <p className="text-3xl font-black">$19<span className="text-sm text-zinc-500">/mo</span></p>
+              <p className="text-3xl font-black">
+                $19<span className="text-sm text-zinc-500">/mo</span>
+              </p>
             </div>
             {currentPlan === 'builder' && (
-              <span className="text-[9px] font-bold uppercase tracking-widest text-amber-500 bg-amber-500/10 px-2 py-1 rounded-full">Current</span>
+              <span className="text-[9px] font-bold uppercase tracking-widest text-amber-500 bg-amber-500/10 px-2 py-1 rounded-full">
+                Current
+              </span>
             )}
           </div>
           <ul className="space-y-3 flex-1">
@@ -228,12 +276,15 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
               <Sparkles className="w-4 h-4 text-amber-500" /> Expert Vetting
             </li>
           </ul>
-          <button 
-            onClick={(e) => { e.stopPropagation(); currentPlan !== 'builder' && onUpgrade('builder'); }}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              if (currentPlan !== 'builder') onUpgrade('builder');
+            }}
             disabled={currentPlan === 'builder'}
             className={`w-full py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${
-              currentPlan === 'builder' 
-                ? 'bg-zinc-800 text-zinc-500 cursor-default' 
+              currentPlan === 'builder'
+                ? 'bg-zinc-800 text-zinc-500 cursor-default'
                 : 'bg-amber-600 hover:bg-amber-500 text-white shadow-lg shadow-amber-900/20'
             }`}
           >
@@ -252,12 +303,16 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
           transition={{ duration: 0.2 }}
           className="space-y-3 pt-4"
         >
-          <p className={`text-center text-xs font-bold uppercase tracking-widest text-${showcaseColor}-500/70`}>
-            {selectedTier === currentPlan 
-              ? `Your ${selectedTier.toUpperCase()} Features` 
+          <p
+            className={`text-center text-xs font-bold uppercase tracking-widest text-${showcaseColor}-500/70`}
+          >
+            {selectedTier === currentPlan
+              ? `Your ${selectedTier.toUpperCase()} Features`
               : `Preview: ${selectedTier.toUpperCase()} Features`}
           </p>
-          <div className={`grid grid-cols-2 md:grid-cols-${Math.max(TIER_SHOWCASE[selectedTier].length, 3)} gap-4`}>
+          <div
+            className={`grid grid-cols-2 md:grid-cols-${Math.max(TIER_SHOWCASE[selectedTier].length, 3)} gap-4`}
+          >
             {TIER_SHOWCASE[selectedTier].map((item, i) => {
               const isClickable = item.onClick && currentPlan === 'builder';
               const Wrapper = isClickable ? 'button' : 'div';
@@ -266,7 +321,9 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
                   key={item.label}
                   onClick={isClickable ? () => handleShowcaseClick(item) : undefined}
                   className={`p-4 bg-zinc-900/50 border border-zinc-800 rounded-2xl text-center space-y-2 transition-all ${
-                    isClickable ? 'hover:bg-zinc-800/80 hover:border-emerald-500/50 cursor-pointer' : ''
+                    isClickable
+                      ? 'hover:bg-zinc-800/80 hover:border-emerald-500/50 cursor-pointer'
+                      : ''
                   } ${selectedTier !== currentPlan ? 'opacity-60' : ''}`}
                 >
                   {item.icon}
@@ -277,7 +334,8 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
           </div>
           {selectedTier !== currentPlan && (
             <p className="text-center text-[10px] text-zinc-600 italic">
-              {(['free', 'pro', 'builder'].indexOf(selectedTier) > ['free', 'pro', 'builder'].indexOf(currentPlan))
+              {['free', 'pro', 'builder'].indexOf(selectedTier) >
+              ['free', 'pro', 'builder'].indexOf(currentPlan)
                 ? 'Upgrade to unlock these features'
                 : 'These are the features available on this plan'}
             </p>
@@ -310,14 +368,16 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
                     <AlertTriangle className="w-6 h-6 text-amber-500" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-black uppercase italic tracking-tight">Confirm Downgrade</h3>
+                    <h3 className="text-lg font-black uppercase italic tracking-tight">
+                      Confirm Downgrade
+                    </h3>
                     <p className="text-xs text-zinc-500 mt-0.5">
                       {currentPlan.toUpperCase()} → {pendingDowngrade.toUpperCase()}
                     </p>
                   </div>
                 </div>
-                <button 
-                  onClick={() => setPendingDowngrade(null)} 
+                <button
+                  onClick={() => setPendingDowngrade(null)}
                   className="p-1 text-zinc-500 hover:text-white transition-colors"
                 >
                   <X className="w-5 h-5" />
@@ -327,7 +387,8 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
               {/* Features You'll Lose */}
               <div className="p-6 space-y-4">
                 <p className="text-sm text-zinc-300 font-medium">
-                  You will lose access to <span className="text-amber-400 font-bold">{featuresLost.length} features</span>:
+                  You will lose access to{' '}
+                  <span className="text-amber-400 font-bold">{featuresLost.length} features</span>:
                 </p>
                 <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
                   {featuresLost.map((feature, i) => (

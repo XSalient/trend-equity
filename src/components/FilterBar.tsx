@@ -23,6 +23,7 @@ interface FilterBarProps {
   onExportPDF?: () => void;
   resultCount?: number;
   totalCount?: number;
+  onUpgrade?: () => void;
 }
 
 const INDUSTRIES = [
@@ -169,7 +170,7 @@ function DropdownAction({
 
 // ── Main FilterBar ────────────────────────────────────────────────────────────
 
-export function FilterBar({ filters, setFilters, tier, onExportCSV, onExportPDF, resultCount, totalCount }: FilterBarProps) {
+export function FilterBar({ filters, setFilters, tier, onExportCSV, onExportPDF, resultCount, totalCount, onUpgrade }: FilterBarProps) {
   const [isOpen, setIsOpen] = useState(false);
   const isFree = tier === 'free';
   const isPro = tier === 'pro';
@@ -190,7 +191,10 @@ export function FilterBar({ filters, setFilters, tier, onExportCSV, onExportPDF,
   };
 
   const toggleFilter = (key: keyof FilterState, value: string) => {
-    if (isFree) return;
+    if (isFree) {
+      onUpgrade?.();
+      return;
+    }
     const current = (filters[key] as string[]) || [];
     const next = current.includes(value)
       ? current.filter(v => v !== value)
@@ -288,7 +292,6 @@ export function FilterBar({ filters, setFilters, tier, onExportCSV, onExportPDF,
                       {INDUSTRIES.map(industry => (
                         <button
                           key={industry}
-                          disabled={isFree}
                           onClick={() => toggleFilter('industries', industry)}
                           className={`px-3 py-1.5 rounded-full text-xs transition-all ${
                             filters.industries.includes(industry)
@@ -313,7 +316,6 @@ export function FilterBar({ filters, setFilters, tier, onExportCSV, onExportPDF,
                       {PRODUCT_TYPES.map(type => (
                         <button
                           key={type}
-                          disabled={isFree}
                           onClick={() => toggleFilter('productTypes', type)}
                           className={`flex-1 py-1.5 rounded-lg text-xs transition-all ${
                             filters.productTypes.includes(type)
@@ -341,7 +343,6 @@ export function FilterBar({ filters, setFilters, tier, onExportCSV, onExportPDF,
                       {RISK_LEVELS.map(level => (
                         <button
                           key={level}
-                          disabled={isFree}
                           onClick={() => toggleFilter('riskLevels', level)}
                           className={`flex-1 py-1.5 rounded-lg text-xs transition-all ${
                             filters.riskLevels.includes(level)
@@ -366,7 +367,6 @@ export function FilterBar({ filters, setFilters, tier, onExportCSV, onExportPDF,
                       {EFFORT_LEVELS.map(level => (
                         <button
                           key={level}
-                          disabled={isFree}
                           onClick={() => toggleFilter('effortLevels', level)}
                           className={`flex-1 py-1.5 rounded-lg text-xs transition-all ${
                             filters.effortLevels.includes(level)
@@ -394,7 +394,7 @@ export function FilterBar({ filters, setFilters, tier, onExportCSV, onExportPDF,
                       {MARKET_FOCUS.map(market => (
                         <button
                           key={market}
-                          disabled={isFree || (isPro && market.includes('Emerging'))}
+                          disabled={isPro && market.includes('Emerging')}
                           onClick={() => toggleFilter('marketFocus', market)}
                           className={`px-3 py-1.5 rounded-full text-xs transition-all flex items-center gap-1.5 ${
                             filters.marketFocus.includes(market)
@@ -420,7 +420,6 @@ export function FilterBar({ filters, setFilters, tier, onExportCSV, onExportPDF,
                       {TEAM_SIZE.map(size => (
                         <button
                           key={size}
-                          disabled={isFree}
                           onClick={() => toggleFilter('teamSize', size)}
                           className={`px-3 py-1.5 rounded-full text-xs transition-all ${
                             filters.teamSize.includes(size)

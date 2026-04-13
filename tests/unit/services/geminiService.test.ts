@@ -18,7 +18,6 @@ vi.stubEnv('VITE_API_BASE', '');
 // ── Mock global fetch ─────────────────────────────────────────────────────────
 
 const mockFetch = vi.fn();
-// @ts-ignore — deliberately replacing global fetch
 global.fetch = mockFetch;
 
 // ── import.meta.env polyfill for the node environment ────────────────────────
@@ -126,7 +125,12 @@ describe('geminiService', () => {
 
   describe('generateWeeklyTrendRadar', () => {
     it('success returns the radar data', async () => {
-      const data = { week: '2026-04-12', topTrends: [], marketShift: 'shift', opportunityAreas: [] };
+      const data = {
+        week: '2026-04-12',
+        topTrends: [],
+        marketShift: 'shift',
+        opportunityAreas: [],
+      };
       mockOk(data);
 
       const result = await generateWeeklyTrendRadar();
@@ -152,8 +156,9 @@ describe('geminiService', () => {
         json: () => Promise.resolve({ error: 'Explanation unavailable. Please try again.' }),
       });
 
-      await expect(explainPlanSection(MOCK_IDEA, 'roadmap', 'context'))
-        .rejects.toThrow('Explanation unavailable');
+      await expect(explainPlanSection(MOCK_IDEA, 'roadmap', 'context')).rejects.toThrow(
+        'Explanation unavailable'
+      );
     });
 
     it('success returns data.text', async () => {
@@ -169,13 +174,26 @@ describe('geminiService', () => {
 
   describe('generateAlerts', () => {
     it('non-OK response throws (caller handles gracefully)', async () => {
-      mockFetch.mockResolvedValueOnce({ ok: false, status: 500, json: () => Promise.resolve({ error: 'Alert generation failed' }) });
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        json: () => Promise.resolve({ error: 'Alert generation failed' }),
+      });
 
       await expect(generateAlerts()).rejects.toThrow('Alert generation failed');
     });
 
     it('success returns the alerts array', async () => {
-      const alerts = [{ id: 'a1', title: 'New trend', message: 'msg', type: 'info', timestamp: null, isRead: false }];
+      const alerts = [
+        {
+          id: 'a1',
+          title: 'New trend',
+          message: 'msg',
+          type: 'info',
+          timestamp: null,
+          isRead: false,
+        },
+      ];
       mockOk(alerts);
 
       const result = await generateAlerts();

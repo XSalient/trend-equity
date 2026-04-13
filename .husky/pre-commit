@@ -1,1 +1,32 @@
+#!/bin/sh
+# Pre-commit checks — run automatically before every git commit.
+# All checks use standard CLI tools (ESLint, Prettier, tsc) — no IDE required.
+
+echo "→ Checking formatting (Prettier)..."
+npm run format:check || {
+  echo ""
+  echo "  Formatting errors found. Fix with: npm run format"
+  echo ""
+  exit 1
+}
+
+echo "→ Checking types (TypeScript)..."
+npm run typecheck || {
+  echo ""
+  echo "  TypeScript errors found. Run: npm run typecheck"
+  echo ""
+  exit 1
+}
+
+echo "→ Linting (ESLint)..."
+npm run eslint || {
+  echo ""
+  echo "  ESLint errors found. Auto-fix with: npm run eslint:fix"
+  echo ""
+  exit 1
+}
+
+echo "→ Syncing Doppler config..."
 powershell.exe -ExecutionPolicy Bypass -File scripts/doppler_sync.ps1
+
+echo "✓ All checks passed."

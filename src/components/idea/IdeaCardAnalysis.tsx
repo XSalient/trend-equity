@@ -43,7 +43,7 @@ export const IdeaCardAnalysis: React.FC<IdeaCardAnalysisProps> = ({ idea }) => {
             </div>
           </div>
           <p className="text-xs text-zinc-400 leading-relaxed bg-zinc-800/30 p-3 rounded-lg border border-zinc-800/50">
-            {idea.unfairAdvantage}
+            {idea.unfairAdvantage || <span className="text-zinc-600 italic">Not assessed for this idea</span>}
           </p>
         </div>
       </div>
@@ -52,7 +52,7 @@ export const IdeaCardAnalysis: React.FC<IdeaCardAnalysisProps> = ({ idea }) => {
       <div className="space-y-2">
         <SectionLabel icon={DollarSign} label="Revenue Model" color="text-blue-400" />
         <p className="text-xs text-zinc-400 leading-relaxed bg-zinc-800/30 p-3 rounded-lg border border-zinc-800/50 font-mono">
-          {idea.revenueSkeleton}
+          {idea.revenueSkeleton || <span className="font-sans italic text-zinc-600">No revenue model specified</span>}
         </p>
       </div>
 

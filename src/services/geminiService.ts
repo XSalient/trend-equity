@@ -1,4 +1,4 @@
-import { Idea } from "../types";
+import { Idea } from '../types';
 
 // Base URL for API calls. Empty string on web (relative URLs work via same origin).
 // Set VITE_API_BASE=https://trend-equity.vercel.app when building for native (Capacitor).
@@ -15,12 +15,13 @@ export function setCurrentIdToken(token: string | null) {
   _currentIdToken = token;
 }
 
-// Keep these for any legacy compatibility but server ignores them now
-export function setCurrentUser(_uid: string | null) {}
-export function setCurrentTier(_tier: string) {}
-
 // --- Last known usage per feature type (readable by UI) ---
-type UsageInfo = { featureType: string; used: number; limit: number | null; remaining: number | null };
+type UsageInfo = {
+  featureType: string;
+  used: number;
+  limit: number | null;
+  remaining: number | null;
+};
 const _lastUsage: Record<string, UsageInfo> = {};
 
 export function getFeatureUsage(featureType: string): UsageInfo | null {

@@ -1,0 +1,25 @@
+# Config files Prettier cannot parse
+.editorconfig
+.nvmrc
+.husky/
+
+# Build outputs
+dist/
+build/
+coverage/
+
+# Dependencies
+node_modules/
+
+# Android
+android/
+
+# Auto-generated / vendored
+*.min.js
+*.min.css
+package-lock.json
+
+# Test snapshots
+**/__snapshots__/
+playwright-report/
+test-results/

@@ -10,13 +10,20 @@ import {
   onSnapshot,
   serverTimestamp,
   deleteDoc,
-  addDoc
+  addDoc,
 } from 'firebase/firestore';
 import { TIER_LIMITS } from '../constants';
 import { db } from '../firebase';
 import { Idea, DailyGeneration, UserSave, FilterState, Tier } from '../types';
 import { generateDailyIdeas } from '../services/geminiService';
 import { handleFirestoreError, OperationType } from '../utils/errorUtils';
+
+/** Deterministic djb2 hash of a string — used to give ideas stable IDs from their headline. */
+function stableId(str: string): string {
+  let h = 5381;
+  for (let i = 0; i < str.length; i++) h = ((h << 5) + h) ^ str.charCodeAt(i);
+  return (h >>> 0).toString(36);
+}
 
 export function useIdeas(user: User | null, tier: Tier, authReady: boolean) {
   const [dailyGen, setDailyGen] = useState<DailyGeneration | null>(null);
@@ -33,7 +40,7 @@ export function useIdeas(user: User | null, tier: Tier, authReady: boolean) {
     teamSize: [],
     excludeCategories: [],
     customKeywords: '',
-    sortBy: 'revenue'
+    sortBy: 'revenue',
   });
 
   const today = new Date().toISOString().split('T')[0];
@@ -73,33 +80,15 @@ export function useIdeas(user: User | null, tier: Tier, authReady: boolean) {
     setGenerating(true);
     setError(null);
     try {
-      // Determine user locale/country
-      const getCountryName = () => {
-        try {
-          const localeString = navigator.language; // e.g. "en-US", "fr-FR", "en"
-          const region = localeString.split('-')[1];
-          if (region) {
-            const displayNames = new Intl.DisplayNames(['en'], { type: 'region' });
-            return displayNames.of(region) || 'Global';
-          }
-        } catch (e) {
-          // Fallback
-        }
-        return 'Global';
-      };
-      
-      const country = getCountryName();
-      const countryCount = tier === 'builder' ? 5 : tier === 'pro' ? 3 : 1;
-
-      // FIX (B-2): Server now persists to daily_generations via Admin SDK.
-      // Client no longer writes to Firestore (was blocked by rules anyway).
-      const result = await generateDailyIdeas(country, countryCount);
+      // Country is not passed — browser locale is unreliable (e.g. English speaker
+      // in Germany). Users can specify their market via Builder Personalization filters.
+      const result = await generateDailyIdeas();
       const newGen: DailyGeneration = {
         date: today,
         intro: result.intro,
-        ideas: result.ideas.map((idea: any, index: number) => ({
+        ideas: result.ideas.map((idea: any) => ({
           ...idea,
-          id: `${today}-${index}`
+          id: `${today}-${stableId(idea.headline)}`,
         })),
         disclaimer: result.disclaimer,
         generatedAt: new Date().toISOString(),
@@ -108,67 +97,70 @@ export function useIdeas(user: User | null, tier: Tier, authReady: boolean) {
       setDailyGen(newGen);
       setCachedFeed(newGen);
     } catch (err: any) {
-      console.error("Generation Error:", err);
-      setError("AI generation failed. Please refresh to try again.");
+      console.error('Generation Error:', err);
+      setError('AI generation failed. Please refresh to try again.');
     } finally {
       setGenerating(false);
     }
   }, [today, tier]);
 
-  const fetchDaily = useCallback(async (isRetry = false) => {
-    if (!isRetry) setLoading(true);
-    setError(null);
+  const fetchDaily = useCallback(
+    async (isRetry = false) => {
+      if (!isRetry) setLoading(true);
+      setError(null);
 
-    // 1. Check localStorage first (instant, zero network)
-    const cached = getCachedFeed();
-    if (cached) {
-      setDailyGen(cached);
-      setLoading(false);
-      return;
-    }
+      // 1. Check localStorage first (instant, zero network)
+      const cached = getCachedFeed();
+      if (cached) {
+        setDailyGen(cached);
+        setLoading(false);
+        return;
+      }
 
-    // 2. Try Firestore
-    try {
-      const docRef = doc(db, 'daily_generations', today);
-      let docSnap;
+      // 2. Try Firestore
       try {
-        docSnap = await getDoc(docRef);
-      } catch (err: any) {
-        const msg = err?.message || "";
-        if (msg.includes("Quota exceeded")) {
-          setError("Daily quota reached. Please try again tomorrow.");
-          setLoading(false);
-          return;
+        const docRef = doc(db, 'daily_generations', today);
+        let docSnap;
+        try {
+          docSnap = await getDoc(docRef);
+        } catch (err: any) {
+          const msg = err?.message || '';
+          if (msg.includes('Quota exceeded')) {
+            setError('Daily quota reached. Please try again tomorrow.');
+            setLoading(false);
+            return;
+          }
+          throw err;
         }
-        throw err;
-      }
 
-      if (docSnap.exists()) {
-        const data = docSnap.data() as DailyGeneration;
-        // Stale mock doc from before mock removal — discard and regenerate
-        if (data._isMock) {
-          await triggerGeneration();
+        if (docSnap.exists()) {
+          const data = docSnap.data() as DailyGeneration;
+          // Stale mock doc from before mock removal — discard and regenerate
+          if (data._isMock) {
+            await triggerGeneration();
+          } else {
+            setDailyGen(data);
+            setCachedFeed(data);
+          }
         } else {
-          setDailyGen(data);
-          setCachedFeed(data);
+          await triggerGeneration();
         }
-      } else {
-        await triggerGeneration();
+      } catch (err: any) {
+        console.error('Fetch Error:', err);
+        const msg = err?.message || '';
+        if (msg.includes('Quota exceeded')) {
+          setError('Daily quota reached. Please try again tomorrow.');
+        } else if (msg.includes('offline')) {
+          setError('You appear to be offline.');
+        } else {
+          setError("Failed to load today's ideas.");
+        }
+      } finally {
+        setLoading(false);
       }
-    } catch (err: any) {
-      console.error("Fetch Error:", err);
-      const msg = err?.message || "";
-      if (msg.includes("Quota exceeded")) {
-        setError("Daily quota reached. Please try again tomorrow.");
-      } else if (msg.includes("offline")) {
-        setError("You appear to be offline.");
-      } else {
-        setError("Failed to load today's ideas.");
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, [today, triggerGeneration]);
+    },
+    [today, triggerGeneration]
+  );
 
   useEffect(() => {
     if (!authReady) return;
@@ -186,7 +178,7 @@ export function useIdeas(user: User | null, tier: Tier, authReady: boolean) {
         if (docSnap.exists()) {
           const data = docSnap.data();
           if (data.filters) {
-            setFilters(prev => ({
+            setFilters((prev) => ({
               ...prev,
               ...data.filters,
               industries: data.filters.industries || [],
@@ -195,7 +187,7 @@ export function useIdeas(user: User | null, tier: Tier, authReady: boolean) {
               effortLevels: data.filters.effortLevels || [],
               marketFocus: data.filters.marketFocus || [],
               teamSize: data.filters.teamSize || [],
-              excludeCategories: data.filters.excludeCategories || []
+              excludeCategories: data.filters.excludeCategories || [],
             }));
           }
         }
@@ -214,12 +206,16 @@ export function useIdeas(user: User | null, tier: Tier, authReady: boolean) {
     const saveFilters = async () => {
       const userRef = doc(db, 'users', user.uid);
       try {
-        await setDoc(userRef, {
-          filters,
-          updatedAt: serverTimestamp()
-        }, { merge: true });
+        await setDoc(
+          userRef,
+          {
+            filters,
+            updatedAt: serverTimestamp(),
+          },
+          { merge: true }
+        );
       } catch (err) {
-        console.error("Failed to save filters:", err);
+        console.error('Failed to save filters:', err);
       }
     };
 
@@ -232,17 +228,26 @@ export function useIdeas(user: User | null, tier: Tier, authReady: boolean) {
     if (!user) return;
 
     const q = query(collection(db, 'user_saves'), where('userId', '==', user.uid));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const saves = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as UserSave));
-      setUserSaves(saves);
-    }, (err) => {
-      console.error("Saves Sync Error:", err);
-    });
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const saves = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as UserSave);
+        setUserSaves(saves);
+      },
+      (err) => {
+        console.error('Saves Sync Error:', err);
+      }
+    );
 
     return () => unsubscribe();
   }, [user]);
 
-  const toggleSave = async (idea: Idea, TIER_LIMITS: any, onLoginNeeded: () => void, onUpgradeNeeded: () => void) => {
+  const toggleSave = async (
+    idea: Idea,
+    TIER_LIMITS: any,
+    onLoginNeeded: () => void,
+    onUpgradeNeeded: () => void
+  ) => {
     if (!user) {
       onLoginNeeded();
       return;
@@ -255,7 +260,7 @@ export function useIdeas(user: User | null, tier: Tier, authReady: boolean) {
       return;
     }
 
-    const existing = userSaves.find(s => s.idea.id === idea.id);
+    const existing = userSaves.find((s) => s.idea.id === idea.id);
     try {
       if (existing) {
         await deleteDoc(doc(db, 'user_saves', existing.id!));
@@ -263,21 +268,23 @@ export function useIdeas(user: User | null, tier: Tier, authReady: boolean) {
         await addDoc(collection(db, 'user_saves'), {
           userId: user.uid,
           idea,
-          savedAt: serverTimestamp()
+          savedAt: serverTimestamp(),
         });
       }
     } catch (err: any) {
-      console.error("Save Error:", err);
-      setError("Failed to save idea. Please try again.");
+      console.error('Save Error:', err);
+      setError('Failed to save idea. Please try again.');
     }
   };
 
   const updateIdea = async (updatedIdea: Idea) => {
     if (!user) return;
 
-    setUserSaves(prev => prev.map(s => s.idea.id === updatedIdea.id ? { ...s, idea: updatedIdea } : s));
+    setUserSaves((prev) =>
+      prev.map((s) => (s.idea.id === updatedIdea.id ? { ...s, idea: updatedIdea } : s))
+    );
 
-    const existing = userSaves.find(s => s.idea.id === updatedIdea.id);
+    const existing = userSaves.find((s) => s.idea.id === updatedIdea.id);
     if (existing) {
       try {
         const saveRef = doc(db, 'user_saves', existing.id!);
@@ -287,146 +294,164 @@ export function useIdeas(user: User | null, tier: Tier, authReady: boolean) {
       }
     }
 
-    if (dailyGen && dailyGen.ideas.some(i => i.id === updatedIdea.id)) {
+    if (dailyGen && dailyGen.ideas.some((i) => i.id === updatedIdea.id)) {
       setDailyGen({
         ...dailyGen,
-        ideas: dailyGen.ideas.map(i => i.id === updatedIdea.id ? updatedIdea : i)
+        ideas: dailyGen.ideas.map((i) => (i.id === updatedIdea.id ? updatedIdea : i)),
       });
     }
   };
 
-  const getFilteredIdeas = useCallback((ideas: Idea[]) => {
-    let filtered = [...ideas];
+  const getFilteredIdeas = useCallback(
+    (ideas: Idea[]) => {
+      let filtered = [...ideas];
 
-    if (filters.industries?.length > 0) {
-      filtered = filtered.filter(idea =>
-        filters.industries.some(ind => {
-          const searchTerms = ind.toLowerCase().split(/[\/\s-]/);
-          return searchTerms.some(term =>
-            idea.categoryTags.some(tag => tag.toLowerCase().includes(term)) ||
-            idea.headline.toLowerCase().includes(term) ||
-            idea.pitch.toLowerCase().includes(term)
-          );
-        })
-      );
-    }
-
-    if (filters.productTypes?.length > 0) {
-      filtered = filtered.filter(idea => {
-        const isDigital = idea.categoryTags.some(tag =>
-          tag.toLowerCase().includes('digital') ||
-          tag.toLowerCase().includes('saas') ||
-          tag.toLowerCase().includes('software') ||
-          tag.toLowerCase().includes('app')
+      if (filters.industries?.length > 0) {
+        filtered = filtered.filter((idea) =>
+          filters.industries.some((ind) => {
+            const searchTerms = ind.toLowerCase().split(/[/\s-]/);
+            return searchTerms.some(
+              (term) =>
+                idea.categoryTags.some((tag) => tag.toLowerCase().includes(term)) ||
+                idea.headline.toLowerCase().includes(term) ||
+                idea.pitch.toLowerCase().includes(term)
+            );
+          })
         );
-        const isPhysical = idea.categoryTags.some(tag =>
-          tag.toLowerCase().includes('physical') ||
-          tag.toLowerCase().includes('hardware') ||
-          tag.toLowerCase().includes('sustainable') ||
-          tag.toLowerCase().includes('product')
-        );
-
-        if (filters.productTypes.includes('Digital') && isDigital) return true;
-        if (filters.productTypes.includes('Physical') && isPhysical) return true;
-        return false;
-      });
-    }
-
-    if (filters.riskLevels?.length > 0) {
-      filtered = filtered.filter(idea => {
-        const score = idea.revenuePotentialScore;
-        const isLow = score < 5;
-        const isHigh = score > 8;
-        const isMedium = score >= 5 && score <= 8;
-
-        if (filters.riskLevels.includes('Low') && isLow) return true;
-        if (filters.riskLevels.includes('Medium') && isMedium) return true;
-        if (filters.riskLevels.includes('High') && isHigh) return true;
-        return false;
-      });
-    }
-
-    if (filters.effortLevels?.length > 0) {
-      filtered = filtered.filter(idea =>
-        filters.effortLevels.some(eff => idea.costEffort.toLowerCase().includes(eff.toLowerCase()))
-      );
-    }
-
-    if (filters.marketFocus?.length > 0) {
-      filtered = filtered.filter(idea =>
-        filters.marketFocus.some(m => {
-          if (m === 'Local Market') {
-            return idea.categoryTags.some(tag => tag.toLowerCase().includes('local market'));
-          }
-          return idea.pitch.toLowerCase().includes(m.toLowerCase()) ||
-                 idea.trendSources.some(s => s.toLowerCase().includes(m.toLowerCase())) ||
-                 idea.vcJustification.toLowerCase().includes(m.toLowerCase());
-        })
-      );
-    }
-
-    if (filters.teamSize?.length > 0) {
-      filtered = filtered.filter(idea => {
-        const costEffort = idea.costEffort.toLowerCase();
-        const isSolo = costEffort.includes('solo') || costEffort.includes('low');
-        const isTeam = costEffort.includes('team') || costEffort.includes('funding') || costEffort.includes('co-founder');
-        const isSmall = !isSolo && !isTeam;
-
-        if (filters.teamSize.includes('Solo-friendly') && isSolo) return true;
-        if (filters.teamSize.includes('Small team (2–5)') && isSmall) return true;
-        if (filters.teamSize.includes('Needs co-founder/funding round') && isTeam) return true;
-        return false;
-      });
-    }
-
-    if (tier === 'builder' && filters.customKeywords) {
-      const keywords = filters.customKeywords.toLowerCase().split(',').map(k => k.trim());
-      filtered = filtered.filter(idea =>
-        keywords.some(k =>
-          idea.headline.toLowerCase().includes(k) ||
-          idea.pitch.toLowerCase().includes(k) ||
-          idea.categoryTags.some(tag => tag.toLowerCase().includes(k))
-        )
-      );
-    }
-
-    if (tier === 'builder' && filters.excludeCategories?.length > 0) {
-      filtered = filtered.filter(idea =>
-        !filters.excludeCategories.some(exc =>
-          idea.categoryTags.some(tag => tag.toLowerCase().includes(exc.toLowerCase()))
-        )
-      );
-    }
-
-    filtered.sort((a, b) => {
-      if (filters.sortBy === 'revenue') return b.revenuePotentialScore - a.revenuePotentialScore;
-      if (filters.sortBy === 'effort') {
-        const getEffort = (s: string) => {
-          s = s.toLowerCase();
-          if (s.includes('low')) return 0;
-          if (s.includes('high')) return 2;
-          return 1;
-        };
-        return getEffort(a.costEffort) - getEffort(b.costEffort);
       }
-      return 0;
-    });
 
-    return filtered;
-  }, [filters, tier]);
+      if (filters.productTypes?.length > 0) {
+        filtered = filtered.filter((idea) => {
+          const isDigital = idea.categoryTags.some(
+            (tag) =>
+              tag.toLowerCase().includes('digital') ||
+              tag.toLowerCase().includes('saas') ||
+              tag.toLowerCase().includes('software') ||
+              tag.toLowerCase().includes('app')
+          );
+          const isPhysical = idea.categoryTags.some(
+            (tag) =>
+              tag.toLowerCase().includes('physical') ||
+              tag.toLowerCase().includes('hardware') ||
+              tag.toLowerCase().includes('sustainable') ||
+              tag.toLowerCase().includes('product')
+          );
 
-  return { 
-    dailyGen, 
-    userSaves, 
-    loading, 
-    generating, 
-    error, 
-    filters, 
-    setFilters, 
-    toggleSave, 
-    updateIdea, 
-    getFilteredIdeas, 
+          if (filters.productTypes.includes('Digital') && isDigital) return true;
+          if (filters.productTypes.includes('Physical') && isPhysical) return true;
+          return false;
+        });
+      }
+
+      if (filters.riskLevels?.length > 0) {
+        filtered = filtered.filter((idea) => {
+          const score = idea.revenuePotentialScore;
+          const isLow = score < 5;
+          const isHigh = score > 8;
+          const isMedium = score >= 5 && score <= 8;
+
+          if (filters.riskLevels.includes('Low') && isLow) return true;
+          if (filters.riskLevels.includes('Medium') && isMedium) return true;
+          if (filters.riskLevels.includes('High') && isHigh) return true;
+          return false;
+        });
+      }
+
+      if (filters.effortLevels?.length > 0) {
+        filtered = filtered.filter((idea) =>
+          filters.effortLevels.some((eff) =>
+            idea.costEffort.toLowerCase().includes(eff.toLowerCase())
+          )
+        );
+      }
+
+      if (filters.marketFocus?.length > 0) {
+        filtered = filtered.filter((idea) =>
+          filters.marketFocus.some((m) => {
+            if (m === 'Local Market') {
+              return idea.categoryTags.some((tag) => tag.toLowerCase().includes('local market'));
+            }
+            return (
+              idea.pitch.toLowerCase().includes(m.toLowerCase()) ||
+              idea.trendSources.some((s) => s.toLowerCase().includes(m.toLowerCase())) ||
+              idea.vcJustification.toLowerCase().includes(m.toLowerCase())
+            );
+          })
+        );
+      }
+
+      if (filters.teamSize?.length > 0) {
+        filtered = filtered.filter((idea) => {
+          const costEffort = idea.costEffort.toLowerCase();
+          const isSolo = costEffort.includes('solo') || costEffort.includes('low');
+          const isTeam =
+            costEffort.includes('team') ||
+            costEffort.includes('funding') ||
+            costEffort.includes('co-founder');
+          const isSmall = !isSolo && !isTeam;
+
+          if (filters.teamSize.includes('Solo-friendly') && isSolo) return true;
+          if (filters.teamSize.includes('Small team (2–5)') && isSmall) return true;
+          if (filters.teamSize.includes('Needs co-founder/funding round') && isTeam) return true;
+          return false;
+        });
+      }
+
+      if (tier === 'builder' && filters.customKeywords) {
+        const keywords = filters.customKeywords
+          .toLowerCase()
+          .split(',')
+          .map((k) => k.trim());
+        filtered = filtered.filter((idea) =>
+          keywords.some(
+            (k) =>
+              idea.headline.toLowerCase().includes(k) ||
+              idea.pitch.toLowerCase().includes(k) ||
+              idea.categoryTags.some((tag) => tag.toLowerCase().includes(k))
+          )
+        );
+      }
+
+      if (tier === 'builder' && filters.excludeCategories?.length > 0) {
+        filtered = filtered.filter(
+          (idea) =>
+            !filters.excludeCategories.some((exc) =>
+              idea.categoryTags.some((tag) => tag.toLowerCase().includes(exc.toLowerCase()))
+            )
+        );
+      }
+
+      filtered.sort((a, b) => {
+        if (filters.sortBy === 'revenue') return b.revenuePotentialScore - a.revenuePotentialScore;
+        if (filters.sortBy === 'effort') {
+          const getEffort = (s: string) => {
+            s = s.toLowerCase();
+            if (s.includes('low')) return 0;
+            if (s.includes('high')) return 2;
+            return 1;
+          };
+          return getEffort(a.costEffort) - getEffort(b.costEffort);
+        }
+        return 0;
+      });
+
+      return filtered;
+    },
+    [filters, tier]
+  );
+
+  return {
+    dailyGen,
+    userSaves,
+    loading,
+    generating,
+    error,
+    filters,
+    setFilters,
+    toggleSave,
+    updateIdea,
+    getFilteredIdeas,
     triggerGeneration,
-    fetchDaily
+    fetchDaily,
   };
 }

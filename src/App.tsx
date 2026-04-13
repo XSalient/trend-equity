@@ -7,6 +7,7 @@ import {
   Rocket,
   Wand2,
   Lock,
+  X,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -90,7 +91,15 @@ export default function App() {
   const [showTE100, setShowTE100] = useState(false);
   const [showApiAccess, setShowApiAccess] = useState(false);
 
-  const error = authError || ideasError;
+  // BUG-1 / BUG-3 FIX: Auth errors get their own dismissable toast, separate from ideas retry banner.
+  const [authToastVisible, setAuthToastVisible] = useState(false);
+  useEffect(() => {
+    if (authError) {
+      setAuthToastVisible(true);
+      const t = setTimeout(() => { setAuthToastVisible(false); }, 6000);
+      return () => clearTimeout(t);
+    }
+  }, [authError]);
 
   const today = new Date().toISOString().split('T')[0];
 
@@ -391,18 +400,40 @@ export default function App() {
           </footer>
         </main>
 
-        {/* Floating Refresh */}
-        {error && (
+        {/* Ideas error — retry button */}
+        {ideasError && (
           <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
             <button
               onClick={() => fetchDaily(true)}
               className="flex items-center gap-2 px-6 py-3 bg-red-600 text-white rounded-full shadow-2xl hover:bg-red-500 transition-all font-bold text-sm"
             >
               <RefreshCw className="w-4 h-4" />
-              {error} - RETRY
+              {ideasError} — RETRY
             </button>
           </div>
         )}
+
+        {/* Auth error — auto-dismissing toast with close button (BUG-1 / BUG-3 fix) */}
+        <AnimatePresence>
+          {authToastVisible && authError && (
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 16 }}
+              className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-5 py-3 bg-zinc-800 border border-zinc-700 text-white rounded-full shadow-2xl text-sm font-medium max-w-sm"
+            >
+              <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
+              <span className="truncate">{authError}</span>
+              <button
+                onClick={() => { setAuthToastVisible(false); }}
+                className="ml-1 flex-shrink-0 text-zinc-400 hover:text-white transition-colors"
+                aria-label="Dismiss"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         <TE100Modal 
           user={user} 

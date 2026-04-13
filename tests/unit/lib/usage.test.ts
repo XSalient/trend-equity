@@ -48,17 +48,24 @@ import { checkAndIncrementUsage, buildUsageResponse } from '../../../api/_lib/us
 
 /** Helper: simulate a Firestore transaction that increments count from `currentCount` */
 function setupTransaction(currentCount: number) {
-  mockRunTransaction.mockImplementation(async (callback: Function) => {
-    const snap = {
-      exists: true,
-      data: () => ({ count: currentCount }),
-    };
-    const tx = {
-      get: mockTransactionGet.mockResolvedValue(snap),
-      set: mockTransactionSet,
-    };
-    return callback(tx);
-  });
+  mockRunTransaction.mockImplementation(
+    async (
+      callback: (tx: {
+        get: typeof mockTransactionGet;
+        set: typeof mockTransactionSet;
+      }) => Promise<unknown>
+    ) => {
+      const snap = {
+        exists: true,
+        data: () => ({ count: currentCount }),
+      };
+      const tx = {
+        get: mockTransactionGet.mockResolvedValue(snap),
+        set: mockTransactionSet,
+      };
+      return callback(tx);
+    }
+  );
 }
 
 describe('checkAndIncrementUsage', () => {

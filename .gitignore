@@ -1,6 +1,13 @@
 node_modules/
 build/
 dist/
+
+# IDE — personal/generated settings (not shared)
+# .vscode/ IS tracked — it contains shared team settings (settings.json, extensions.json)
+.idea/
+*.iml
+.zed/
+*.code-workspace
 coverage/
 .DS_Store
 *.log
@@ -23,3 +30,21 @@ src/services/prompts.json
 playwright-report/
 test-results/
 .vercel
+.codersinflow
+.vscode
+node_modules
+.env
+.venv
+.codex
+out
+dist
+*.vsix
+.claude
+CLAUDE.md
+.git
+*.tmp
+__pycache__
+*.pyc
+.env.local
+.next
+.github

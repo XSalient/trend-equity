@@ -9,6 +9,7 @@ interface IdeaCardHeaderProps {
   isSaving: boolean;
   onExport?: (format: 'pdf' | 'notion' | 'gdocs') => void;
   isFree: boolean;
+  user?: any;
 }
 
 export const IdeaCardHeader: React.FC<IdeaCardHeaderProps> = ({
@@ -17,7 +18,8 @@ export const IdeaCardHeader: React.FC<IdeaCardHeaderProps> = ({
   onToggleSave,
   isSaving,
   onExport,
-  isFree
+  isFree,
+  user
 }) => {
   return (
     <div className="flex justify-between items-start gap-4">
@@ -74,13 +76,21 @@ export const IdeaCardHeader: React.FC<IdeaCardHeaderProps> = ({
             </div>
           </div>
         )}
-        <button
-          onClick={onToggleSave}
-          disabled={isSaving}
-          className={`p-2 rounded-full transition-colors ${isSaved ? 'text-emerald-500 bg-emerald-500/10' : 'text-zinc-500 hover:text-zinc-300 bg-zinc-800/50'}`}
-        >
-          {isSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : (isSaved ? <BookmarkCheck className="w-5 h-5" /> : <Bookmark className="w-5 h-5" />)}
-        </button>
+        <div className="relative group/save">
+          <button
+            onClick={onToggleSave}
+            disabled={isSaving}
+            className={`p-2 rounded-full transition-colors ${isSaved ? 'text-emerald-500 bg-emerald-500/10' : 'text-zinc-500 hover:text-zinc-300 bg-zinc-800/50'}`}
+            aria-label={isSaved ? 'Unsave idea' : 'Save idea'}
+          >
+            {isSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : (isSaved ? <BookmarkCheck className="w-5 h-5" /> : <Bookmark className="w-5 h-5" />)}
+          </button>
+          {!user && !isSaved && (
+            <div className="absolute right-0 top-full mt-2 w-36 px-2.5 py-2 bg-zinc-800 border border-zinc-700 rounded-xl shadow-xl text-[10px] text-zinc-400 font-medium leading-snug opacity-0 invisible group-hover/save:opacity-100 group-hover/save:visible transition-all z-50 pointer-events-none text-center">
+              Sign in to save ideas
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -61,6 +61,7 @@ export const IdeaFeed: React.FC<IdeaFeedProps> = ({
         onExportPDF={onExportPDF}
         resultCount={hasActiveFilters ? filteredIdeas.length : undefined}
         totalCount={hasActiveFilters ? tierIdeas.length : undefined}
+        onUpgrade={() => setActiveTab('pro')}
       />
 
       {loading ? (

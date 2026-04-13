@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Zap,
@@ -7,7 +7,9 @@ import {
   Loader2,
   Shield,
   Wand2,
-  Users
+  Users,
+  AlertCircle,
+  X,
 } from 'lucide-react';
 import { Idea } from '../types';
 import { useIdeaActions } from '../hooks/useIdeaActions';
@@ -58,6 +60,8 @@ export const IdeaCard: React.FC<IdeaCardProps> = ({
     explainingSection,
     explanation,
     setExplanation,
+    actionError,
+    clearActionError,
     handleGenerateFullPlan,
     handleGenerateBuild,
     handleGenerateValidation,
@@ -77,6 +81,13 @@ export const IdeaCard: React.FC<IdeaCardProps> = ({
 
   const isFree = tier === 'free';
   const isBuilder = tier === 'builder';
+
+  // BUG-4 FIX: auto-dismiss actionError after 6 seconds
+  useEffect(() => {
+    if (!actionError) return;
+    const t = setTimeout(() => clearActionError(), 6000);
+    return () => clearTimeout(t);
+  }, [actionError, clearActionError]);
 
   const handleToggleStepLocal = (stepId: string) => {
     if (!idea.fullActionPlan || !onUpdateIdea) return;
@@ -132,6 +143,7 @@ export const IdeaCard: React.FC<IdeaCardProps> = ({
           isSaving={isSaving}
           onExport={onExport}
           isFree={isFree}
+          user={user}
         />
 
         {/* Pitch */}
@@ -182,6 +194,28 @@ export const IdeaCard: React.FC<IdeaCardProps> = ({
               </div>
             )}
           </div>
+
+          {/* BUG-4 FIX: inline error for Build / Plan / Vetting / Validation failures */}
+          <AnimatePresence>
+            {actionError && (
+              <motion.div
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                className="flex items-start gap-2 px-3 py-2.5 bg-red-500/10 border border-red-500/20 rounded-xl text-xs text-red-400"
+              >
+                <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+                <span className="flex-1 leading-relaxed">{actionError}</span>
+                <button
+                  onClick={clearActionError}
+                  className="flex-shrink-0 text-red-400/60 hover:text-red-400 transition-colors"
+                  aria-label="Dismiss error"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           <AnimatePresence>
             {isExpanded && (

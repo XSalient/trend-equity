@@ -1,7 +1,11 @@
 import express from 'express';
 import dotenv from 'dotenv';
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenAI, Type } from '@google/genai';
 import rateLimit from 'express-rate-limit';
+import { getMockResponse } from './server.mocks.js';
+import { checkAndIncrementUsage, buildUsageResponse } from './api/_lib/usage.js';
+import { getAdminAuth } from './api/_lib/admin.js';
+import { getToday } from './api/_lib/gemini.js';
 // Signals module loaded dynamically to support tsx ESM resolution
 let _signals: typeof import('./api/_lib/signals.ts') | null = null;
 async function getSignalsModule() {
@@ -9,7 +13,34 @@ async function getSignalsModule() {
   return _signals;
 }
 
+// --- Auth helper: extract uid + tier from Bearer token ---
+async function getAuthFromRequest(
+  req: express.Request
+): Promise<{ uid: string; tier: string } | null> {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith('Bearer ')) return null;
+  const token = authHeader.slice(7);
+  if (!token) return null;
+  try {
+    const decoded = await getAdminAuth().verifyIdToken(token);
+    return { uid: decoded.uid, tier: (decoded as any).tier || 'free' };
+  } catch {
+    return null;
+  }
+}
+
 dotenv.config();
+
+// ─── Production safety guard ──────────────────────────────────────────────────
+// DEV_MOCK must NEVER be enabled in production. Fail fast so a mis-configured
+// deploy is caught immediately rather than silently serving fake data to users.
+if (process.env.DEV_MOCK === 'true' && process.env.NODE_ENV === 'production') {
+  console.error(
+    '\n[FATAL] DEV_MOCK=true is not allowed in production.\n' +
+      '        Remove or unset DEV_MOCK from your production environment and redeploy.\n'
+  );
+  process.exit(1);
+}
 
 const app = express();
 const port = process.env.PORT || 3001;
@@ -28,14 +59,14 @@ OUTPUT FORMAT: Respond with valid JSON matching the provided schema exactly. No 
 // Load prompts with fallback
 let localPrompts = { SYSTEM_PROMPT: '' };
 try {
-  // @ts-ignore - dynamic import for local dev only
   const promptsModule = await import('./src/services/prompts.json', { assert: { type: 'json' } });
   localPrompts = promptsModule.default;
-} catch (e) {
+} catch (_e) {
   console.log('--- Notice: No local prompts.json found. Relying on environment variables. ---');
 }
 
-const SYSTEM_PROMPT = process.env.SYSTEM_PROMPT || localPrompts.SYSTEM_PROMPT || DEFAULT_SYSTEM_PROMPT;
+const SYSTEM_PROMPT =
+  process.env.SYSTEM_PROMPT || localPrompts.SYSTEM_PROMPT || DEFAULT_SYSTEM_PROMPT;
 
 // --- Rate Limiting (Strategy C: IP-based shield) ---
 
@@ -45,7 +76,7 @@ const globalLimiter = rateLimit({
   max: 200,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: 'Too many requests, please slow down.' }
+  message: { error: 'Too many requests, please slow down.' },
 });
 
 // Feature endpoints: 30 requests per hour per IP
@@ -54,14 +85,17 @@ const featureLimiter = rateLimit({
   max: 30,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: 'Hourly feature limit reached. Please try again later.' }
+  message: { error: 'Hourly feature limit reached. Please try again later.' },
 });
 
 app.use(globalLimiter);
 
 // --- In-Memory Feature Cache (Strategy D: extended caching) ---
 
-interface CacheEntry { result: any; generatedAt: number; }
+interface CacheEntry {
+  result: any;
+  generatedAt: number;
+}
 const featureCache = new Map<string, CacheEntry>();
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
@@ -81,67 +115,11 @@ function setCached(key: string, result: any): void {
   featureCache.set(key, { result, generatedAt: Date.now() });
 }
 
-// --- Per-User Daily Usage Tracking (Strategy C: user-level throttle) ---
-
-interface UserUsage { date: string; counts: Record<string, number>; }
-const userUsageMap = new Map<string, UserUsage>();
-
-const FEATURE_DAILY_LIMITS: Record<string, number> = {
-  free: 3,
-  pro: 15,
-  builder: Infinity
-};
-
-function getToday(): string {
-  return new Date().toISOString().split('T')[0];
-}
-
-function getUserUsage(uid: string, featureType: string): number {
-  const usage = userUsageMap.get(uid);
-  if (!usage || usage.date !== getToday()) return 0;
-  return usage.counts[featureType] || 0;
-}
-
-/** Returns { allowed, remaining, limit }. Increments counter if allowed. */
-function checkAndIncrementUsage(uid: string, tier: string, featureType: string): { allowed: boolean; remaining: number; limit: number } {
-  const limit = FEATURE_DAILY_LIMITS[tier] ?? FEATURE_DAILY_LIMITS.free;
-  if (!isFinite(limit)) return { allowed: true, remaining: Infinity, limit };
-
-  const today = getToday();
-  let usage = userUsageMap.get(uid);
-  if (!usage || usage.date !== today) {
-    usage = { date: today, counts: {} };
-  }
-
-  const current = usage.counts[featureType] || 0;
-  if (current >= limit) {
-    userUsageMap.set(uid, usage);
-    return { allowed: false, remaining: 0, limit };
-  }
-
-  usage.counts[featureType] = current + 1;
-  userUsageMap.set(uid, usage);
-  return { allowed: true, remaining: limit - (current + 1), limit };
-}
-
-function buildUsageResponse(uid: string | undefined, tier: string | undefined, featureType: string) {
-  if (!uid) return null;
-  const t = tier || 'free';
-  const limit = FEATURE_DAILY_LIMITS[t] ?? FEATURE_DAILY_LIMITS.free;
-  const used = getUserUsage(uid, featureType);
-  return {
-    featureType,
-    used,
-    limit: isFinite(limit) ? limit : null,
-    remaining: isFinite(limit) ? Math.max(0, limit - used) : null
-  };
-}
-
 // --- Shared Gemini Helper ---
 
 async function generateWithGemini(prompt: string, schema?: any, systemInstruction?: string) {
   const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new Error("GEMINI_API_KEY missing from environment.");
+  if (!apiKey) throw new Error('GEMINI_API_KEY missing from environment.');
 
   const ai = new GoogleGenAI({ apiKey });
   const modelToUse = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
@@ -152,17 +130,17 @@ async function generateWithGemini(prompt: string, schema?: any, systemInstructio
       contents: prompt,
       config: {
         systemInstruction: systemInstruction || SYSTEM_PROMPT,
-        responseMimeType: schema ? "application/json" : "text/plain",
-        responseSchema: schema
-      }
+        responseMimeType: schema ? 'application/json' : 'text/plain',
+        responseSchema: schema,
+      },
     });
 
     if (schema) {
       try {
         return JSON.parse(response.text);
       } catch (e) {
-        console.error("JSON Parse Error:", response.text);
-        throw new Error("AI returned invalid JSON structure.");
+        console.error('JSON Parse Error:', response.text);
+        throw new Error('AI returned invalid JSON structure.');
       }
     }
     return { text: response.text };
@@ -195,11 +173,23 @@ const ideaSchema = {
     regulatoryFlags: { type: Type.STRING },
   },
   required: [
-    "headline", "pitch", "vcJustification", "categoryTags", "costEffort",
-    "revenuePotentialScore", "revenueSkeleton", "unfairAdvantage",
-    "potentialExit", "trendSources", "saturationLabel", "heatBadge", "nextSteps",
-    "marketSize", "competitorLandscape", "regulatoryFlags",
-  ]
+    'headline',
+    'pitch',
+    'vcJustification',
+    'categoryTags',
+    'costEffort',
+    'revenuePotentialScore',
+    'revenueSkeleton',
+    'unfairAdvantage',
+    'potentialExit',
+    'trendSources',
+    'saturationLabel',
+    'heatBadge',
+    'nextSteps',
+    'marketSize',
+    'competitorLandscape',
+    'regulatoryFlags',
+  ],
 };
 
 const responseSchema = {
@@ -207,9 +197,9 @@ const responseSchema = {
   properties: {
     intro: { type: Type.STRING },
     ideas: { type: Type.ARRAY, items: ideaSchema },
-    disclaimer: { type: Type.STRING }
+    disclaimer: { type: Type.STRING },
   },
-  required: ["intro", "ideas", "disclaimer"]
+  required: ['intro', 'ideas', 'disclaimer'],
 };
 
 const radarSchema = {
@@ -224,21 +214,82 @@ const radarSchema = {
           title: { type: Type.STRING },
           description: { type: Type.STRING },
           impact: { type: Type.STRING },
-          sector: { type: Type.STRING }
+          sector: { type: Type.STRING },
         },
-        required: ["title", "description", "impact", "sector"]
-      }
+        required: ['title', 'description', 'impact', 'sector'],
+      },
     },
     marketShift: { type: Type.STRING },
-    opportunityAreas: { type: Type.ARRAY, items: { type: Type.STRING } }
+    opportunityAreas: { type: Type.ARRAY, items: { type: Type.STRING } },
   },
-  required: ["week", "topTrends", "marketShift", "opportunityAreas"]
+  required: ['week', 'topTrends', 'marketShift', 'opportunityAreas'],
 };
 
 // --- Endpoints ---
 
 app.post('/api/generate/daily', async (req, res) => {
   const { date, country, countryCount } = req.body;
+
+  if (process.env.DEV_MOCK === 'true') {
+    // Return a lightweight mock daily feed so the app renders without Gemini
+    const ideas = Array.from({ length: 35 }, (_, i) => ({
+      id: `${date}-mock-${i}`,
+      headline: `[Mock] Idea ${i + 1}: ${['Agentic AI Compliance Layer', 'Embedded Finance for Gig Workers', 'Climate-Smart Agri-Tech SaaS', 'B2B Mental Health API', 'Hyperlocal EV Charging Network', 'AI-Powered Legal Contracts', 'D2C Longevity Supplements', 'Micro-SaaS for Solopreneurs', 'AR Retail Try-On Platform', 'Decentralised Identity Stack', 'GPT-Powered Tutoring App', 'Carbon Credit Marketplace', 'Real-Time Supply Chain AI', 'Sleep-Tech Wearables', 'API Economy for HR Tools', 'Quantum-Safe Encryption SaaS', 'Vertical AI for Dentists', 'Social Commerce for Gen-Z', 'Robotics-as-a-Service', 'Smart Water Management', 'AI Code Review Copilot', 'Peer-to-Peer Insurance Protocol', 'Voice Commerce Platform', 'NeuroFeedback Headband', 'Remote Work Productivity OS', 'Regenerative Fashion Platform', 'Autonomous Drone Delivery', 'Spatial Computing SDK', 'Digital Nomad Banking App', 'Anti-Hallucination AI Layer', 'Smart Home Energy OS', 'Gamified Language Learning', 'B2B Climate Reporting Tool', 'AI-Assisted Drug Discovery', 'Fractional Real Estate DAO'][i] || `Next-Gen Startup ${i + 1}`}`,
+      pitch:
+        'High-signal opportunity driven by converging macro trends. Early movers are seeing 3–5× faster growth with strong VC interest in 2025–2026.',
+      vcJustification:
+        'Strong PMF signal. Top-tier VCs have backed two analogous companies in the last 18 months.',
+      categoryTags: [
+        [
+          'AI/SaaS',
+          'FinTech',
+          'HealthTech',
+          'EdTech',
+          'Climate/Sustainability',
+          'Consumer Apps',
+          'Hardware',
+          'Deep-Tech/Moonshot',
+          'Service/Local',
+          'Other',
+        ][i % 10],
+        i % 3 === 0 ? 'B2B' : 'B2C',
+      ],
+      costEffort: [
+        'Low capital / solo-founder',
+        'Medium capital / small team',
+        'High capital / co-founder needed',
+      ][i % 3],
+      revenuePotentialScore: Math.max(5, 10 - (i % 4)),
+      revenueSkeleton: 'SaaS subscription ($49–$499/mo per seat) + usage-based overages',
+      unfairAdvantage:
+        'Proprietary training data from early enterprise clients creates compounding model accuracy advantage.',
+      potentialExit:
+        'Strategic acquisition by incumbent player (12–18× ARR). Comparable exits: $500M–$2B range.',
+      trendSources: [
+        'Google Trends spike +240% (last 30 days)',
+        'YC W25 batch theme',
+        'Andreessen Horowitz blog post',
+      ],
+      saturationLabel: i % 4 === 0 ? 'Blue Ocean' : 'Emerging',
+      heatBadge: i % 5 === 0 ? 'Trending' : 'Early Bird',
+      nextSteps: ['Run 20 ICP interviews', 'Build no-code MVP in 2 weeks', 'Launch on ProductHunt'],
+      marketSize: '$2.4B TAM growing at 34% CAGR',
+      competitorLandscape:
+        i % 2 === 0
+          ? 'Blue ocean — no direct competitors yet'
+          : '2–3 early-stage startups; no dominant player',
+      regulatoryFlags:
+        i % 3 === 0 ? 'High — requires compliance review' : 'Low — no major regulatory barriers',
+      timeToMarket: `${6 + (i % 12)} months`,
+    }));
+    return res.json({
+      intro: `[DEV MOCK] Today's ${ideas.length} high-conviction opportunities — generated offline for development.`,
+      ideas,
+      disclaimer:
+        'MOCK DATA — Not real AI output. Set DEV_MOCK=false in .env to use live Gemini generation.',
+    });
+  }
+
   try {
     // Pre-fetch live market signals to ground generation in real current data
     const { fetchLiveSignals, formatSignalsForPrompt } = await getSignalsModule();
@@ -256,50 +307,80 @@ app.post('/api/generate/daily', async (req, res) => {
     const data = await generateWithGemini(promptStr, responseSchema);
     res.json(data);
   } catch (err: any) {
-    console.error("Daily Generation Error:", err);
-    res.status(503).json({ error: 'AI generation temporarily unavailable. Please try again later.' });
+    console.error('Daily Generation Error:', err);
+    res
+      .status(503)
+      .json({ error: 'AI generation temporarily unavailable. Please try again later.' });
   }
 });
 
 app.post('/api/generate/radar', featureLimiter, async (req, res) => {
-  const { uid, tier } = req.body;
+  const auth = await getAuthFromRequest(req);
+  const uid = auth?.uid;
+  const tier = auth?.tier || 'free';
   const featureType = 'radar';
-  const today = getToday();
-  const cacheKey = `radar_${today}`;
+  const cacheKey = `radar_${getToday()}`;
+
+  if (process.env.DEV_MOCK === 'true') {
+    return res.json({
+      ...getMockResponse(featureType),
+      _mock: true,
+      _usage: await buildUsageResponse(uid, tier, featureType),
+    });
+  }
 
   try {
     const cached = getCached(cacheKey);
     if (cached) {
-      return res.json({ ...cached, _cached: true, _usage: buildUsageResponse(uid, tier, featureType) });
+      return res.json({
+        ...cached,
+        _cached: true,
+        _usage: await buildUsageResponse(uid, tier, featureType),
+      });
     }
 
     if (uid) {
-      const usage = checkAndIncrementUsage(uid, tier || 'free', featureType);
+      const usage = await checkAndIncrementUsage(uid, tier, featureType);
       if (!usage.allowed) {
         return res.status(429).json({
           error: 'Daily radar limit reached. Upgrade for more analyses.',
-          _usage: { featureType, remaining: 0, limit: usage.limit, used: usage.limit }
+          _usage: { featureType, remaining: 0, limit: usage.limit, used: usage.limit },
         });
       }
     }
 
     const data = await generateWithGemini(
-      "Perform a VC-grade market analysis. Provide 5 top trends, a core market shift, and 5 opportunity areas.",
+      'Perform a VC-grade market analysis. Provide 5 top trends, a core market shift, and 5 opportunity areas.',
       radarSchema,
-      "You are a top-tier Venture Capital market analyst."
+      'You are a top-tier Venture Capital market analyst.'
     );
     setCached(cacheKey, data);
-    res.json({ ...data, _usage: buildUsageResponse(uid, tier, featureType) });
+    res.json({ ...data, _usage: await buildUsageResponse(uid, tier, featureType) });
   } catch (err: any) {
-    console.error("Radar Error:", err);
-    res.status(503).json({ error: 'AI generation temporarily unavailable. Please try again later.' });
+    console.error('Radar Error:', err);
+    res
+      .status(503)
+      .json({ error: 'AI generation temporarily unavailable. Please try again later.' });
   }
 });
 
 app.post('/api/generate/futurecasting', featureLimiter, async (req, res) => {
-  const { horizon, uid, tier } = req.body;
+  const { horizon } = req.body;
+  const auth = await getAuthFromRequest(req);
+  const uid = auth?.uid;
+  const tier = auth?.tier || 'free';
   const featureType = 'futurecasting';
   const cacheKey = `futurecasting_${horizon || 'default'}`;
+
+  if (process.env.DEV_MOCK === 'true') {
+    const mock = getMockResponse(featureType);
+    return res.json({
+      ...mock,
+      horizon: horizon || '2030',
+      _mock: true,
+      _usage: await buildUsageResponse(uid, tier, featureType),
+    });
+  }
 
   const schema = {
     type: Type.OBJECT,
@@ -314,28 +395,32 @@ app.post('/api/generate/futurecasting', featureLimiter, async (req, res) => {
             probability: { type: Type.NUMBER },
             rationale: { type: Type.STRING },
             winners: { type: Type.ARRAY, items: { type: Type.STRING } },
-            losers: { type: Type.ARRAY, items: { type: Type.STRING } }
+            losers: { type: Type.ARRAY, items: { type: Type.STRING } },
           },
-          required: ["title", "probability", "rationale", "winners", "losers"]
-        }
+          required: ['title', 'probability', 'rationale', 'winners', 'losers'],
+        },
       },
-      paradigmShifts: { type: Type.ARRAY, items: { type: Type.STRING } }
+      paradigmShifts: { type: Type.ARRAY, items: { type: Type.STRING } },
     },
-    required: ["horizon", "predictions", "paradigmShifts"]
+    required: ['horizon', 'predictions', 'paradigmShifts'],
   };
 
   try {
     const cached = getCached(cacheKey);
     if (cached) {
-      return res.json({ ...cached, _cached: true, _usage: buildUsageResponse(uid, tier, featureType) });
+      return res.json({
+        ...cached,
+        _cached: true,
+        _usage: await buildUsageResponse(uid, tier, featureType),
+      });
     }
 
     if (uid) {
-      const usage = checkAndIncrementUsage(uid, tier || 'free', featureType);
+      const usage = await checkAndIncrementUsage(uid, tier, featureType);
       if (!usage.allowed) {
         return res.status(429).json({
           error: 'Daily futurecasting limit reached. Upgrade for more analyses.',
-          _usage: { featureType, remaining: 0, limit: usage.limit, used: usage.limit }
+          _usage: { featureType, remaining: 0, limit: usage.limit, used: usage.limit },
         });
       }
     }
@@ -343,20 +428,33 @@ app.post('/api/generate/futurecasting', featureLimiter, async (req, res) => {
     const data = await generateWithGemini(
       `Perform deep-future simulation for: ${horizon}.`,
       schema,
-      "You are a futurist and startup strategist."
+      'You are a futurist and startup strategist.'
     );
     setCached(cacheKey, data);
-    res.json({ ...data, _usage: buildUsageResponse(uid, tier, featureType) });
+    res.json({ ...data, _usage: await buildUsageResponse(uid, tier, featureType) });
   } catch (err: any) {
-    console.error("Futurecasting Error:", err);
-    res.status(503).json({ error: 'AI generation temporarily unavailable. Please try again later.' });
+    console.error('Futurecasting Error:', err);
+    res
+      .status(503)
+      .json({ error: 'AI generation temporarily unavailable. Please try again later.' });
   }
 });
 
 app.post('/api/generate/action-plan', featureLimiter, async (req, res) => {
-  const { idea, uid, tier } = req.body;
+  const { idea } = req.body;
+  const auth = await getAuthFromRequest(req);
+  const uid = auth?.uid;
+  const tier = auth?.tier || 'free';
   const featureType = 'action-plan';
   const cacheKey = idea?.id ? `action-plan_${idea.id}` : '';
+
+  if (process.env.DEV_MOCK === 'true') {
+    return res.json({
+      ...getMockResponse(featureType, idea),
+      _mock: true,
+      _usage: await buildUsageResponse(uid, tier, featureType),
+    });
+  }
 
   const schema = {
     type: Type.OBJECT,
@@ -369,46 +467,61 @@ app.post('/api/generate/action-plan', featureLimiter, async (req, res) => {
             id: { type: Type.STRING },
             step: { type: Type.STRING },
             details: { type: Type.STRING },
-            milestone: { type: Type.STRING }
+            milestone: { type: Type.STRING },
           },
-          required: ["id", "step", "details", "milestone"]
-        }
+          required: ['id', 'step', 'details', 'milestone'],
+        },
       },
       tools: { type: Type.ARRAY, items: { type: Type.STRING } },
       risks: { type: Type.ARRAY, items: { type: Type.STRING } },
-      timeline: { type: Type.STRING }
+      timeline: { type: Type.STRING },
     },
-    required: ["roadmap", "tools", "risks", "timeline"]
+    required: ['roadmap', 'tools', 'risks', 'timeline'],
   };
 
   try {
     const cached = getCached(cacheKey);
     if (cached) {
-      return res.json({ ...cached, _cached: true, _usage: buildUsageResponse(uid, tier, featureType) });
+      return res.json({
+        ...cached,
+        _cached: true,
+        _usage: await buildUsageResponse(uid, tier, featureType),
+      });
     }
 
     if (uid) {
-      const usage = checkAndIncrementUsage(uid, tier || 'free', featureType);
+      const usage = await checkAndIncrementUsage(uid, tier, featureType);
       if (!usage.allowed) {
         return res.status(429).json({
           error: 'Daily action plan limit reached. Upgrade for more plans.',
-          _usage: { featureType, remaining: 0, limit: usage.limit, used: usage.limit }
+          _usage: { featureType, remaining: 0, limit: usage.limit, used: usage.limit },
         });
       }
     }
 
     const data = await generateWithGemini(`Generate roadmap for: ${idea.headline}`, schema);
     setCached(cacheKey, data);
-    res.json({ ...data, _usage: buildUsageResponse(uid, tier, featureType) });
+    res.json({ ...data, _usage: await buildUsageResponse(uid, tier, featureType) });
   } catch (err: any) {
-    res.status(500).json({ error: "Action plan failed.", details: err.message });
+    res.status(500).json({ error: 'Action plan failed.', details: err.message });
   }
 });
 
 app.post('/api/generate/build-me', featureLimiter, async (req, res) => {
-  const { idea, uid, tier } = req.body;
+  const { idea } = req.body;
+  const auth = await getAuthFromRequest(req);
+  const uid = auth?.uid;
+  const tier = auth?.tier || 'free';
   const featureType = 'build-me';
   const cacheKey = idea?.id ? `build-me_${idea.id}` : '';
+
+  if (process.env.DEV_MOCK === 'true') {
+    return res.json({
+      ...getMockResponse(featureType, idea),
+      _mock: true,
+      _usage: await buildUsageResponse(uid, tier, featureType),
+    });
+  }
 
   const schema = {
     type: Type.OBJECT,
@@ -418,81 +531,113 @@ app.post('/api/generate/build-me', featureLimiter, async (req, res) => {
         items: {
           type: Type.OBJECT,
           properties: { title: { type: Type.STRING }, prompt: { type: Type.STRING } },
-          required: ["title", "prompt"]
-        }
+          required: ['title', 'prompt'],
+        },
       },
       repoStructure: { type: Type.STRING },
-      first24Hours: { type: Type.ARRAY, items: { type: Type.STRING } }
+      first24Hours: { type: Type.ARRAY, items: { type: Type.STRING } },
     },
-    required: ["promptPack", "repoStructure", "first24Hours"]
+    required: ['promptPack', 'repoStructure', 'first24Hours'],
   };
 
   try {
     const cached = getCached(cacheKey);
     if (cached) {
-      return res.json({ ...cached, _cached: true, _usage: buildUsageResponse(uid, tier, featureType) });
+      return res.json({
+        ...cached,
+        _cached: true,
+        _usage: await buildUsageResponse(uid, tier, featureType),
+      });
     }
 
     if (uid) {
-      const usage = checkAndIncrementUsage(uid, tier || 'free', featureType);
+      const usage = await checkAndIncrementUsage(uid, tier, featureType);
       if (!usage.allowed) {
         return res.status(429).json({
           error: 'Daily build-me limit reached. Upgrade for more blueprints.',
-          _usage: { featureType, remaining: 0, limit: usage.limit, used: usage.limit }
+          _usage: { featureType, remaining: 0, limit: usage.limit, used: usage.limit },
         });
       }
     }
 
     const data = await generateWithGemini(`Generate Build-me pack for: ${idea.headline}`, schema);
     setCached(cacheKey, data);
-    res.json({ ...data, _usage: buildUsageResponse(uid, tier, featureType) });
+    res.json({ ...data, _usage: await buildUsageResponse(uid, tier, featureType) });
   } catch (err: any) {
-    res.status(500).json({ error: "Build-me failed.", details: err.message });
+    res.status(500).json({ error: 'Build-me failed.', details: err.message });
   }
 });
 
 app.post('/api/generate/validation', featureLimiter, async (req, res) => {
-  const { idea, uid, tier } = req.body;
+  const { idea } = req.body;
+  const auth = await getAuthFromRequest(req);
+  const uid = auth?.uid;
+  const tier = auth?.tier || 'free';
   const featureType = 'validation';
   const cacheKey = idea?.id ? `validation_${idea.id}` : '';
+
+  if (process.env.DEV_MOCK === 'true') {
+    return res.json({
+      ...getMockResponse(featureType, idea),
+      _mock: true,
+      _usage: await buildUsageResponse(uid, tier, featureType),
+    });
+  }
 
   const schema = {
     type: Type.OBJECT,
     properties: {
-      landingPage: { type: Type.OBJECT, properties: { hero: { type: Type.STRING }, subHero: { type: Type.STRING }, valueProps: { type: Type.ARRAY, items: { type: Type.STRING } } }, required: ["hero", "subHero", "valueProps"] },
+      landingPage: {
+        type: Type.OBJECT,
+        properties: {
+          hero: { type: Type.STRING },
+          subHero: { type: Type.STRING },
+          valueProps: { type: Type.ARRAY, items: { type: Type.STRING } },
+        },
+        required: ['hero', 'subHero', 'valueProps'],
+      },
       interviewScript: { type: Type.ARRAY, items: { type: Type.STRING } },
       smokeTest: { type: Type.STRING },
-      successMetrics: { type: Type.ARRAY, items: { type: Type.STRING } }
+      successMetrics: { type: Type.ARRAY, items: { type: Type.STRING } },
     },
-    required: ["landingPage", "interviewScript", "smokeTest", "successMetrics"]
+    required: ['landingPage', 'interviewScript', 'smokeTest', 'successMetrics'],
   };
 
   try {
     const cached = getCached(cacheKey);
     if (cached) {
-      return res.json({ ...cached, _cached: true, _usage: buildUsageResponse(uid, tier, featureType) });
+      return res.json({
+        ...cached,
+        _cached: true,
+        _usage: await buildUsageResponse(uid, tier, featureType),
+      });
     }
 
     if (uid) {
-      const usage = checkAndIncrementUsage(uid, tier || 'free', featureType);
+      const usage = await checkAndIncrementUsage(uid, tier, featureType);
       if (!usage.allowed) {
         return res.status(429).json({
           error: 'Daily validation limit reached. Upgrade for more toolkits.',
-          _usage: { featureType, remaining: 0, limit: usage.limit, used: usage.limit }
+          _usage: { featureType, remaining: 0, limit: usage.limit, used: usage.limit },
         });
       }
     }
 
-    const data = await generateWithGemini(`Generate validation toolkit for: ${idea.headline}`, schema);
+    const data = await generateWithGemini(
+      `Generate validation toolkit for: ${idea.headline}`,
+      schema
+    );
     setCached(cacheKey, data);
-    res.json({ ...data, _usage: buildUsageResponse(uid, tier, featureType) });
+    res.json({ ...data, _usage: await buildUsageResponse(uid, tier, featureType) });
   } catch (err: any) {
-    res.status(500).json({ error: "Validation toolkit failed.", details: err.message });
+    res.status(500).json({ error: 'Validation toolkit failed.', details: err.message });
   }
 });
 
 app.post('/api/generate/alerts', featureLimiter, async (req, res) => {
-  const { uid, tier } = req.body;
+  const auth = await getAuthFromRequest(req);
+  const uid = auth?.uid;
+  const tier = auth?.tier || 'free';
   const featureType = 'alerts';
   const cacheKey = `alerts_${getToday()}`;
 
@@ -500,9 +645,13 @@ app.post('/api/generate/alerts', featureLimiter, async (req, res) => {
     type: Type.ARRAY,
     items: {
       type: Type.OBJECT,
-      properties: { title: { type: Type.STRING }, message: { type: Type.STRING }, type: { type: Type.STRING, enum: ["info", "success", "warning", "error"] } },
-      required: ["title", "message", "type"]
-    }
+      properties: {
+        title: { type: Type.STRING },
+        message: { type: Type.STRING },
+        type: { type: Type.STRING, enum: ['info', 'success', 'warning', 'error'] },
+      },
+      required: ['title', 'message', 'type'],
+    },
   };
 
   try {
@@ -513,66 +662,95 @@ app.post('/api/generate/alerts', featureLimiter, async (req, res) => {
     }
 
     if (uid) {
-      const usage = checkAndIncrementUsage(uid, tier || 'free', featureType);
+      const usage = await checkAndIncrementUsage(uid, tier, featureType);
       if (!usage.allowed) {
         return res.status(429).json({ error: 'Alert limit reached.' });
       }
     }
 
-    const data = await generateWithGemini("Generate 3-5 high-signal Market Trend Alerts.", schema);
+    const data = await generateWithGemini('Generate 3-5 high-signal Market Trend Alerts.', schema);
     setCached(cacheKey, data);
     res.json(data);
   } catch (err: any) {
-    res.json([{ title: "AI Spike", message: "Market signals active.", type: "success" }]);
+    res.json([{ title: 'AI Spike', message: 'Market signals active.', type: 'success' }]);
   }
 });
 
 app.post('/api/generate/vetting', featureLimiter, async (req, res) => {
-  const { idea, uid, tier } = req.body;
+  const { idea } = req.body;
+  const auth = await getAuthFromRequest(req);
+  const uid = auth?.uid;
+  const tier = auth?.tier || 'free';
   const featureType = 'vetting';
   const cacheKey = idea?.id ? `vetting_${idea.id}` : '';
+
+  if (process.env.DEV_MOCK === 'true') {
+    return res.json({
+      ...getMockResponse(featureType, idea),
+      _mock: true,
+      _usage: await buildUsageResponse(uid, tier, featureType),
+    });
+  }
 
   const schema = {
     type: Type.OBJECT,
     properties: {
       score: { type: Type.NUMBER },
-      verdict: { type: Type.STRING, enum: ["High Conviction", "Moderate", "Pass"] },
+      verdict: { type: Type.STRING, enum: ['High Conviction', 'Moderate', 'Pass'] },
       strengths: { type: Type.ARRAY, items: { type: Type.STRING } },
       weaknesses: { type: Type.ARRAY, items: { type: Type.STRING } },
       pivotSuggestions: { type: Type.ARRAY, items: { type: Type.STRING } },
-      comparableExits: { type: Type.ARRAY, items: { type: Type.STRING } }
+      comparableExits: { type: Type.ARRAY, items: { type: Type.STRING } },
     },
-    required: ["score", "verdict", "strengths", "weaknesses", "pivotSuggestions", "comparableExits"]
+    required: [
+      'score',
+      'verdict',
+      'strengths',
+      'weaknesses',
+      'pivotSuggestions',
+      'comparableExits',
+    ],
   };
 
   try {
     const cached = getCached(cacheKey);
     if (cached) {
-      return res.json({ ...cached, _cached: true, _usage: buildUsageResponse(uid, tier, featureType) });
+      return res.json({
+        ...cached,
+        _cached: true,
+        _usage: await buildUsageResponse(uid, tier, featureType),
+      });
     }
 
     if (uid) {
-      const usage = checkAndIncrementUsage(uid, tier || 'free', featureType);
+      const usage = await checkAndIncrementUsage(uid, tier, featureType);
       if (!usage.allowed) {
         return res.status(429).json({
           error: 'Daily vetting limit reached. Upgrade for more expert analyses.',
-          _usage: { featureType, remaining: 0, limit: usage.limit, used: usage.limit }
+          _usage: { featureType, remaining: 0, limit: usage.limit, used: usage.limit },
         });
       }
     }
 
     const data = await generateWithGemini(`Perform expert vetting for: ${idea.headline}`, schema);
     setCached(cacheKey, data);
-    res.json({ ...data, _usage: buildUsageResponse(uid, tier, featureType) });
+    res.json({ ...data, _usage: await buildUsageResponse(uid, tier, featureType) });
   } catch (err: any) {
-    res.status(500).json({ error: "Vetting failed.", details: err.message });
+    res.status(500).json({ error: 'Vetting failed.', details: err.message });
   }
 });
 
 app.post('/api/generate/explain', featureLimiter, async (req, res) => {
-  const { idea, section, context, uid, tier } = req.body;
+  const { idea, section, context } = req.body;
+  const auth = await getAuthFromRequest(req);
+  const uid = auth?.uid;
+  const tier = auth?.tier || 'free';
   const featureType = 'explain';
   const cacheKey = idea?.id && section ? `explain_${idea.id}_${section.replace(/\s+/g, '_')}` : '';
+
+  if (process.env.DEV_MOCK === 'true') {
+    return res.json({ ...getMockResponse(featureType, idea), _mock: true });
+  }
 
   try {
     const cached = getCached(cacheKey);
@@ -581,17 +759,21 @@ app.post('/api/generate/explain', featureLimiter, async (req, res) => {
     }
 
     if (uid) {
-      const usage = checkAndIncrementUsage(uid, tier || 'free', featureType);
+      const usage = await checkAndIncrementUsage(uid, tier, featureType);
       if (!usage.allowed) {
-        return res.status(429).json({ text: 'Daily explanation limit reached. Upgrade for more.', _limited: true });
+        return res
+          .status(429)
+          .json({ text: 'Daily explanation limit reached. Upgrade for more.', _limited: true });
       }
     }
 
-    const data = await generateWithGemini(`Explain step "${section}" for idea: ${idea.headline}. Context: ${context}.`);
+    const data = await generateWithGemini(
+      `Explain step "${section}" for idea: ${idea.headline}. Context: ${context}.`
+    );
     setCached(cacheKey, data);
     res.json(data);
   } catch (err: any) {
-    res.status(500).json({ text: "Explanation unavailable.", details: err.message });
+    res.status(500).json({ text: 'Explanation unavailable.', details: err.message });
   }
 });
 

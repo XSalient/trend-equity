@@ -3,11 +3,12 @@ import {
   collection,
   query,
   where,
+  orderBy,
   onSnapshot,
   addDoc,
   deleteDoc,
   doc,
-  serverTimestamp
+  serverTimestamp,
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { Comment } from '../types';
@@ -21,21 +22,15 @@ export function useComments(ideaId: string) {
 
     const q = query(
       collection(db, 'comments'),
-      where('ideaId', '==', ideaId)
+      where('ideaId', '==', ideaId),
+      orderBy('timestamp', 'desc')
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const newComments = snapshot.docs.map(doc => ({
+      const newComments = snapshot.docs.map((doc) => ({
         id: doc.id,
-        ...doc.data()
+        ...doc.data(),
       })) as Comment[];
-      
-      // Sort client-side to avoid Firestore composite index requirement
-      newComments.sort((a, b) => {
-        const timeA = a.timestamp?.toMillis?.() || Date.now();
-        const timeB = b.timestamp?.toMillis?.() || Date.now();
-        return timeB - timeA; // Descending
-      });
 
       setComments(newComments);
       setLoading(false);
@@ -53,7 +48,7 @@ export function useComments(ideaId: string) {
       userName: user.displayName || 'Anonymous',
       userPhoto: user.photoURL,
       text,
-      timestamp: serverTimestamp()
+      timestamp: serverTimestamp(),
     });
   };
 
