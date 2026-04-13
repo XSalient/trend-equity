@@ -41,7 +41,10 @@ export async function setCached(key: string, value: any): Promise<void> {
  * days immediately before `excludeDate` (ISO yyyy-mm-dd). Used to build a
  * deduplication block so the AI doesn't repeat recent idea spaces.
  */
-export async function getRecentIdeaHeadlines(excludeDate: string, lookbackDays = 3): Promise<string[]> {
+export async function getRecentIdeaHeadlines(
+  excludeDate: string,
+  lookbackDays = 3
+): Promise<string[]> {
   try {
     const db = getAdminDb();
     const base = new Date(excludeDate);

@@ -8,21 +8,22 @@ AI-powered startup idea platform. Surfaces high-conviction, VC-ready business op
 
 This project uses **standard, IDE-agnostic tooling** — no vendor lock-in:
 
-| Tool | Purpose | Config file |
-|---|---|---|
-| [EditorConfig](https://editorconfig.org) | Indentation, line endings, charset | `.editorconfig` |
-| [Prettier](https://prettier.io) | Code formatting | `.prettierrc` |
-| [ESLint](https://eslint.org) | Linting & code quality | `eslint.config.js` |
-| TypeScript | Type checking | `tsconfig.json` |
-| `.nvmrc` | Pinned Node version | `.nvmrc` (`22 LTS`) |
+| Tool                                     | Purpose                            | Config file         |
+| ---------------------------------------- | ---------------------------------- | ------------------- |
+| [EditorConfig](https://editorconfig.org) | Indentation, line endings, charset | `.editorconfig`     |
+| [Prettier](https://prettier.io)          | Code formatting                    | `.prettierrc`       |
+| [ESLint](https://eslint.org)             | Linting & code quality             | `eslint.config.js`  |
+| TypeScript                               | Type checking                      | `tsconfig.json`     |
+| `.nvmrc`                                 | Pinned Node version                | `.nvmrc` (`22 LTS`) |
 
 **VSCode / Cursor / Windsurf**: Open the repo, accept the "Install recommended extensions" prompt. Formatting and linting will work automatically on save. Settings are in `.vscode/settings.json` — all three editors read this file natively.
 
-**JetBrains (WebStorm / IntelliJ)**: EditorConfig is built-in. Enable Prettier at *Preferences → Languages & Frameworks → JavaScript → Prettier* (point to `node_modules/.bin/prettier`). Enable ESLint at *Preferences → Languages & Frameworks → JavaScript → ESLint → Automatic ESLint Configuration*.
+**JetBrains (WebStorm / IntelliJ)**: EditorConfig is built-in. Enable Prettier at _Preferences → Languages & Frameworks → JavaScript → Prettier_ (point to `node_modules/.bin/prettier`). Enable ESLint at _Preferences → Languages & Frameworks → JavaScript → ESLint → Automatic ESLint Configuration_.
 
 **Zed**: EditorConfig is built-in. Add to `~/.config/zed/settings.json`: `"formatter": { "external": { "command": "prettier", "arguments": ["--stdin-filepath", "{buffer_path}"] } }`.
 
 **First-time format of the whole codebase** (only needed once after adding Prettier to an existing project):
+
 ```bash
 npm run format
 ```
@@ -84,15 +85,15 @@ The frontend runs at **http://localhost:3000** and the BFF server at **http://lo
 
 All variables are documented in [`.env.example`](.env.example). Copy it to `.env` for local dev — `.env` is gitignored and will never be committed.
 
-| Variable | Required | Where to set | Notes |
-|---|---|---|---|
-| `GEMINI_API_KEY` | Yes | `.env` / Doppler / Vercel | AI API key from [aistudio.google.com](https://aistudio.google.com/app/apikey) |
-| `DEV_MOCK` | Dev only | `.env` / Doppler `dev` config | `true` bypasses Gemini. **Never set in prod.** |
-| `APP_URL` | Yes (prod) | `.env` / Doppler / Vercel | Public URL for CORS and OAuth callbacks |
-| `SYSTEM_PROMPT` | No | Doppler / Vercel | Overrides the default Gemini system prompt |
-| `VITE_FIREBASE_*` | Yes | `.env` / Doppler / Vercel | Firebase frontend config (safe to expose) |
-| `FIREBASE_PROJECT_ID` | Yes | `.env` / Doppler / Vercel | Same value as `VITE_FIREBASE_PROJECT_ID` |
-| `FIREBASE_SERVICE_ACCOUNT_KEY` | Yes (prod) | Doppler `prd` / Vercel | Full service account JSON as one line. **Highly sensitive.** |
+| Variable                       | Required   | Where to set                  | Notes                                                                         |
+| ------------------------------ | ---------- | ----------------------------- | ----------------------------------------------------------------------------- |
+| `GEMINI_API_KEY`               | Yes        | `.env` / Doppler / Vercel     | AI API key from [aistudio.google.com](https://aistudio.google.com/app/apikey) |
+| `DEV_MOCK`                     | Dev only   | `.env` / Doppler `dev` config | `true` bypasses Gemini. **Never set in prod.**                                |
+| `APP_URL`                      | Yes (prod) | `.env` / Doppler / Vercel     | Public URL for CORS and OAuth callbacks                                       |
+| `SYSTEM_PROMPT`                | No         | Doppler / Vercel              | Overrides the default Gemini system prompt                                    |
+| `VITE_FIREBASE_*`              | Yes        | `.env` / Doppler / Vercel     | Firebase frontend config (safe to expose)                                     |
+| `FIREBASE_PROJECT_ID`          | Yes        | `.env` / Doppler / Vercel     | Same value as `VITE_FIREBASE_PROJECT_ID`                                      |
+| `FIREBASE_SERVICE_ACCOUNT_KEY` | Yes (prod) | Doppler `prd` / Vercel        | Full service account JSON as one line. **Highly sensitive.**                  |
 
 > **`VITE_` prefix** — Variables prefixed `VITE_` are embedded into the browser bundle at build time. Only put non-sensitive, public Firebase config here. Never prefix secrets with `VITE_`.
 
@@ -104,11 +105,11 @@ All variables are documented in [`.env.example`](.env.example). Copy it to `.env
 
 When your free-tier Gemini quota is exhausted (resets every 24 hours), enable mock mode to keep developing offline. All AI endpoints return realistic pre-written responses from `server.mocks.ts`.
 
-| Command | `DEV_MOCK` | Gemini calls | Best for |
-|---|---|---|---|
-| `npm run dev:mock` | `true` (forced) | Skipped | Quota exhausted / offline / pure UI work |
-| `npm run dev:live` | `false` (forced) | Real API | Testing actual AI output |
-| `npm run dev` | From `.env` / Doppler | Depends | When you manage the flag yourself |
+| Command            | `DEV_MOCK`            | Gemini calls | Best for                                 |
+| ------------------ | --------------------- | ------------ | ---------------------------------------- |
+| `npm run dev:mock` | `true` (forced)       | Skipped      | Quota exhausted / offline / pure UI work |
+| `npm run dev:live` | `false` (forced)      | Real API     | Testing actual AI output                 |
+| `npm run dev`      | From `.env` / Doppler | Depends      | When you manage the flag yourself        |
 
 `dev:mock` and `dev:live` use `cross-env` to inject the flag inline — they **override** whatever value is in `.env` or Doppler, so you never need to edit a file to switch modes.
 
@@ -206,11 +207,11 @@ doppler secrets download --format env --no-backup > .env
 
 ### Architecture
 
-| Layer | Local dev | Production (Vercel) |
-|---|---|---|
-| Frontend | `vite --port 3000` | Static files from `dist/` on Vercel CDN |
-| Backend | `server.ts` (Express, port 3001) | `api/generate/*.ts` (Vercel serverless) |
-| Secrets | `.env` or Doppler `dev` config | Vercel env vars or Doppler `prd` config |
+| Layer    | Local dev                        | Production (Vercel)                     |
+| -------- | -------------------------------- | --------------------------------------- |
+| Frontend | `vite --port 3000`               | Static files from `dist/` on Vercel CDN |
+| Backend  | `server.ts` (Express, port 3001) | `api/generate/*.ts` (Vercel serverless) |
+| Secrets  | `.env` or Doppler `dev` config   | Vercel env vars or Doppler `prd` config |
 
 > `server.ts` is **never deployed** — it is the local-dev BFF only. Production uses the serverless functions in `api/`.
 
@@ -220,19 +221,19 @@ doppler secrets download --format env --no-backup > .env
 
 2. Set environment variables in **Vercel dashboard → Project → Settings → Environment Variables**:
 
-   | Variable | Production | Preview |
-   |---|---|---|
-   | `GEMINI_API_KEY` | ✅ | ✅ |
-   | `APP_URL` | ✅ (live domain) | ✅ (Vercel preview URL) |
-   | `VITE_FIREBASE_API_KEY` | ✅ | ✅ |
-   | `VITE_FIREBASE_AUTH_DOMAIN` | ✅ | ✅ |
-   | `VITE_FIREBASE_PROJECT_ID` | ✅ | ✅ |
-   | `VITE_FIREBASE_STORAGE_BUCKET` | ✅ | ✅ |
-   | `VITE_FIREBASE_MESSAGING_SENDER_ID` | ✅ | ✅ |
-   | `VITE_FIREBASE_APP_ID` | ✅ | ✅ |
-   | `FIREBASE_PROJECT_ID` | ✅ | ✅ |
-   | `FIREBASE_SERVICE_ACCOUNT_KEY` | ✅ | ⛔ (not needed in Preview) |
-   | `DEV_MOCK` | ⛔ **Never set** | ⛔ **Never set** |
+   | Variable                            | Production       | Preview                    |
+   | ----------------------------------- | ---------------- | -------------------------- |
+   | `GEMINI_API_KEY`                    | ✅               | ✅                         |
+   | `APP_URL`                           | ✅ (live domain) | ✅ (Vercel preview URL)    |
+   | `VITE_FIREBASE_API_KEY`             | ✅               | ✅                         |
+   | `VITE_FIREBASE_AUTH_DOMAIN`         | ✅               | ✅                         |
+   | `VITE_FIREBASE_PROJECT_ID`          | ✅               | ✅                         |
+   | `VITE_FIREBASE_STORAGE_BUCKET`      | ✅               | ✅                         |
+   | `VITE_FIREBASE_MESSAGING_SENDER_ID` | ✅               | ✅                         |
+   | `VITE_FIREBASE_APP_ID`              | ✅               | ✅                         |
+   | `FIREBASE_PROJECT_ID`               | ✅               | ✅                         |
+   | `FIREBASE_SERVICE_ACCOUNT_KEY`      | ✅               | ⛔ (not needed in Preview) |
+   | `DEV_MOCK`                          | ⛔ **Never set** | ⛔ **Never set**           |
 
 3. Vercel runs `npm run build` automatically on every push to `main`.
 

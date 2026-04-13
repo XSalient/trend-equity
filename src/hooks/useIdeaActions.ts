@@ -5,7 +5,7 @@ import {
   explainPlanSection,
   generateBuildWithMe,
   generateValidationToolkit,
-  generateExpertVetting
+  generateExpertVetting,
 } from '../services/geminiService';
 
 export function useIdeaActions(idea: Idea, onUpdateIdea?: (idea: Idea) => void) {
@@ -13,7 +13,9 @@ export function useIdeaActions(idea: Idea, onUpdateIdea?: (idea: Idea) => void) 
   const [isGeneratingBuild, setIsGeneratingBuild] = useState(false);
   const [isGeneratingValidation, setIsGeneratingValidation] = useState(false);
   const [isVetting, setIsVetting] = useState(false);
-  const [vettingResult, setVettingResult] = useState<ExpertVetting | null>(idea.expertVetting || null);
+  const [vettingResult, setVettingResult] = useState<ExpertVetting | null>(
+    idea.expertVetting || null
+  );
   const [explainingSection, setExplainingSection] = useState<string | null>(null);
   const [explanation, setExplanation] = useState<{ section: string; text: string } | null>(null);
   // FIX (U-1): Track action errors so the UI can surface them instead of silently failing
@@ -28,14 +30,14 @@ export function useIdeaActions(idea: Idea, onUpdateIdea?: (idea: Idea) => void) 
       const plan = await generateFullActionPlan(idea);
       const updatedIdea = {
         ...idea,
-        fullActionPlan: { ...plan, generatedAt: new Date().toISOString() }
+        fullActionPlan: { ...plan, generatedAt: new Date().toISOString() },
       };
       onUpdateIdea?.(updatedIdea);
       return true;
     } catch (error: any) {
-      console.error("Failed to generate full plan:", error);
+      console.error('Failed to generate full plan:', error);
       // FIX (U-1, U-7): Set error state instead of using alert()
-      setActionError(error?.message || "Failed to generate action plan. Please try again.");
+      setActionError(error?.message || 'Failed to generate action plan. Please try again.');
       return false;
     } finally {
       setIsGeneratingPlan(false);
@@ -49,13 +51,13 @@ export function useIdeaActions(idea: Idea, onUpdateIdea?: (idea: Idea) => void) 
       const build = await generateBuildWithMe(idea);
       onUpdateIdea?.({
         ...idea,
-        buildWithMe: { ...build, generatedAt: new Date().toISOString() }
+        buildWithMe: { ...build, generatedAt: new Date().toISOString() },
       });
       return true;
     } catch (error: any) {
-      console.error("Failed to generate build toolkit:", error);
+      console.error('Failed to generate build toolkit:', error);
       // FIX (U-1): Previously swallowed silently — now surfaces to the user
-      setActionError(error?.message || "Failed to generate build toolkit. Please try again.");
+      setActionError(error?.message || 'Failed to generate build toolkit. Please try again.');
       return false;
     } finally {
       setIsGeneratingBuild(false);
@@ -69,13 +71,13 @@ export function useIdeaActions(idea: Idea, onUpdateIdea?: (idea: Idea) => void) 
       const validation = await generateValidationToolkit(idea);
       onUpdateIdea?.({
         ...idea,
-        validationToolkit: { ...validation, generatedAt: new Date().toISOString() }
+        validationToolkit: { ...validation, generatedAt: new Date().toISOString() },
       });
       return true;
     } catch (error: any) {
-      console.error("Failed to generate validation toolkit:", error);
+      console.error('Failed to generate validation toolkit:', error);
       // FIX (U-1): Previously swallowed silently — now surfaces to the user
-      setActionError(error?.message || "Failed to generate validation toolkit. Please try again.");
+      setActionError(error?.message || 'Failed to generate validation toolkit. Please try again.');
       return false;
     } finally {
       setIsGeneratingValidation(false);
@@ -89,8 +91,8 @@ export function useIdeaActions(idea: Idea, onUpdateIdea?: (idea: Idea) => void) 
       const text = await explainPlanSection(idea, section, context);
       setExplanation({ section, text });
     } catch (error: any) {
-      console.error("Failed to explain section:", error);
-      setActionError("Explanation unavailable. Please try again.");
+      console.error('Failed to explain section:', error);
+      setActionError('Explanation unavailable. Please try again.');
     } finally {
       setExplainingSection(null);
     }
@@ -105,9 +107,9 @@ export function useIdeaActions(idea: Idea, onUpdateIdea?: (idea: Idea) => void) 
       onUpdateIdea?.({ ...idea, expertVetting: result });
       return true;
     } catch (error: any) {
-      console.error("Failed to vet idea:", error);
+      console.error('Failed to vet idea:', error);
       // FIX (U-1): Previously swallowed silently — now surfaces to the user
-      setActionError(error?.message || "Expert vetting failed. Please try again.");
+      setActionError(error?.message || 'Expert vetting failed. Please try again.');
       return false;
     } finally {
       setIsVetting(false);

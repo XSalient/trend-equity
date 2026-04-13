@@ -25,7 +25,10 @@ function checkIpRateLimit(ip: string): boolean {
 // Sanitise a user-provided string for safe prompt injection (S-6)
 function sanitiseInput(value: unknown, maxLen = 100): string {
   if (typeof value !== 'string') return '';
-  return value.replace(/[<>"`]/g, '').trim().slice(0, maxLen);
+  return value
+    .replace(/[<>"`]/g, '')
+    .trim()
+    .slice(0, maxLen);
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -40,13 +43,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (uid) {
     const usage = await checkAndIncrementUsage(uid, tier, 'daily');
     if (!usage.allowed) {
-      return res.status(429).json({ error: 'Daily generation limit reached. Please try again tomorrow.' });
+      return res
+        .status(429)
+        .json({ error: 'Daily generation limit reached. Please try again tomorrow.' });
     }
   } else {
     // IP-based rate limit for unauthenticated requests
     const clientIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || 'unknown';
     if (!checkIpRateLimit(clientIp)) {
-      return res.status(429).json({ error: 'Too many requests. Please sign in or try again tomorrow.' });
+      return res
+        .status(429)
+        .json({ error: 'Too many requests. Please sign in or try again tomorrow.' });
     }
   }
 
@@ -64,9 +71,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     ]);
     const signalContext = formatSignalsForPrompt(signals);
 
-    const dedupeBlock = recentHeadlines.length > 0
-      ? `\n\nDO NOT REPEAT RECENT IDEAS — these headlines were already generated in the past 3 days. Generate completely different problem spaces, target markets, and business models:\n${recentHeadlines.map((h, i) => `  ${i + 1}. ${h}`).join('\n')}\n`
-      : '';
+    const dedupeBlock =
+      recentHeadlines.length > 0
+        ? `\n\nDO NOT REPEAT RECENT IDEAS — these headlines were already generated in the past 3 days. Generate completely different problem spaces, target markets, and business models:\n${recentHeadlines.map((h, i) => `  ${i + 1}. ${h}`).join('\n')}\n`
+        : '';
 
     let promptStr = signalContext
       ? `${signalContext}${dedupeBlock}\nUsing the live market signals above as your PRIMARY source, generate exactly 35 high-conviction business ideas for ${today}.\n\nREQUIREMENTS:\n- Every idea MUST cite ≥1 specific signal in trendSources — include the actual data point, not just the source name\n- Identify SECOND-ORDER opportunities: what problem does each trending signal CREATE that is currently undersolved?\n- Enforce sector diversity: no more than 3 ideas from any single sector (AI/ML, FinTech, HealthTech, EdTech, CleanTech, Consumer, B2B SaaS, Marketplace, PropTech, AgriTech, LegalTech, etc.)\n- The unfairAdvantage field must describe a STRUCTURAL edge (proprietary data, regulatory moat, distribution lock-in, network effects) — never "better UX" or "first mover"\n- Cover all effort levels: at least 8 ideas buildable solo in under 6 weeks, at least 8 requiring a small team, the rest for well-funded teams\n- At least 20% of ideas should address markets outside the US\n- AVOID: generic AI assistants without proprietary data, basic CRUD SaaS, copycat marketplaces without structural differentiation`
@@ -100,6 +108,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.json(data);
   } catch (err: any) {
     console.error('[daily] Generation error:', err);
-    return res.status(503).json({ error: 'AI generation temporarily unavailable. Please try again later.' });
+    return res
+      .status(503)
+      .json({ error: 'AI generation temporarily unavailable. Please try again later.' });
   }
 }

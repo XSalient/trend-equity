@@ -18,7 +18,12 @@
  */
 
 import { test, expect, Page } from '@playwright/test';
-import { injectMockDailyFeed, interceptAllApis, MOCK_ACTION_PLAN, MOCK_VETTING } from './helpers/mockData';
+import {
+  injectMockDailyFeed,
+  interceptAllApis,
+  MOCK_ACTION_PLAN,
+  MOCK_VETTING,
+} from './helpers/mockData';
 
 const BASE_URL = 'http://localhost:3000';
 
@@ -50,7 +55,9 @@ test.describe('Idea Card — Rendering', () => {
   test('idea card shows effort/capital label', async ({ page }) => {
     await loadFeed(page, 'free');
     // Low Capital is the first effort level in mock data
-    await expect(page.locator('text=/Low Capital|Medium Capital|High Capital/i').first()).toBeVisible();
+    await expect(
+      page.locator('text=/Low Capital|Medium Capital|High Capital/i').first()
+    ).toBeVisible();
   });
 
   test('multiple idea cards render for pro tier', async ({ page }) => {
@@ -67,12 +74,16 @@ test.describe('Idea Card — Expansion', () => {
     await loadFeed(page, 'pro');
 
     // Try clicking the first idea card or expand button
-    const expandBtn = page.locator('button[aria-label*="expand"], button[aria-label*="Expand"], button:has-text("View Details")').first();
+    const expandBtn = page
+      .locator(
+        'button[aria-label*="expand"], button[aria-label*="Expand"], button:has-text("View Details")'
+      )
+      .first();
     const ideaCard = page.locator('[data-testid="idea-card"]').first();
 
-    if (await expandBtn.count() > 0) {
+    if ((await expandBtn.count()) > 0) {
       await expandBtn.click();
-    } else if (await ideaCard.count() > 0) {
+    } else if ((await ideaCard.count()) > 0) {
       await ideaCard.click();
     } else {
       // Try clicking the headline area of the first card
@@ -109,8 +120,8 @@ test.describe('Idea Card — Action Plan', () => {
     const actionBtn = page.locator('button', { hasText: /Action Plan|Build Plan/i });
     const toolkitBtn = page.locator('button', { hasText: /Toolkit|Tools/i });
 
-    const actionVisible = await actionBtn.count() > 0;
-    const toolkitVisible = await toolkitBtn.count() > 0;
+    const actionVisible = (await actionBtn.count()) > 0;
+    const toolkitVisible = (await toolkitBtn.count()) > 0;
 
     // Either action plan button directly OR toolkit dropdown is present
     expect(actionVisible || toolkitVisible).toBe(true);
@@ -167,8 +178,8 @@ test.describe('Idea Card — Vetting', () => {
     const vettingBtn = page.locator('button', { hasText: /Vet|Vetting|Validate|Score/i });
     const toolkitBtn = page.locator('button', { hasText: /Toolkit|Tools/i });
 
-    const vettingVisible = await vettingBtn.count() > 0;
-    const toolkitVisible = await toolkitBtn.count() > 0;
+    const vettingVisible = (await vettingBtn.count()) > 0;
+    const toolkitVisible = (await toolkitBtn.count()) > 0;
     expect(vettingVisible || toolkitVisible).toBe(true);
   });
 
@@ -194,10 +205,16 @@ test.describe('Idea Card — Save Interaction', () => {
     await loadFeed(page, 'free');
 
     // Bookmark/save buttons — look for bookmark icon button or save button
-    const saveBtn = page.locator('button[aria-label*="save"], button[aria-label*="Save"], button[aria-label*="bookmark"], button[title*="Save"]').first();
-    if (await saveBtn.count() === 0) {
+    const saveBtn = page
+      .locator(
+        'button[aria-label*="save"], button[aria-label*="Save"], button[aria-label*="bookmark"], button[title*="Save"]'
+      )
+      .first();
+    if ((await saveBtn.count()) === 0) {
       // Some implementations use SVG icon buttons without aria-label
-      const bookmarkIcon = page.locator('button svg.lucide-bookmark, button:has([data-icon="bookmark"])').first();
+      const bookmarkIcon = page
+        .locator('button svg.lucide-bookmark, button:has([data-icon="bookmark"])')
+        .first();
       expect(await bookmarkIcon.count()).toBeGreaterThanOrEqual(0);
     }
   });

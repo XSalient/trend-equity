@@ -153,7 +153,7 @@ test.describe('Weekly Best — Refresh Button', () => {
 
     // Refresh button appears after fetched state = true
     const refreshBtn = page.locator('button', { hasText: /Refresh/i });
-    if (await refreshBtn.count() > 0) {
+    if ((await refreshBtn.count()) > 0) {
       await expect(refreshBtn.first()).toBeVisible();
     }
   });

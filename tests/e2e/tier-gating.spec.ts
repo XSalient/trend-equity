@@ -17,7 +17,12 @@
  */
 
 import { test, expect, Page } from '@playwright/test';
-import { injectMockDailyFeed, interceptAllApis, MOCK_RADAR_RESPONSE, MOCK_FUTURECASTING_RESPONSE } from './helpers/mockData';
+import {
+  injectMockDailyFeed,
+  interceptAllApis,
+  MOCK_RADAR_RESPONSE,
+  MOCK_FUTURECASTING_RESPONSE,
+} from './helpers/mockData';
 
 const BASE_URL = 'http://localhost:3000';
 
@@ -178,7 +183,7 @@ test.describe('Tier Gating — Local Market Filter', () => {
     await page.waitForTimeout(500);
 
     const localBtn = page.locator('button', { hasText: 'Local Market' });
-    if (await localBtn.count() > 0) {
+    if ((await localBtn.count()) > 0) {
       await expect(localBtn.first()).toBeDisabled();
     }
   });
@@ -190,7 +195,7 @@ test.describe('Tier Gating — Local Market Filter', () => {
     await page.waitForTimeout(500);
 
     const localBtn = page.locator('button', { hasText: 'Local Market' });
-    if (await localBtn.count() > 0) {
+    if ((await localBtn.count()) > 0) {
       await expect(localBtn.first()).toBeEnabled();
     }
   });
@@ -202,7 +207,7 @@ test.describe('Tier Gating — Local Market Filter', () => {
     await page.waitForTimeout(500);
 
     const localBtn = page.locator('button', { hasText: 'Local Market' });
-    if (await localBtn.count() > 0) {
+    if ((await localBtn.count()) > 0) {
       await expect(localBtn.first()).toBeEnabled();
     }
   });

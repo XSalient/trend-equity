@@ -39,9 +39,15 @@ test.describe('Localization: API Payload Per Tier', () => {
     if (capturedPayload) {
       expect(capturedPayload.countryCount).toBe(1);
       expect(capturedPayload.country).toBeTruthy();
-      console.log('✅ Free Tier payload verified:', capturedPayload.country, capturedPayload.countryCount);
+      console.log(
+        '✅ Free Tier payload verified:',
+        capturedPayload.country,
+        capturedPayload.countryCount
+      );
     } else {
-      console.log('ℹ️  Free Tier: No API call triggered (cached data exists). Payload test skipped.');
+      console.log(
+        'ℹ️  Free Tier: No API call triggered (cached data exists). Payload test skipped.'
+      );
     }
   });
 
@@ -58,9 +64,15 @@ test.describe('Localization: API Payload Per Tier', () => {
 
     if (capturedPayload) {
       expect(capturedPayload.countryCount).toBe(3);
-      console.log('✅ Pro Tier payload verified:', capturedPayload.country, capturedPayload.countryCount);
+      console.log(
+        '✅ Pro Tier payload verified:',
+        capturedPayload.country,
+        capturedPayload.countryCount
+      );
     } else {
-      console.log('ℹ️  Pro Tier: No API call triggered (cached data exists). Payload test skipped.');
+      console.log(
+        'ℹ️  Pro Tier: No API call triggered (cached data exists). Payload test skipped.'
+      );
     }
   });
 
@@ -77,13 +89,18 @@ test.describe('Localization: API Payload Per Tier', () => {
 
     if (capturedPayload) {
       expect(capturedPayload.countryCount).toBe(5);
-      console.log('✅ Builder Tier payload verified:', capturedPayload.country, capturedPayload.countryCount);
+      console.log(
+        '✅ Builder Tier payload verified:',
+        capturedPayload.country,
+        capturedPayload.countryCount
+      );
     } else {
-      console.log('ℹ️  Builder Tier: No API call triggered (cached data exists). Payload test skipped.');
+      console.log(
+        'ℹ️  Builder Tier: No API call triggered (cached data exists). Payload test skipped.'
+      );
     }
   });
 });
-
 
 test.describe('Localization: Filter UI Per Tier', () => {
   test.setTimeout(45000);
@@ -130,7 +147,9 @@ test.describe('Localization: Filter UI Per Tier', () => {
     console.log('✅ Pro Tier: Local Market filter correctly deselects on second click.');
   });
 
-  test('Builder Tier: Local Market filter button is ENABLED and toggles state', async ({ page }) => {
+  test('Builder Tier: Local Market filter button is ENABLED and toggles state', async ({
+    page,
+  }) => {
     await page.goto('/?mockTier=builder');
     await page.waitForSelector('text=/DISCLAIMER|TODAY/i', { timeout: 20000 });
 
@@ -148,6 +167,8 @@ test.describe('Localization: Filter UI Per Tier', () => {
     // Wait 3 seconds to verify it STAYS selected (the old bug)
     await page.waitForTimeout(3000);
     await expect(localBtn).toHaveClass(/bg-emerald-500/);
-    console.log('✅ Builder Tier: Local Market filter stays selected after 3 seconds (no deselection bug).');
+    console.log(
+      '✅ Builder Tier: Local Market filter stays selected after 3 seconds (no deselection bug).'
+    );
   });
 });

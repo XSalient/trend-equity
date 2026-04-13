@@ -28,13 +28,15 @@ export function useTier(user: User | null) {
 
     if (user) {
       const userRef = doc(db, 'users', user.uid);
-      getDoc(userRef).then(docSnap => {
-        if (docSnap.exists() && docSnap.data().tier) {
-          setTier(docSnap.data().tier as Tier);
-        } else {
-          setTier('free');
-        }
-      }).catch(err => handleFirestoreError(err, OperationType.GET, `users/${user.uid}`));
+      getDoc(userRef)
+        .then((docSnap) => {
+          if (docSnap.exists() && docSnap.data().tier) {
+            setTier(docSnap.data().tier as Tier);
+          } else {
+            setTier('free');
+          }
+        })
+        .catch((err) => handleFirestoreError(err, OperationType.GET, `users/${user.uid}`));
     } else {
       setTier('free');
     }

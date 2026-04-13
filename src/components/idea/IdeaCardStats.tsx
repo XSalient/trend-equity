@@ -11,7 +11,10 @@ export const IdeaCardStats: React.FC<IdeaCardStatsProps> = ({ idea }) => {
       <div className="space-y-2">
         <div className="flex justify-between items-center">
           <span className="text-xs text-zinc-500 font-medium">Potential score</span>
-          <span className="text-sm font-bold font-mono text-emerald-400">{idea.revenuePotentialScore}<span className="text-zinc-600 text-xs font-normal">/10</span></span>
+          <span className="text-sm font-bold font-mono text-emerald-400">
+            {idea.revenuePotentialScore}
+            <span className="text-zinc-600 text-xs font-normal">/10</span>
+          </span>
         </div>
         <div className="h-1.5 w-full bg-zinc-800 rounded-full overflow-hidden">
           <div

@@ -102,8 +102,10 @@ test.describe('Saved Ideas Tab — Save Action', () => {
     await page.waitForSelector('text=/TODAY/i', { timeout: 15000 });
 
     // Attempt to click a save button on first card
-    const saveButtons = page.locator('button[aria-label*="Save"], button[aria-label*="save"], button[title*="Save"]');
-    if (await saveButtons.count() > 0) {
+    const saveButtons = page.locator(
+      'button[aria-label*="Save"], button[aria-label*="save"], button[title*="Save"]'
+    );
+    if ((await saveButtons.count()) > 0) {
       await saveButtons.first().click();
       await page.waitForTimeout(1000);
     }

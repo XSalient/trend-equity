@@ -44,10 +44,12 @@ export const IdeaCard: React.FC<IdeaCardProps> = ({
   tier,
   onExport,
   user,
-  handleLogin
+  handleLogin,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [activeToolkit, setActiveToolkit] = useState<'roadmap' | 'build' | 'validation' | 'progress' | null>(null);
+  const [activeToolkit, setActiveToolkit] = useState<
+    'roadmap' | 'build' | 'validation' | 'progress' | null
+  >(null);
   const [isAddingStep, setIsAddingStep] = useState(false);
   const [newStep, setNewStep] = useState({ step: '', details: '', milestone: '' });
 
@@ -66,7 +68,7 @@ export const IdeaCard: React.FC<IdeaCardProps> = ({
     handleGenerateBuild,
     handleGenerateValidation,
     handleExplainSection,
-    handleExpertVetting
+    handleExpertVetting,
   } = useIdeaActions(idea, (updated) => {
     onUpdateIdea?.(updated);
     // Auto-open relevant toolkit on generation
@@ -91,21 +93,21 @@ export const IdeaCard: React.FC<IdeaCardProps> = ({
 
   const handleToggleStepLocal = (stepId: string) => {
     if (!idea.fullActionPlan || !onUpdateIdea) return;
-    const updatedRoadmap = idea.fullActionPlan.roadmap.map(s =>
+    const updatedRoadmap = idea.fullActionPlan.roadmap.map((s) =>
       s.id === stepId ? { ...s, isDone: !s.isDone } : s
     );
     onUpdateIdea({
       ...idea,
-      fullActionPlan: { ...idea.fullActionPlan, roadmap: updatedRoadmap }
+      fullActionPlan: { ...idea.fullActionPlan, roadmap: updatedRoadmap },
     });
   };
 
   const handleRemoveStepLocal = (stepId: string) => {
     if (!idea.fullActionPlan || !onUpdateIdea) return;
-    const updatedRoadmap = idea.fullActionPlan.roadmap.filter(s => s.id !== stepId);
+    const updatedRoadmap = idea.fullActionPlan.roadmap.filter((s) => s.id !== stepId);
     onUpdateIdea({
       ...idea,
-      fullActionPlan: { ...idea.fullActionPlan, roadmap: updatedRoadmap }
+      fullActionPlan: { ...idea.fullActionPlan, roadmap: updatedRoadmap },
     });
   };
 
@@ -115,14 +117,14 @@ export const IdeaCard: React.FC<IdeaCardProps> = ({
       ...newStep,
       id: `custom-${Date.now()}`,
       isCustom: true,
-      isDone: false
+      isDone: false,
     };
     onUpdateIdea({
       ...idea,
       fullActionPlan: {
         ...idea.fullActionPlan,
-        roadmap: [...idea.fullActionPlan.roadmap, customStep]
-      }
+        roadmap: [...idea.fullActionPlan.roadmap, customStep],
+      },
     });
     setNewStep({ step: '', details: '', milestone: '' });
     setIsAddingStep(false);
@@ -148,9 +150,7 @@ export const IdeaCard: React.FC<IdeaCardProps> = ({
 
         {/* Pitch */}
         <div className="pl-3 border-l-2 border-emerald-500/40">
-          <p className="text-zinc-300 text-sm leading-relaxed">
-            {idea.pitch}
-          </p>
+          <p className="text-zinc-300 text-sm leading-relaxed">{idea.pitch}</p>
         </div>
 
         <IdeaCardStats idea={idea} />
@@ -172,23 +172,37 @@ export const IdeaCard: React.FC<IdeaCardProps> = ({
                   className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-xl transition-all shadow-md shadow-emerald-900/30 disabled:opacity-50"
                   onClick={() => {
                     setIsExpanded(true);
-                    if (idea.buildWithMe) setActiveToolkit(activeToolkit === 'build' ? null : 'build');
+                    if (idea.buildWithMe)
+                      setActiveToolkit(activeToolkit === 'build' ? null : 'build');
                     else handleGenerateBuild();
                   }}
                   disabled={isGeneratingBuild}
                 >
-                  {isGeneratingBuild ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
-                  {idea.buildWithMe ? (activeToolkit === 'build' ? 'Hide Build Pack' : 'Build Pack') : 'Build with me'}
+                  {isGeneratingBuild ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Wand2 className="w-4 h-4" />
+                  )}
+                  {idea.buildWithMe
+                    ? activeToolkit === 'build'
+                      ? 'Hide Build Pack'
+                      : 'Build Pack'
+                    : 'Build with me'}
                 </button>
                 <button
-                  className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-xl transition-all border ${vettingResult
-                    ? 'bg-amber-500/10 border-amber-500/30 text-amber-400'
-                    : 'bg-zinc-800/50 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 border-zinc-700/50'
-                    }`}
+                  className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-xl transition-all border ${
+                    vettingResult
+                      ? 'bg-amber-500/10 border-amber-500/30 text-amber-400'
+                      : 'bg-zinc-800/50 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 border-zinc-700/50'
+                  }`}
                   onClick={handleExpertVetting}
                   disabled={isVetting}
                 >
-                  {isVetting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Shield className="w-4 h-4" />}
+                  {isVetting ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Shield className="w-4 h-4" />
+                  )}
                   {vettingResult ? 'Vetting done' : 'Expert vetting'}
                 </button>
               </div>

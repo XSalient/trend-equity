@@ -5,37 +5,41 @@
  */
 
 export const DEV_MOCKS: Record<string, any> = {
-
   radar: {
     week: 'Apr 7–13, 2026',
     topTrends: [
       {
         title: 'Agentic AI Infrastructure Boom',
-        description: 'OpenAI, Google, and Anthropic all shipped agentic frameworks this week. Enterprise demand for "agent governance" tooling is spiking 340% on Google Trends.',
+        description:
+          'OpenAI, Google, and Anthropic all shipped agentic frameworks this week. Enterprise demand for "agent governance" tooling is spiking 340% on Google Trends.',
         impact: 'High',
         sector: 'AI/SaaS',
       },
       {
         title: 'EU AI Act Wave 2 Enforcement',
-        description: 'EU AI Act enforcement begins Q2 2026. 65% of mid-market EU companies are non-compliant. Compliance tooling vendors report a 5× inbound spike.',
+        description:
+          'EU AI Act enforcement begins Q2 2026. 65% of mid-market EU companies are non-compliant. Compliance tooling vendors report a 5× inbound spike.',
         impact: 'High',
         sector: 'RegTech',
       },
       {
         title: 'Embedded Finance Consolidation Window',
-        description: 'Stripe, Adyen, and Marqeta are acquiring smaller embedded finance players. White-label fintech infrastructure has a 12-month window before market consolidates.',
+        description:
+          'Stripe, Adyen, and Marqeta are acquiring smaller embedded finance players. White-label fintech infrastructure has a 12-month window before market consolidates.',
         impact: 'Medium',
         sector: 'FinTech',
       },
       {
         title: 'SEC Climate Disclosure Rules Take Effect',
-        description: 'Mandatory ESG reporting kicks in for large accelerated filers in 2026. 80% of S&P 500 CFOs cite sustainability reporting as their top operational pain point.',
+        description:
+          'Mandatory ESG reporting kicks in for large accelerated filers in 2026. 80% of S&P 500 CFOs cite sustainability reporting as their top operational pain point.',
         impact: 'Medium',
         sector: 'Climate/Sustainability',
       },
       {
         title: 'Healthcare AI Prior Authorization Disruption',
-        description: 'CMS guidance allows AI to automate prior auth decisions. 300M+ annual prior auth requests represent a $13B administrative cost opportunity.',
+        description:
+          'CMS guidance allows AI to automate prior auth decisions. 300M+ annual prior auth requests represent a $13B administrative cost opportunity.',
         impact: 'High',
         sector: 'HealthTech',
       },
@@ -222,7 +226,8 @@ export const DEV_MOCKS: Record<string, any> = {
   validation: {
     landingPage: {
       hero: 'Stop guessing. Start building what the market actually wants.',
-      subHero: 'Join 500+ founders who validated their idea in 48 hours — before writing a single line of code.',
+      subHero:
+        'Join 500+ founders who validated their idea in 48 hours — before writing a single line of code.',
       valueProps: [
         'Save 80% of validation time with structured ICP interviewing frameworks',
         'Turn raw customer feedback into investor-ready traction metrics automatically',
@@ -277,7 +282,6 @@ export const DEV_MOCKS: Record<string, any> = {
   explain: {
     text: 'This step is critical because it de-risks the entire venture before you invest significant capital. The core insight is to separate real signal from wishful thinking — most founders skip this phase and build on assumptions. By completing 20 ICP interviews in the first 2 weeks, you establish a baseline of authentic customer language that you can use directly in your landing page copy, pitch deck, and sales emails. The milestone is deliberately set at "10+ confirmed pain points" rather than just "interviews completed" — because you want quality signal, not volume. If you cannot find 10 people describing the same pain independently, that is valuable data telling you to pivot before you write a line of code.',
   },
-
 };
 
 /**

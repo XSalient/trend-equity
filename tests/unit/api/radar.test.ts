@@ -60,12 +60,12 @@ import handler from '../../../api/generate/radar';
 describe('POST /api/generate/radar', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockGetCached.mockResolvedValue(null);           // cache miss by default
+    mockGetCached.mockResolvedValue(null); // cache miss by default
     mockSetCached.mockResolvedValue(undefined);
     mockCheckAndIncrementUsage.mockResolvedValue({ allowed: true, remaining: 2, limit: 3 });
     mockBuildUsageResponse.mockResolvedValue({ ...MOCK_USAGE_RESPONSE, featureType: 'radar' });
     mockGenerateWithGemini.mockResolvedValue(MOCK_RADAR_RESPONSE);
-    mockGetAuthContext.mockResolvedValue(null);      // unauthenticated by default
+    mockGetAuthContext.mockResolvedValue(null); // unauthenticated by default
   });
 
   // ── Positive cases ────────────────────────────────────────────────

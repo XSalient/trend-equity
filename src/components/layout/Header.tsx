@@ -27,7 +27,7 @@ export const Header: React.FC<HeaderProps> = ({
   handleLogout,
   handleLogin,
   triggerGeneration,
-  generating
+  generating,
 }) => {
   return (
     <header className="sticky top-0 z-50 bg-zinc-950/80 backdrop-blur-md border-b border-zinc-900">
@@ -37,13 +37,19 @@ export const Header: React.FC<HeaderProps> = ({
             <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center">
               <TrendingUp className="w-5 h-5 text-white" />
             </div>
-            <h1 className="text-base font-bold tracking-tight text-white hidden sm:block">Trend Equity</h1>
+            <h1 className="text-base font-bold tracking-tight text-white hidden sm:block">
+              Trend Equity
+            </h1>
           </div>
           <div className="h-4 w-px bg-zinc-800 hidden sm:block" />
           <div className="flex items-center gap-1.5 text-zinc-500">
             <Calendar className="w-3.5 h-3.5" />
             <span className="text-xs font-medium">
-              {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+              {new Date().toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+              })}
             </span>
           </div>
         </div>
@@ -88,18 +94,30 @@ export const Header: React.FC<HeaderProps> = ({
                 className="text-right hover:opacity-80 transition-opacity group"
               >
                 <div className="flex items-center gap-1 justify-end">
-                  <Crown className={`w-3 h-3 ${tier === 'builder' ? 'text-amber-500' :
-                    tier === 'pro' ? 'text-emerald-500' :
-                      'text-zinc-500'
-                    }`} />
-                  <p className={`text-[10px] font-bold uppercase tracking-widest leading-none ${tier === 'builder' ? 'text-amber-500' :
-                    tier === 'pro' ? 'text-emerald-500' :
-                      'text-zinc-500'
-                    }`}>
+                  <Crown
+                    className={`w-3 h-3 ${
+                      tier === 'builder'
+                        ? 'text-amber-500'
+                        : tier === 'pro'
+                          ? 'text-emerald-500'
+                          : 'text-zinc-500'
+                    }`}
+                  />
+                  <p
+                    className={`text-[10px] font-bold uppercase tracking-widest leading-none ${
+                      tier === 'builder'
+                        ? 'text-amber-500'
+                        : tier === 'pro'
+                          ? 'text-emerald-500'
+                          : 'text-zinc-500'
+                    }`}
+                  >
                     {tier === 'builder' ? 'Builder' : tier === 'pro' ? 'Pro' : 'Free'}
                   </p>
                 </div>
-                <p className="text-[10px] text-zinc-400 truncate max-w-[80px] group-hover:text-emerald-400 transition-colors">{user.displayName || user.email}</p>
+                <p className="text-[10px] text-zinc-400 truncate max-w-[80px] group-hover:text-emerald-400 transition-colors">
+                  {user.displayName || user.email}
+                </p>
               </button>
             </>
           )}

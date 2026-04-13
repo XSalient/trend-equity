@@ -1,6 +1,18 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, BarChart3, Shield, Loader2, CheckCircle2, Wand2, Sparkles, HelpCircle, Trash2, Rocket, Zap } from 'lucide-react';
+import {
+  X,
+  BarChart3,
+  Shield,
+  Loader2,
+  CheckCircle2,
+  Wand2,
+  Sparkles,
+  HelpCircle,
+  Trash2,
+  Rocket,
+  Zap,
+} from 'lucide-react';
 import { Idea, ExpertVetting } from '../../types';
 import { ToolkitSkeleton } from '../layout/SkeletonLoaders';
 
@@ -51,7 +63,7 @@ export const IdeaCardToolkit: React.FC<IdeaCardToolkitProps> = ({
   setIsAddingStep,
   newStep,
   setNewStep,
-  handleAddCustomStep
+  handleAddCustomStep,
 }) => {
   const fullPlan = idea.fullActionPlan;
   const buildWithMe = idea.buildWithMe;
@@ -59,13 +71,13 @@ export const IdeaCardToolkit: React.FC<IdeaCardToolkitProps> = ({
 
   return (
     <div className="space-y-4">
-
       {/* Pro/Builder Features (Toolkit & Tracker) */}
       {!isFree && (
         <div className={`grid ${isBuilder ? 'grid-cols-2' : 'grid-cols-1'} gap-3 pt-2`}>
           <button
             onClick={() => {
-              if (validationToolkit) setActiveToolkit(activeToolkit === 'validation' ? null : 'validation');
+              if (validationToolkit)
+                setActiveToolkit(activeToolkit === 'validation' ? null : 'validation');
               else handleGenerateValidation();
             }}
             disabled={isGeneratingValidation}
@@ -75,7 +87,11 @@ export const IdeaCardToolkit: React.FC<IdeaCardToolkitProps> = ({
                 : 'bg-zinc-800/50 hover:bg-zinc-800 text-zinc-400 hover:text-white border-zinc-700/50'
             }`}
           >
-            {isGeneratingValidation ? <Loader2 className="w-4 h-4 animate-spin" /> : <BarChart3 className="w-4 h-4" />}
+            {isGeneratingValidation ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <BarChart3 className="w-4 h-4" />
+            )}
             Validation Toolkit
           </button>
 
@@ -104,27 +120,43 @@ export const IdeaCardToolkit: React.FC<IdeaCardToolkitProps> = ({
             exit={{ opacity: 0, height: 0 }}
             className="overflow-hidden"
           >
-            {(isGeneratingValidation || isGeneratingPlan || isGeneratingBuild) && <ToolkitSkeleton />}
+            {(isGeneratingValidation || isGeneratingPlan || isGeneratingBuild) && (
+              <ToolkitSkeleton />
+            )}
 
             {/* ── Validation Toolkit ── */}
             {activeToolkit === 'validation' && validationToolkit && (
               <div className="p-5 bg-zinc-900/50 border border-emerald-500/20 rounded-2xl space-y-5 mt-2">
                 <div className="flex items-center justify-between">
-                  <h4 className="text-sm font-semibold text-emerald-500">Market Validation Toolkit</h4>
-                  <button onClick={() => setActiveToolkit(null)} className="text-zinc-500 hover:text-white transition-colors">
+                  <h4 className="text-sm font-semibold text-emerald-500">
+                    Market Validation Toolkit
+                  </h4>
+                  <button
+                    onClick={() => setActiveToolkit(null)}
+                    className="text-zinc-500 hover:text-white transition-colors"
+                  >
                     <X className="w-4 h-4" />
                   </button>
                 </div>
 
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <p className="text-xs font-medium text-zinc-500">Landing Page Copy (Smoke Test)</p>
+                    <p className="text-xs font-medium text-zinc-500">
+                      Landing Page Copy (Smoke Test)
+                    </p>
                     <div className="p-3 bg-zinc-800/50 rounded-xl border border-zinc-700/50 space-y-2">
-                      <p className="text-sm font-semibold text-white">{validationToolkit.landingPage.hero}</p>
-                      <p className="text-xs text-zinc-400">{validationToolkit.landingPage.subHero}</p>
+                      <p className="text-sm font-semibold text-white">
+                        {validationToolkit.landingPage.hero}
+                      </p>
+                      <p className="text-xs text-zinc-400">
+                        {validationToolkit.landingPage.subHero}
+                      </p>
                       <div className="flex flex-wrap gap-2 pt-1">
                         {validationToolkit.landingPage.valueProps.map((prop, i) => (
-                          <span key={i} className="text-xs px-2 py-0.5 bg-emerald-500/10 text-emerald-500 rounded-full border border-emerald-500/20">
+                          <span
+                            key={i}
+                            className="text-xs px-2 py-0.5 bg-emerald-500/10 text-emerald-500 rounded-full border border-emerald-500/20"
+                          >
                             {prop}
                           </span>
                         ))}
@@ -138,7 +170,10 @@ export const IdeaCardToolkit: React.FC<IdeaCardToolkitProps> = ({
                       <ul className="space-y-2">
                         {validationToolkit.interviewScript.map((q, i) => (
                           <li key={i} className="text-xs text-zinc-400 flex gap-2">
-                            <span className="text-emerald-500 font-semibold flex-shrink-0">{i + 1}.</span> {q}
+                            <span className="text-emerald-500 font-semibold flex-shrink-0">
+                              {i + 1}.
+                            </span>{' '}
+                            {q}
                           </li>
                         ))}
                       </ul>
@@ -154,7 +189,10 @@ export const IdeaCardToolkit: React.FC<IdeaCardToolkitProps> = ({
                         <p className="text-xs font-medium text-zinc-500">Success Metrics</p>
                         <div className="flex flex-wrap gap-2">
                           {validationToolkit.successMetrics.map((m, i) => (
-                            <span key={i} className="text-xs text-zinc-300 bg-zinc-800 px-2 py-1 rounded-md border border-zinc-700/50">
+                            <span
+                              key={i}
+                              className="text-xs text-zinc-300 bg-zinc-800 px-2 py-1 rounded-md border border-zinc-700/50"
+                            >
                               {m}
                             </span>
                           ))}
@@ -170,8 +208,13 @@ export const IdeaCardToolkit: React.FC<IdeaCardToolkitProps> = ({
             {activeToolkit === 'progress' && (
               <div className="p-5 bg-zinc-900/50 border border-emerald-500/20 rounded-2xl space-y-5 mt-2">
                 <div className="flex items-center justify-between">
-                  <h4 className="text-sm font-semibold text-emerald-500">Startup Momentum Tracker</h4>
-                  <button onClick={() => setActiveToolkit(null)} className="text-zinc-500 hover:text-white transition-colors">
+                  <h4 className="text-sm font-semibold text-emerald-500">
+                    Startup Momentum Tracker
+                  </h4>
+                  <button
+                    onClick={() => setActiveToolkit(null)}
+                    className="text-zinc-500 hover:text-white transition-colors"
+                  >
                     <X className="w-4 h-4" />
                   </button>
                 </div>
@@ -181,15 +224,26 @@ export const IdeaCardToolkit: React.FC<IdeaCardToolkitProps> = ({
                     {[
                       {
                         value: fullPlan
-                          ? `${Math.round((fullPlan.roadmap.filter(s => s.isDone).length / fullPlan.roadmap.length) * 100)}%`
+                          ? `${Math.round((fullPlan.roadmap.filter((s) => s.isDone).length / fullPlan.roadmap.length) * 100)}%`
                           : '0%',
                         label: 'Roadmap',
                         color: 'text-emerald-500',
                       },
-                      { value: validationToolkit ? '100%' : '0%', label: 'Validation', color: 'text-amber-500' },
-                      { value: buildWithMe ? '100%' : '0%', label: 'Build ready', color: 'text-blue-500' },
+                      {
+                        value: validationToolkit ? '100%' : '0%',
+                        label: 'Validation',
+                        color: 'text-amber-500',
+                      },
+                      {
+                        value: buildWithMe ? '100%' : '0%',
+                        label: 'Build ready',
+                        color: 'text-blue-500',
+                      },
                     ].map(({ value, label, color }) => (
-                      <div key={label} className="text-center p-3 bg-zinc-800/50 rounded-xl border border-zinc-700/40">
+                      <div
+                        key={label}
+                        className="text-center p-3 bg-zinc-800/50 rounded-xl border border-zinc-700/40"
+                      >
                         <p className={`text-2xl font-bold ${color}`}>{value}</p>
                         <p className="text-xs text-zinc-500 mt-1">{label}</p>
                       </div>
@@ -201,19 +255,32 @@ export const IdeaCardToolkit: React.FC<IdeaCardToolkitProps> = ({
                       <span className="text-xs font-medium text-zinc-500">Overall readiness</span>
                       <span className="text-xs font-semibold text-emerald-500">
                         {Math.round(
-                          ((fullPlan ? (fullPlan.roadmap.filter(s => s.isDone).length / fullPlan.roadmap.length) : 0) * 0.5 +
+                          ((fullPlan
+                            ? fullPlan.roadmap.filter((s) => s.isDone).length /
+                              fullPlan.roadmap.length
+                            : 0) *
+                            0.5 +
                             (validationToolkit ? 0.3 : 0) +
-                            (buildWithMe ? 0.2 : 0)) * 100
-                        )}%
+                            (buildWithMe ? 0.2 : 0)) *
+                            100
+                        )}
+                        %
                       </span>
                     </div>
                     <div className="h-1.5 w-full bg-zinc-800 rounded-full overflow-hidden">
                       <motion.div
                         initial={{ width: 0 }}
                         animate={{
-                          width: `${((fullPlan ? (fullPlan.roadmap.filter(s => s.isDone).length / fullPlan.roadmap.length) : 0) * 0.5 +
-                            (validationToolkit ? 0.3 : 0) +
-                            (buildWithMe ? 0.2 : 0)) * 100}%`
+                          width: `${
+                            ((fullPlan
+                              ? fullPlan.roadmap.filter((s) => s.isDone).length /
+                                fullPlan.roadmap.length
+                              : 0) *
+                              0.5 +
+                              (validationToolkit ? 0.3 : 0) +
+                              (buildWithMe ? 0.2 : 0)) *
+                            100
+                          }%`,
                         }}
                         className="h-full bg-emerald-500 rounded-full"
                       />
@@ -227,18 +294,28 @@ export const IdeaCardToolkit: React.FC<IdeaCardToolkitProps> = ({
             {activeToolkit === 'build' && buildWithMe && (
               <div className="p-5 bg-zinc-900/50 border border-emerald-500/20 rounded-2xl space-y-5 mt-2">
                 <div className="flex items-center justify-between">
-                  <h4 className="text-sm font-semibold text-emerald-500">Build with Me: Starter Pack</h4>
-                  <button onClick={() => setActiveToolkit(null)} className="text-zinc-500 hover:text-white transition-colors">
+                  <h4 className="text-sm font-semibold text-emerald-500">
+                    Build with Me: Starter Pack
+                  </h4>
+                  <button
+                    onClick={() => setActiveToolkit(null)}
+                    className="text-zinc-500 hover:text-white transition-colors"
+                  >
                     <X className="w-4 h-4" />
                   </button>
                 </div>
 
                 <div className="space-y-6">
                   <div className="space-y-3">
-                    <p className="text-xs font-medium text-zinc-500">AI Prompt Pack (copy & paste)</p>
+                    <p className="text-xs font-medium text-zinc-500">
+                      AI Prompt Pack (copy & paste)
+                    </p>
                     <div className="space-y-2">
                       {buildWithMe.promptPack.map((p, i) => (
-                        <div key={i} className="p-3 bg-zinc-800/50 rounded-xl border border-zinc-700/50 space-y-2">
+                        <div
+                          key={i}
+                          className="p-3 bg-zinc-800/50 rounded-xl border border-zinc-700/50 space-y-2"
+                        >
                           <div className="flex justify-between items-center">
                             <p className="text-xs font-semibold text-emerald-400">{p.title}</p>
                             <button
@@ -310,9 +387,15 @@ export const IdeaCardToolkit: React.FC<IdeaCardToolkitProps> = ({
                 className="px-4 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-xs font-medium rounded-lg transition-all flex items-center gap-2 disabled:opacity-50 border border-emerald-500/20"
               >
                 {isGeneratingPlan ? (
-                  <><Loader2 className="w-3 h-3 animate-spin" />{fullPlan ? 'Regenerating…' : 'Generating…'}</>
+                  <>
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    {fullPlan ? 'Regenerating…' : 'Generating…'}
+                  </>
                 ) : (
-                  <><Sparkles className="w-3 h-3" />{fullPlan ? 'Regenerate plan' : 'Generate full plan'}</>
+                  <>
+                    <Sparkles className="w-3 h-3" />
+                    {fullPlan ? 'Regenerate plan' : 'Generate full plan'}
+                  </>
                 )}
               </button>
             </div>
@@ -342,7 +425,9 @@ export const IdeaCardToolkit: React.FC<IdeaCardToolkitProps> = ({
                           <button
                             onClick={() => handleToggleStep(item.id)}
                             className={`w-5 h-5 rounded flex items-center justify-center border transition-colors flex-shrink-0 ${
-                              item.isDone ? 'bg-emerald-500 border-emerald-500' : 'border-zinc-700 hover:border-emerald-500'
+                              item.isDone
+                                ? 'bg-emerald-500 border-emerald-500'
+                                : 'border-zinc-700 hover:border-emerald-500'
                             }`}
                           >
                             {item.isDone && <CheckCircle2 className="w-3 h-3 text-black" />}
@@ -362,7 +447,9 @@ export const IdeaCardToolkit: React.FC<IdeaCardToolkitProps> = ({
                           </button>
                         </div>
                       </div>
-                      <h5 className={`text-sm font-semibold ${item.isDone ? 'text-zinc-500 line-through' : 'text-white'}`}>
+                      <h5
+                        className={`text-sm font-semibold ${item.isDone ? 'text-zinc-500 line-through' : 'text-white'}`}
+                      >
                         {item.step}
                       </h5>
                       <p className="text-xs text-zinc-400 leading-relaxed">{item.details}</p>
@@ -373,10 +460,11 @@ export const IdeaCardToolkit: React.FC<IdeaCardToolkitProps> = ({
                           disabled={explainingSection === item.step}
                           className="text-xs font-medium text-zinc-500 hover:text-emerald-400 flex items-center gap-1 transition-colors"
                         >
-                          {explainingSection === item.step
-                            ? <Loader2 className="w-3 h-3 animate-spin" />
-                            : <HelpCircle className="w-3 h-3" />
-                          }
+                          {explainingSection === item.step ? (
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                          ) : (
+                            <HelpCircle className="w-3 h-3" />
+                          )}
                           Explain this step
                         </button>
                       </div>
@@ -390,20 +478,20 @@ export const IdeaCardToolkit: React.FC<IdeaCardToolkitProps> = ({
                         type="text"
                         placeholder="Step title"
                         value={newStep.step}
-                        onChange={e => setNewStep({ ...newStep, step: e.target.value })}
+                        onChange={(e) => setNewStep({ ...newStep, step: e.target.value })}
                         className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
                       />
                       <textarea
                         placeholder="Details…"
                         value={newStep.details}
-                        onChange={e => setNewStep({ ...newStep, details: e.target.value })}
+                        onChange={(e) => setNewStep({ ...newStep, details: e.target.value })}
                         className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 h-20"
                       />
                       <input
                         type="text"
                         placeholder="Milestone (e.g. 1 week)"
                         value={newStep.milestone}
-                        onChange={e => setNewStep({ ...newStep, milestone: e.target.value })}
+                        onChange={(e) => setNewStep({ ...newStep, milestone: e.target.value })}
                         className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
                       />
                       <div className="flex gap-2">
@@ -448,7 +536,9 @@ export const IdeaCardToolkit: React.FC<IdeaCardToolkitProps> = ({
                       </button>
                       <div className="flex items-center gap-2 text-emerald-500">
                         <Sparkles className="w-4 h-4" />
-                        <span className="text-xs font-semibold">VC Deep Dive: {explanation.section}</span>
+                        <span className="text-xs font-semibold">
+                          VC Deep Dive: {explanation.section}
+                        </span>
                       </div>
                       <div className="text-xs text-zinc-300 leading-relaxed whitespace-pre-wrap">
                         {explanation.text}
@@ -463,7 +553,9 @@ export const IdeaCardToolkit: React.FC<IdeaCardToolkitProps> = ({
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-medium text-zinc-500">Stack / Tools</span>
                       <button
-                        onClick={() => handleExplainSection('Tech Stack', fullPlan.tools.join(', '))}
+                        onClick={() =>
+                          handleExplainSection('Tech Stack', fullPlan.tools.join(', '))
+                        }
                         className="text-xs font-medium text-zinc-600 hover:text-emerald-400 transition-colors"
                       >
                         Explain stack
@@ -471,7 +563,10 @@ export const IdeaCardToolkit: React.FC<IdeaCardToolkitProps> = ({
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {(fullPlan.tools || []).map((tool, i) => (
-                        <span key={i} className="px-2 py-1 bg-zinc-800 text-zinc-400 text-xs rounded-md border border-zinc-700/50">
+                        <span
+                          key={i}
+                          className="px-2 py-1 bg-zinc-800 text-zinc-400 text-xs rounded-md border border-zinc-700/50"
+                        >
                           {tool}
                         </span>
                       ))}
@@ -481,7 +576,9 @@ export const IdeaCardToolkit: React.FC<IdeaCardToolkitProps> = ({
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-medium text-zinc-500">Key risks</span>
                       <button
-                        onClick={() => handleExplainSection('Risk Mitigation', fullPlan.risks.join(', '))}
+                        onClick={() =>
+                          handleExplainSection('Risk Mitigation', fullPlan.risks.join(', '))
+                        }
                         className="text-xs font-medium text-zinc-600 hover:text-emerald-400 transition-colors"
                       >
                         Mitigation plan
@@ -489,7 +586,10 @@ export const IdeaCardToolkit: React.FC<IdeaCardToolkitProps> = ({
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {(fullPlan.risks || []).map((risk, i) => (
-                        <span key={i} className="px-2 py-1 bg-red-500/10 text-red-400 text-xs rounded-md border border-red-500/20">
+                        <span
+                          key={i}
+                          className="px-2 py-1 bg-red-500/10 text-red-400 text-xs rounded-md border border-red-500/20"
+                        >
                           {risk}
                         </span>
                       ))}
@@ -522,9 +622,15 @@ export const IdeaCardToolkit: React.FC<IdeaCardToolkitProps> = ({
                 : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-900/20'
             }`}
           >
-            {isGeneratingBuild ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
+            {isGeneratingBuild ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Wand2 className="w-4 h-4" />
+            )}
             {buildWithMe
-              ? activeToolkit === 'build' ? 'Hide builder pack' : 'View builder pack'
+              ? activeToolkit === 'build'
+                ? 'Hide builder pack'
+                : 'View builder pack'
               : 'Build with me'}
           </button>
         </div>
@@ -539,7 +645,6 @@ export const IdeaCardToolkit: React.FC<IdeaCardToolkitProps> = ({
           </button>
         </div>
       )}
-
     </div>
   );
 };

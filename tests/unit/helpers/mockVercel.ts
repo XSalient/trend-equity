@@ -4,11 +4,13 @@
  */
 import { vi } from 'vitest';
 
-export function createMockRequest(overrides: {
-  method?: string;
-  body?: Record<string, any>;
-  query?: Record<string, string>;
-} = {}) {
+export function createMockRequest(
+  overrides: {
+    method?: string;
+    body?: Record<string, any>;
+    query?: Record<string, string>;
+  } = {}
+) {
   return {
     method: overrides.method ?? 'POST',
     body: overrides.body ?? {},

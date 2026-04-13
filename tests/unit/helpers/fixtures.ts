@@ -91,7 +91,7 @@ export function generateMockIdeas(count = 35) {
 
 export const MOCK_DAILY_GENERATION = {
   date: new Date().toISOString().split('T')[0],
-  intro: 'Welcome to today\'s AI-generated business ideas.',
+  intro: "Welcome to today's AI-generated business ideas.",
   ideas: generateMockIdeas(35),
   disclaimer: 'These are AI-generated ideas. Do your own diligence.',
   generatedAt: new Date().toISOString(),
@@ -100,11 +100,36 @@ export const MOCK_DAILY_GENERATION = {
 export const MOCK_RADAR_RESPONSE = {
   week: new Date().toISOString().split('T')[0],
   topTrends: [
-    { title: 'Agentic AI workflows', description: 'Shift from chat to autonomous AI agents.', impact: 'High', sector: 'AI/ML' },
-    { title: 'Climate compliance software', description: 'SEC rules driving new SaaS demand.', impact: 'High', sector: 'CleanTech' },
-    { title: 'B2B vertical AI', description: 'Domain-specific models outperforming general models.', impact: 'Medium', sector: 'B2B SaaS' },
-    { title: 'Healthcare AI diagnostics', description: 'FDA approvals accelerating AI clinical tools.', impact: 'High', sector: 'HealthTech' },
-    { title: 'Immigration tech surge', description: 'Filing volume +19% YoY creating tooling gap.', impact: 'Medium', sector: 'LegalTech' },
+    {
+      title: 'Agentic AI workflows',
+      description: 'Shift from chat to autonomous AI agents.',
+      impact: 'High',
+      sector: 'AI/ML',
+    },
+    {
+      title: 'Climate compliance software',
+      description: 'SEC rules driving new SaaS demand.',
+      impact: 'High',
+      sector: 'CleanTech',
+    },
+    {
+      title: 'B2B vertical AI',
+      description: 'Domain-specific models outperforming general models.',
+      impact: 'Medium',
+      sector: 'B2B SaaS',
+    },
+    {
+      title: 'Healthcare AI diagnostics',
+      description: 'FDA approvals accelerating AI clinical tools.',
+      impact: 'High',
+      sector: 'HealthTech',
+    },
+    {
+      title: 'Immigration tech surge',
+      description: 'Filing volume +19% YoY creating tooling gap.',
+      impact: 'Medium',
+      sector: 'LegalTech',
+    },
   ],
   marketShift: "Transition from 'AI features' to 'AI-native workflows' across all B2B sectors.",
   opportunityAreas: [
@@ -122,14 +147,16 @@ export const MOCK_FUTURECASTING_RESPONSE = {
     {
       title: 'Personal AI Agents Become Standard',
       probability: 88,
-      rationale: 'LLM cost curves follow Moore\'s Law; by 2030 every knowledge worker will have a dedicated AI agent.',
+      rationale:
+        "LLM cost curves follow Moore's Law; by 2030 every knowledge worker will have a dedicated AI agent.",
       winners: ['AI agent platform providers', 'Vertical SaaS companies with AI layers'],
       losers: ['Generic horizontal SaaS', 'Offshore data entry services'],
     },
     {
       title: 'Carbon Credit Markets Reach Maturity',
       probability: 74,
-      rationale: 'Regulatory tailwinds from EU CSRD and SEC climate disclosure rules create mandatory market participation.',
+      rationale:
+        'Regulatory tailwinds from EU CSRD and SEC climate disclosure rules create mandatory market participation.',
       winners: ['Carbon registry tech companies', 'ESG data providers'],
       losers: ['Companies without sustainability programs'],
     },
@@ -143,10 +170,30 @@ export const MOCK_FUTURECASTING_RESPONSE = {
 
 export const MOCK_ACTION_PLAN_RESPONSE = {
   roadmap: [
-    { id: 'step-1', step: 'Validate demand', details: 'Run 20 customer interviews with target ICPs.', milestone: 'Week 2' },
-    { id: 'step-2', step: 'Build MVP', details: 'Core feature set only — no auth, no payments yet.', milestone: 'Week 6' },
-    { id: 'step-3', step: 'Launch beta', details: 'Onboard 10 design partners at $0.', milestone: 'Week 8' },
-    { id: 'step-4', step: 'Charge first customers', details: 'Convert 3 beta users to paid at $499/mo.', milestone: 'Week 12' },
+    {
+      id: 'step-1',
+      step: 'Validate demand',
+      details: 'Run 20 customer interviews with target ICPs.',
+      milestone: 'Week 2',
+    },
+    {
+      id: 'step-2',
+      step: 'Build MVP',
+      details: 'Core feature set only — no auth, no payments yet.',
+      milestone: 'Week 6',
+    },
+    {
+      id: 'step-3',
+      step: 'Launch beta',
+      details: 'Onboard 10 design partners at $0.',
+      milestone: 'Week 8',
+    },
+    {
+      id: 'step-4',
+      step: 'Charge first customers',
+      details: 'Convert 3 beta users to paid at $499/mo.',
+      milestone: 'Week 12',
+    },
   ],
   tools: ['Next.js', 'Supabase', 'Stripe', 'Resend', 'Vercel'],
   risks: ['Regulatory changes in carbon markets', 'Long enterprise sales cycles'],

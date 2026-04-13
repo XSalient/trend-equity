@@ -28,7 +28,14 @@ export interface Idea {
   heatBadge: string;
   nextSteps: string[];
   fullActionPlan?: {
-    roadmap: { id: string; step: string; details: string; milestone: string; isDone?: boolean; isCustom?: boolean }[];
+    roadmap: {
+      id: string;
+      step: string;
+      details: string;
+      milestone: string;
+      isDone?: boolean;
+      isCustom?: boolean;
+    }[];
     tools: string[];
     risks: string[];
     timeline: string;
@@ -90,7 +97,13 @@ export interface WeeklyTrendRadar {
 
 export interface Futurecasting {
   horizon: '2027' | '2030' | '2035';
-  predictions: { title: string; probability: number; rationale: string; winners: string[]; losers: string[] }[];
+  predictions: {
+    title: string;
+    probability: number;
+    rationale: string;
+    winners: string[];
+    losers: string[];
+  }[];
   paradigmShifts: string[];
   generatedAt: any;
 }

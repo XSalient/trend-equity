@@ -25,14 +25,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   // FIX (S-6): Sanitise all user-controlled strings before prompt injection
-  const safeHeadline = idea.headline.replace(/[<>"`]/g, '').trim().slice(0, 200);
-  const safeSection = String(section).replace(/[<>"`]/g, '').trim().slice(0, 100);
-  const safeContext = context ? String(context).replace(/[<>"`]/g, '').trim().slice(0, 500) : '';
+  const safeHeadline = idea.headline
+    .replace(/[<>"`]/g, '')
+    .trim()
+    .slice(0, 200);
+  const safeSection = String(section)
+    .replace(/[<>"`]/g, '')
+    .trim()
+    .slice(0, 100);
+  const safeContext = context
+    ? String(context)
+        .replace(/[<>"`]/g, '')
+        .trim()
+        .slice(0, 500)
+    : '';
 
   const featureType = 'explain';
-  const cacheKey = idea?.id && safeSection
-    ? `explain_${String(idea.id).slice(0, 100)}_${safeSection.replace(/\s+/g, '_')}`
-    : '';
+  const cacheKey =
+    idea?.id && safeSection
+      ? `explain_${String(idea.id).slice(0, 100)}_${safeSection.replace(/\s+/g, '_')}`
+      : '';
 
   try {
     const cached = await getCached(cacheKey);
@@ -41,7 +53,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (uid) {
       const usage = await checkAndIncrementUsage(uid, tier, featureType);
       if (!usage.allowed) {
-        return res.status(429).json({ text: 'Daily explanation limit reached. Upgrade for more.', _limited: true });
+        return res
+          .status(429)
+          .json({ text: 'Daily explanation limit reached. Upgrade for more.', _limited: true });
       }
     }
 

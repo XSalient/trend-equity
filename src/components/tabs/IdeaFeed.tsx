@@ -41,14 +41,18 @@ export const IdeaFeed: React.FC<IdeaFeedProps> = ({
   triggerGeneration,
   loading,
   user,
-  handleLogin
+  handleLogin,
 }) => {
   const allIdeas = dailyGen?.ideas || [];
   const tierIdeas = allIdeas.slice(0, TIER_LIMITS[tier].dailyIdeas);
   const filteredIdeas = getFilteredIdeas(tierIdeas);
-  const hasActiveFilters = filters.industries.length > 0 || filters.productTypes.length > 0 ||
-    filters.riskLevels.length > 0 || filters.effortLevels.length > 0 ||
-    filters.marketFocus.length > 0 || filters.teamSize.length > 0 ||
+  const hasActiveFilters =
+    filters.industries.length > 0 ||
+    filters.productTypes.length > 0 ||
+    filters.riskLevels.length > 0 ||
+    filters.effortLevels.length > 0 ||
+    filters.marketFocus.length > 0 ||
+    filters.teamSize.length > 0 ||
     filters.customKeywords.length > 0;
 
   return (
@@ -72,7 +76,8 @@ export const IdeaFeed: React.FC<IdeaFeedProps> = ({
           <div className="space-y-1">
             <p className="text-zinc-300 font-semibold">Today's ideas couldn't be generated</p>
             <p className="text-zinc-500 text-sm max-w-xs mx-auto">
-              The AI service is temporarily unavailable. This is usually resolved within a few minutes.
+              The AI service is temporarily unavailable. This is usually resolved within a few
+              minutes.
             </p>
           </div>
           <button
@@ -87,15 +92,19 @@ export const IdeaFeed: React.FC<IdeaFeedProps> = ({
         <>
           {filteredIdeas.length === 0 && hasActiveFilters ? (
             <div className="p-8 bg-zinc-900/50 border border-zinc-800 rounded-2xl text-center space-y-3">
-              <p className="text-zinc-400 text-sm font-medium">No ideas match your current filters.</p>
-              <p className="text-zinc-600 text-xs">Try adjusting or resetting your filters to see results.</p>
+              <p className="text-zinc-400 text-sm font-medium">
+                No ideas match your current filters.
+              </p>
+              <p className="text-zinc-600 text-xs">
+                Try adjusting or resetting your filters to see results.
+              </p>
             </div>
           ) : (
             filteredIdeas.map((idea) => (
               <IdeaCard
                 key={idea.id}
                 idea={idea}
-                isSaved={userSaves.some(s => s.idea.id === idea.id)}
+                isSaved={userSaves.some((s) => s.idea.id === idea.id)}
                 onToggleSave={() => toggleSave(idea)}
                 onUpdateIdea={updateIdea}
                 isSaving={false}
@@ -112,9 +121,12 @@ export const IdeaFeed: React.FC<IdeaFeedProps> = ({
               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-500 via-amber-500 to-emerald-500" />
               <Lock className="w-10 h-10 text-zinc-700 mx-auto" />
               <div className="space-y-2">
-                <h3 className="text-xl font-bold tracking-tight">Unlock {dailyGen.ideas.length - TIER_LIMITS.free.dailyIdeas} more ideas</h3>
+                <h3 className="text-xl font-bold tracking-tight">
+                  Unlock {dailyGen.ideas.length - TIER_LIMITS.free.dailyIdeas} more ideas
+                </h3>
                 <p className="text-zinc-500 text-sm max-w-xs mx-auto">
-                  Pro & Builder users get up to {TIER_LIMITS.builder.dailyIdeas} ideas daily, unlimited saves, and priority email digests.
+                  Pro & Builder users get up to {TIER_LIMITS.builder.dailyIdeas} ideas daily,
+                  unlimited saves, and priority email digests.
                 </p>
               </div>
               <button

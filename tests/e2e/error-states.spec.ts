@@ -83,7 +83,7 @@ test.describe('Error States — Daily Feed API Failure', () => {
     await page.waitForTimeout(9000);
 
     const retryBtn = page.locator('button', { hasText: /Try Again|Retry/i });
-    if (await retryBtn.count() > 0) {
+    if ((await retryBtn.count()) > 0) {
       await retryBtn.first().click();
       await page.waitForTimeout(3000);
       // At least 2 calls made (initial + retry)
@@ -102,7 +102,9 @@ test.describe('Error States — Daily Feed API Failure', () => {
     await page.goto(`${BASE_URL}/?mockTier=free`);
     await page.waitForTimeout(9000);
 
-    const mockText = await page.locator('text=/cached market signals|illustrative ideas|sample ideas|_isMock/i').count();
+    const mockText = await page
+      .locator('text=/cached market signals|illustrative ideas|sample ideas|_isMock/i')
+      .count();
     expect(mockText).toBe(0);
   });
 });
@@ -177,7 +179,10 @@ test.describe('Error States — 429 Rate Limiting', () => {
       await route.fulfill({
         status: 429,
         contentType: 'application/json',
-        body: JSON.stringify({ error: 'Daily radar limit reached', _usage: { remaining: 0, limit: 3 } }),
+        body: JSON.stringify({
+          error: 'Daily radar limit reached',
+          _usage: { remaining: 0, limit: 3 },
+        }),
       });
     });
 

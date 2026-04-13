@@ -47,7 +47,8 @@ export const WeeklyBestTab: React.FC<WeeklyBestProps> = ({
             <h3 className="text-lg font-bold tracking-tight text-white">Top 10 of the Week</h3>
           </div>
           <p className="text-xs text-zinc-500">
-            Ideas the AI kept surfacing over the past 7 days — ranked by recurrence, then revenue potential.
+            Ideas the AI kept surfacing over the past 7 days — ranked by recurrence, then revenue
+            potential.
           </p>
         </div>
         {fetched && (
@@ -92,29 +93,31 @@ export const WeeklyBestTab: React.FC<WeeklyBestProps> = ({
       )}
 
       {/* Ideas */}
-      {!loading && !error && weeklyBest.map((idea) => (
-        <div key={idea.id}>
-          {idea.recurrenceCount > 1 && (
-            <div className="flex items-center gap-1.5 mb-2">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                <span className="text-base leading-none">🔁</span>
-                Appeared {idea.recurrenceCount}× this week
-              </span>
-            </div>
-          )}
-          <IdeaCard
-            idea={idea}
-            isSaved={userSaves.some(s => s.idea.id === idea.id)}
-            onToggleSave={() => toggleSave(idea)}
-            onUpdateIdea={updateIdea}
-            isSaving={false}
-            tier={tier}
-            onExport={(fmt) => exportToPDF(idea, fmt)}
-            user={user}
-            handleLogin={handleLogin}
-          />
-        </div>
-      ))}
+      {!loading &&
+        !error &&
+        weeklyBest.map((idea) => (
+          <div key={idea.id}>
+            {idea.recurrenceCount > 1 && (
+              <div className="flex items-center gap-1.5 mb-2">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                  <span className="text-base leading-none">🔁</span>
+                  Appeared {idea.recurrenceCount}× this week
+                </span>
+              </div>
+            )}
+            <IdeaCard
+              idea={idea}
+              isSaved={userSaves.some((s) => s.idea.id === idea.id)}
+              onToggleSave={() => toggleSave(idea)}
+              onUpdateIdea={updateIdea}
+              isSaving={false}
+              tier={tier}
+              onExport={(fmt) => exportToPDF(idea, fmt)}
+              user={user}
+              handleLogin={handleLogin}
+            />
+          </div>
+        ))}
     </div>
   );
 };

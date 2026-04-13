@@ -26,7 +26,10 @@ vi.mock('react', () => {
       if (!stateMap.has(idx)) stateMap.set(idx, initial);
       let current = stateMap.get(idx);
       const setter = (next: unknown) => {
-        stateMap.set(idx, typeof next === 'function' ? (next as (v: unknown) => unknown)(current) : next);
+        stateMap.set(
+          idx,
+          typeof next === 'function' ? (next as (v: unknown) => unknown)(current) : next
+        );
         current = stateMap.get(idx);
       };
       // Return a live getter so reading .value after setter calls is fresh
@@ -34,7 +37,10 @@ vi.mock('react', () => {
     },
     // useCallback just returns the wrapped function
     useCallback: (fn: unknown) => fn,
-    __resetState: () => { stateMap.clear(); callIndex = 0; },
+    __resetState: () => {
+      stateMap.clear();
+      callIndex = 0;
+    },
   };
 });
 
@@ -101,7 +107,7 @@ const MOCK_VETTING = {
 
 /** Reset React mock state between tests so useState slots are fresh */
 async function resetReact() {
-  const react = await import('react') as any;
+  const react = (await import('react')) as any;
   react.__resetState?.();
 }
 

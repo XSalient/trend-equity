@@ -34,7 +34,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: 'Missing required field: idea.headline' });
   }
 
-  const safeHeadline = idea.headline.replace(/[<>"`]/g, '').trim().slice(0, 200);
+  const safeHeadline = idea.headline
+    .replace(/[<>"`]/g, '')
+    .trim()
+    .slice(0, 200);
 
   const featureType = 'vetting';
   const cacheKey = idea?.id ? `vetting_${String(idea.id).slice(0, 100)}` : '';
@@ -42,7 +45,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const cached = await getCached(cacheKey);
     if (cached) {
-      return res.json({ ...cached, _cached: true, _usage: await buildUsageResponse(uid, tier, featureType) });
+      return res.json({
+        ...cached,
+        _cached: true,
+        _usage: await buildUsageResponse(uid, tier, featureType),
+      });
     }
 
     if (uid) {
@@ -55,7 +62,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    const data = await generateWithGemini(`Perform expert VC-grade vetting for this startup idea: ${safeHeadline}`, schema);
+    const data = await generateWithGemini(
+      `Perform expert VC-grade vetting for this startup idea: ${safeHeadline}`,
+      schema
+    );
     await setCached(cacheKey, data);
     return res.json({ ...data, _usage: await buildUsageResponse(uid, tier, featureType) });
   } catch (err: any) {

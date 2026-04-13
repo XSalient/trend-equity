@@ -10,7 +10,7 @@ import {
   RotateCcw,
   Download,
   Check,
-  ArrowUpDown
+  ArrowUpDown,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { FilterState, Tier } from '../types';
@@ -27,19 +27,37 @@ interface FilterBarProps {
 }
 
 const INDUSTRIES = [
-  'AI/SaaS', 'FinTech', 'HealthTech', 'EdTech', 'Climate/Sustainability',
-  'Consumer Apps', 'Hardware', 'Deep-Tech/Moonshot', 'Service/Local/On-Demand', 'Other'
+  'AI/SaaS',
+  'FinTech',
+  'HealthTech',
+  'EdTech',
+  'Climate/Sustainability',
+  'Consumer Apps',
+  'Hardware',
+  'Deep-Tech/Moonshot',
+  'Service/Local/On-Demand',
+  'Other',
 ];
 
 const RISK_LEVELS = ['Low', 'Medium', 'High'];
 const EFFORT_LEVELS = ['Low', 'Medium', 'High'];
-const MARKET_FOCUS = ['Local Market', 'Global', 'US-centric', 'EU-focused', 'Emerging Markets', 'Hyper-local/Regional'];
+const MARKET_FOCUS = [
+  'Local Market',
+  'Global',
+  'US-centric',
+  'EU-focused',
+  'Emerging Markets',
+  'Hyper-local/Regional',
+];
 const TEAM_SIZE = ['Solo-friendly', 'Small team (2–5)', 'Needs co-founder/funding round'];
 const PRODUCT_TYPES = ['Digital', 'Physical'];
 
 // ── Reusable custom dropdown ─────────────────────────────────────────────────
 
-interface SelectOption { value: string; label: string }
+interface SelectOption {
+  value: string;
+  label: string;
+}
 
 function DropdownSelect({
   value,
@@ -63,17 +81,19 @@ function DropdownSelect({
     return () => document.removeEventListener('mousedown', handle);
   }, []);
 
-  const current = options.find(o => o.value === value);
+  const current = options.find((o) => o.value === value);
 
   return (
     <div ref={ref} className="relative">
       <button
-        onClick={() => setOpen(o => !o)}
+        onClick={() => setOpen((o) => !o)}
         className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-zinc-800/60 border border-zinc-700/50 text-sm text-zinc-300 hover:text-white hover:border-zinc-600 hover:bg-zinc-800 transition-all"
       >
         {Icon && <Icon className="w-3.5 h-3.5 text-zinc-500" />}
         <span className="font-medium">{current?.label ?? 'Select'}</span>
-        <ChevronDown className={`w-3.5 h-3.5 text-zinc-500 transition-transform duration-150 ${open ? 'rotate-180' : ''}`} />
+        <ChevronDown
+          className={`w-3.5 h-3.5 text-zinc-500 transition-transform duration-150 ${open ? 'rotate-180' : ''}`}
+        />
       </button>
 
       <AnimatePresence>
@@ -85,10 +105,13 @@ function DropdownSelect({
             transition={{ duration: 0.12, ease: 'easeOut' }}
             className="absolute top-full mt-1.5 left-0 min-w-[180px] bg-zinc-900 border border-zinc-700/70 rounded-xl shadow-2xl shadow-black/50 overflow-hidden z-50 py-1"
           >
-            {options.map(opt => (
+            {options.map((opt) => (
               <button
                 key={opt.value}
-                onClick={() => { onChange(opt.value); setOpen(false); }}
+                onClick={() => {
+                  onChange(opt.value);
+                  setOpen(false);
+                }}
                 className={`w-full text-left px-4 py-2.5 text-sm transition-colors flex items-center justify-between gap-4 ${
                   opt.value === value
                     ? 'text-white bg-zinc-800'
@@ -110,7 +133,10 @@ function DropdownSelect({
 
 // ── Action dropdown (no persistent selection, e.g. Export) ───────────────────
 
-interface ActionOption { label: string; onClick: () => void }
+interface ActionOption {
+  label: string;
+  onClick: () => void;
+}
 
 function DropdownAction({
   label,
@@ -135,12 +161,14 @@ function DropdownAction({
   return (
     <div ref={ref} className="relative">
       <button
-        onClick={() => setOpen(o => !o)}
+        onClick={() => setOpen((o) => !o)}
         className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-zinc-800/60 border border-zinc-700/50 text-sm text-zinc-400 hover:text-white hover:border-zinc-600 hover:bg-zinc-800 transition-all"
       >
         <Icon className="w-3.5 h-3.5" />
         <span className="font-medium">{label}</span>
-        <ChevronDown className={`w-3.5 h-3.5 text-zinc-500 transition-transform duration-150 ${open ? 'rotate-180' : ''}`} />
+        <ChevronDown
+          className={`w-3.5 h-3.5 text-zinc-500 transition-transform duration-150 ${open ? 'rotate-180' : ''}`}
+        />
       </button>
 
       <AnimatePresence>
@@ -155,7 +183,10 @@ function DropdownAction({
             {options.map((opt, i) => (
               <button
                 key={i}
-                onClick={() => { opt.onClick(); setOpen(false); }}
+                onClick={() => {
+                  opt.onClick();
+                  setOpen(false);
+                }}
                 className="w-full text-left px-4 py-2.5 text-sm text-zinc-400 hover:text-white hover:bg-zinc-800/60 transition-colors"
               >
                 {opt.label}
@@ -170,7 +201,16 @@ function DropdownAction({
 
 // ── Main FilterBar ────────────────────────────────────────────────────────────
 
-export function FilterBar({ filters, setFilters, tier, onExportCSV, onExportPDF, resultCount, totalCount, onUpgrade }: FilterBarProps) {
+export function FilterBar({
+  filters,
+  setFilters,
+  tier,
+  onExportCSV,
+  onExportPDF,
+  resultCount,
+  totalCount,
+  onUpgrade,
+}: FilterBarProps) {
   const [isOpen, setIsOpen] = useState(false);
   const isFree = tier === 'free';
   const isPro = tier === 'pro';
@@ -186,7 +226,7 @@ export function FilterBar({ filters, setFilters, tier, onExportCSV, onExportPDF,
       teamSize: [],
       excludeCategories: [],
       customKeywords: '',
-      sortBy: 'revenue'
+      sortBy: 'revenue',
     });
   };
 
@@ -196,9 +236,7 @@ export function FilterBar({ filters, setFilters, tier, onExportCSV, onExportPDF,
       return;
     }
     const current = (filters[key] as string[]) || [];
-    const next = current.includes(value)
-      ? current.filter(v => v !== value)
-      : [...current, value];
+    const next = current.includes(value) ? current.filter((v) => v !== value) : [...current, value];
     setFilters({ ...filters, [key]: next });
   };
 
@@ -255,7 +293,9 @@ export function FilterBar({ filters, setFilters, tier, onExportCSV, onExportPDF,
 
             {activeCount > 0 && resultCount !== undefined && totalCount !== undefined && (
               <span className="text-xs font-medium text-zinc-400">
-                <span className={resultCount === 0 ? 'text-amber-400' : 'text-emerald-400'}>{resultCount}</span>
+                <span className={resultCount === 0 ? 'text-amber-400' : 'text-emerald-400'}>
+                  {resultCount}
+                </span>
                 <span className="text-zinc-600"> / {totalCount}</span>
               </span>
             )}
@@ -280,7 +320,6 @@ export function FilterBar({ filters, setFilters, tier, onExportCSV, onExportPDF,
               className="overflow-hidden"
             >
               <div className="py-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 border-t border-white/5 mt-3">
-
                 {/* Industry Filter */}
                 <div className="space-y-6">
                   <div className="space-y-3">
@@ -289,7 +328,7 @@ export function FilterBar({ filters, setFilters, tier, onExportCSV, onExportPDF,
                       {isFree && <Lock className="w-3 h-3 text-zinc-600" />}
                     </div>
                     <div className="flex flex-wrap gap-2">
-                      {INDUSTRIES.map(industry => (
+                      {INDUSTRIES.map((industry) => (
                         <button
                           key={industry}
                           onClick={() => toggleFilter('industries', industry)}
@@ -313,7 +352,7 @@ export function FilterBar({ filters, setFilters, tier, onExportCSV, onExportPDF,
                       {isFree && <Lock className="w-3 h-3 text-zinc-600" />}
                     </div>
                     <div className="flex gap-2">
-                      {PRODUCT_TYPES.map(type => (
+                      {PRODUCT_TYPES.map((type) => (
                         <button
                           key={type}
                           onClick={() => toggleFilter('productTypes', type)}
@@ -340,7 +379,7 @@ export function FilterBar({ filters, setFilters, tier, onExportCSV, onExportPDF,
                       {isFree && <Lock className="w-3 h-3 text-zinc-600" />}
                     </div>
                     <div className="flex gap-2">
-                      {RISK_LEVELS.map(level => (
+                      {RISK_LEVELS.map((level) => (
                         <button
                           key={level}
                           onClick={() => toggleFilter('riskLevels', level)}
@@ -364,7 +403,7 @@ export function FilterBar({ filters, setFilters, tier, onExportCSV, onExportPDF,
                       {isFree && <Lock className="w-3 h-3 text-zinc-600" />}
                     </div>
                     <div className="flex gap-2">
-                      {EFFORT_LEVELS.map(level => (
+                      {EFFORT_LEVELS.map((level) => (
                         <button
                           key={level}
                           onClick={() => toggleFilter('effortLevels', level)}
@@ -391,7 +430,7 @@ export function FilterBar({ filters, setFilters, tier, onExportCSV, onExportPDF,
                       {isFree && <Lock className="w-3 h-3 text-zinc-600" />}
                     </div>
                     <div className="flex flex-wrap gap-2">
-                      {MARKET_FOCUS.map(market => (
+                      {MARKET_FOCUS.map((market) => (
                         <button
                           key={market}
                           disabled={isPro && market.includes('Emerging')}
@@ -399,13 +438,13 @@ export function FilterBar({ filters, setFilters, tier, onExportCSV, onExportPDF,
                           className={`px-3 py-1.5 rounded-full text-xs transition-all flex items-center gap-1.5 ${
                             filters.marketFocus.includes(market)
                               ? 'bg-emerald-500 text-black font-medium'
-                              : (isFree || (isPro && market.includes('Emerging')))
+                              : isFree || (isPro && market.includes('Emerging'))
                                 ? 'bg-zinc-800/30 text-zinc-600 cursor-not-allowed'
                                 : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
                           }`}
                         >
                           {market}
-                          {(isPro && market.includes('Emerging')) && <Sparkles className="w-3 h-3" />}
+                          {isPro && market.includes('Emerging') && <Sparkles className="w-3 h-3" />}
                         </button>
                       ))}
                     </div>
@@ -417,7 +456,7 @@ export function FilterBar({ filters, setFilters, tier, onExportCSV, onExportPDF,
                       {isFree && <Lock className="w-3 h-3 text-zinc-600" />}
                     </div>
                     <div className="flex flex-wrap gap-2">
-                      {TEAM_SIZE.map(size => (
+                      {TEAM_SIZE.map((size) => (
                         <button
                           key={size}
                           onClick={() => toggleFilter('teamSize', size)}
@@ -450,7 +489,9 @@ export function FilterBar({ filters, setFilters, tier, onExportCSV, onExportPDF,
                           type="text"
                           placeholder="Custom keywords (e.g. 'agent governance', 'solar')"
                           value={filters.customKeywords}
-                          onChange={(e) => setFilters({ ...filters, customKeywords: e.target.value })}
+                          onChange={(e) =>
+                            setFilters({ ...filters, customKeywords: e.target.value })
+                          }
                           className="w-full bg-zinc-800 border-none rounded-lg pl-10 pr-4 py-2 text-sm text-white placeholder:text-zinc-600 focus:ring-1 focus:ring-emerald-500"
                         />
                       </div>
@@ -471,7 +512,9 @@ export function FilterBar({ filters, setFilters, tier, onExportCSV, onExportPDF,
                       </div>
                       <div>
                         <p className="text-sm font-bold text-white">Unlock Advanced Filters</p>
-                        <p className="text-xs text-zinc-400">Pro & Builder users can filter by industry, risk, effort, and more.</p>
+                        <p className="text-xs text-zinc-400">
+                          Pro & Builder users can filter by industry, risk, effort, and more.
+                        </p>
                       </div>
                     </div>
                     <button className="px-4 py-2 bg-emerald-500 text-black text-xs font-bold rounded-lg hover:bg-emerald-400 transition-colors">

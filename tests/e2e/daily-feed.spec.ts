@@ -95,7 +95,9 @@ test.describe('Daily Feed — Rendering', () => {
     await loadFeedWithMockData(page, 'free');
 
     // Count visible idea cards — look for revenue potential score rows
-    const ideaCards = page.locator('[data-testid="idea-card"], .idea-card, text=/Test Business Idea/');
+    const ideaCards = page.locator(
+      '[data-testid="idea-card"], .idea-card, text=/Test Business Idea/'
+    );
     // At minimum 1 idea visible, at most 10
     const count = await page.locator('text=/Test Business Idea \\d+/').count();
     expect(count).toBeGreaterThanOrEqual(1);
@@ -109,7 +111,11 @@ test.describe('Daily Feed — Error States', () => {
   test('shows empty state with message when API returns 503', async ({ page }) => {
     // Do NOT inject localStorage cache — force API call
     await page.route('**/api/generate/daily', async (route) => {
-      await route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ error: 'AI generation temporarily unavailable.' }) });
+      await route.fulfill({
+        status: 503,
+        contentType: 'application/json',
+        body: JSON.stringify({ error: 'AI generation temporarily unavailable.' }),
+      });
     });
     await page.route('**/api/generate/alerts', async (route) => {
       await route.fulfill({ status: 200, contentType: 'application/json', body: '[]' });
@@ -145,7 +151,9 @@ test.describe('Daily Feed — Error States', () => {
     await page.goto(`${BASE_URL}/?mockTier=free`);
     await page.waitForSelector('text=/TODAY/i', { timeout: 15000 });
 
-    const mockText = await page.locator('text=/cached market signals|illustrative ideas|sample ideas/i').count();
+    const mockText = await page
+      .locator('text=/cached market signals|illustrative ideas|sample ideas/i')
+      .count();
     expect(mockText).toBe(0);
   });
 });

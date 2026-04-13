@@ -1,14 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import {
-  TrendingUp,
-  AlertCircle,
-  RefreshCw,
-  Calendar,
-  Rocket,
-  Wand2,
-  Lock,
-  X,
-} from 'lucide-react';
+import { TrendingUp, AlertCircle, RefreshCw, Calendar, Rocket, Wand2, Lock, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 // --- Types & Constants ---
@@ -40,45 +31,74 @@ import { EmailDigestTab } from './components/tabs/EmailDigest';
 import { SavedIdeasTab } from './components/tabs/SavedIdeas';
 
 // --- Utils ---
-import { generateWeeklyTrendRadar, generateFuturecasting, setCurrentIdToken } from './services/geminiService';
+import {
+  generateWeeklyTrendRadar,
+  generateFuturecasting,
+  setCurrentIdToken,
+} from './services/geminiService';
 import { exportDocument, exportListToCSV, exportListToPDF } from './utils/exportUtils';
 
 export default function App() {
   const { user, authReady, handleLogin, handleLogout, error: authError } = useAuth();
-  const { tier, handleUpgrade, handleDowngrade, upgradeToBuilder, tierNotification } = useTier(user);
-  const { alerts, showAlerts, setShowAlerts, markAlertAsRead, unreadAlertsCount, loading: alertsLoading } = useAlerts(user);
-  
-  const { 
-    dailyGen, 
-    userSaves, 
-    loading, 
-    generating, 
-    error: ideasError, 
-    filters, 
-    setFilters, 
-    toggleSave, 
-    updateIdea, 
-    getFilteredIdeas, 
+  const { tier, handleUpgrade, handleDowngrade, upgradeToBuilder, tierNotification } =
+    useTier(user);
+  const {
+    alerts,
+    showAlerts,
+    setShowAlerts,
+    markAlertAsRead,
+    unreadAlertsCount,
+    loading: alertsLoading,
+  } = useAlerts(user);
+
+  const {
+    dailyGen,
+    userSaves,
+    loading,
+    generating,
+    error: ideasError,
+    filters,
+    setFilters,
+    toggleSave,
+    updateIdea,
+    getFilteredIdeas,
     triggerGeneration,
-    fetchDaily
+    fetchDaily,
   } = useIdeas(user, tier, authReady);
 
   // FIX (S-2): Sync Firebase ID token into geminiService for server-side auth.
   // Token refreshes every 50 min (Firebase tokens expire in 1 hour).
   useEffect(() => {
     if (user) {
-      user.getIdToken().then(setCurrentIdToken).catch(() => setCurrentIdToken(null));
-      const interval = setInterval(() => {
-        user.getIdToken(true).then(setCurrentIdToken).catch(() => setCurrentIdToken(null));
-      }, 50 * 60 * 1000);
+      user
+        .getIdToken()
+        .then(setCurrentIdToken)
+        .catch(() => setCurrentIdToken(null));
+      const interval = setInterval(
+        () => {
+          user
+            .getIdToken(true)
+            .then(setCurrentIdToken)
+            .catch(() => setCurrentIdToken(null));
+        },
+        50 * 60 * 1000
+      );
       return () => clearInterval(interval);
     } else {
       setCurrentIdToken(null);
     }
   }, [user]);
 
-  const [activeTab, setActiveTab] = useState<'feed' | 'saved' | 'weekly' | 'pro' | 'radar' | 'future' | 'digest'>('feed');
-  const { weeklyBest, loading: loadingWeekly, error: errorWeekly, fetched: fetchedWeekly, fetchWeeklyBest } = useWeeklyBest();
+  const [activeTab, setActiveTab] = useState<
+    'feed' | 'saved' | 'weekly' | 'pro' | 'radar' | 'future' | 'digest'
+  >('feed');
+  const {
+    weeklyBest,
+    loading: loadingWeekly,
+    error: errorWeekly,
+    fetched: fetchedWeekly,
+    fetchWeeklyBest,
+  } = useWeeklyBest();
   const [weeklyRadar, setWeeklyRadar] = useState<WeeklyTrendRadar | null>(null);
   const [futurecasting, setFuturecasting] = useState<Futurecasting | null>(null);
   const [loadingRadar, setLoadingRadar] = useState(false);
@@ -86,7 +106,7 @@ export default function App() {
   // FIX (U-3): Track radar/futurecasting error states so UI can show them
   const [radarError, setRadarError] = useState<string | null>(null);
   const [futureError, setFutureError] = useState<string | null>(null);
-  
+
   // Builder Modal States
   const [showTE100, setShowTE100] = useState(false);
   const [showApiAccess, setShowApiAccess] = useState(false);
@@ -96,7 +116,9 @@ export default function App() {
   useEffect(() => {
     if (authError) {
       setAuthToastVisible(true);
-      const t = setTimeout(() => { setAuthToastVisible(false); }, 6000);
+      const t = setTimeout(() => {
+        setAuthToastVisible(false);
+      }, 6000);
       return () => clearTimeout(t);
     }
   }, [authError]);
@@ -113,8 +135,8 @@ export default function App() {
       const radar = await generateWeeklyTrendRadar();
       setWeeklyRadar(radar);
     } catch (err: any) {
-      console.error("Failed to fetch radar:", err);
-      setRadarError(err?.message || "Radar analysis unavailable. Please try again.");
+      console.error('Failed to fetch radar:', err);
+      setRadarError(err?.message || 'Radar analysis unavailable. Please try again.');
     } finally {
       setLoadingRadar(false);
     }
@@ -127,8 +149,8 @@ export default function App() {
       const fc = await generateFuturecasting(horizon);
       setFuturecasting(fc);
     } catch (err: any) {
-      console.error("Failed to fetch futurecasting:", err);
-      setFutureError(err?.message || "Futurecasting unavailable. Please try again.");
+      console.error('Failed to fetch futurecasting:', err);
+      setFutureError(err?.message || 'Futurecasting unavailable. Please try again.');
     } finally {
       setLoadingFuture(false);
     }
@@ -139,8 +161,20 @@ export default function App() {
   useEffect(() => {
     if (!authReady) return;
     if (activeTab === 'radar' && !weeklyRadar && !loadingRadar && !radarError) fetchWeeklyRadar();
-    if (activeTab === 'future' && !futurecasting && !loadingFuture && !futureError) fetchFuturecasting();
-  }, [authReady, activeTab, weeklyRadar, futurecasting, loadingRadar, loadingFuture, radarError, futureError, fetchWeeklyRadar, fetchFuturecasting]);
+    if (activeTab === 'future' && !futurecasting && !loadingFuture && !futureError)
+      fetchFuturecasting();
+  }, [
+    authReady,
+    activeTab,
+    weeklyRadar,
+    futurecasting,
+    loadingRadar,
+    loadingFuture,
+    radarError,
+    futureError,
+    fetchWeeklyRadar,
+    fetchFuturecasting,
+  ]);
 
   // FIX (U-4): Show a minimal loading screen while Firebase resolves auth state
   // to prevent a flash of "free tier" UI for paying users.
@@ -161,7 +195,11 @@ export default function App() {
 
   const getDynamicIntro = () => {
     const count = TIER_LIMITS[tier].dailyIdeas;
-    const dateStr = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    const dateStr = new Date().toLocaleDateString('en-US', {
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+    });
     return `Welcome to the ${dateStr} edition of Trend-Equity. Today we navigate the convergence of emerging market signals and high-velocity AI-native shifts. The following ${count} ideas have been filtered through our strict VC engine for maximum investability and timing relevance.`;
   };
 
@@ -172,7 +210,7 @@ export default function App() {
         <div className="relative">
           <motion.div
             animate={{ rotate: 360 }}
-            transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+            transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
             className="w-16 h-16 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full"
           />
           <Rocket className="w-6 h-6 text-emerald-500 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
@@ -181,7 +219,8 @@ export default function App() {
           Generating today's feed...
         </h2>
         <p className="mt-2 text-zinc-500 text-sm max-w-xs mx-auto">
-          Our AI is scanning real-time signals from Google, X, and Reddit to find today's top {TIER_LIMITS[tier].dailyIdeas} opportunities.
+          Our AI is scanning real-time signals from Google, X, and Reddit to find today's top{' '}
+          {TIER_LIMITS[tier].dailyIdeas} opportunities.
         </p>
       </div>
     );
@@ -190,7 +229,7 @@ export default function App() {
   return (
     <ErrorBoundary>
       <div className="min-h-screen bg-zinc-950 text-zinc-100 font-sans selection:bg-emerald-500/30">
-        <Header 
+        <Header
           user={user}
           tier={tier}
           activeTab={activeTab}
@@ -204,7 +243,7 @@ export default function App() {
           generating={generating}
         />
 
-        <AlertsPanel 
+        <AlertsPanel
           alerts={alerts}
           showAlerts={showAlerts}
           setShowAlerts={setShowAlerts}
@@ -215,7 +254,8 @@ export default function App() {
         <main className="max-w-3xl mx-auto px-4 py-8 space-y-8">
           {/* Intro Section */}
           <h2 className="text-4xl md:text-5xl font-black tracking-tight leading-[0.9] uppercase italic">
-            Today's <br /><span className="text-emerald-500">Top {TIER_LIMITS[tier].dailyIdeas}</span> Ideas
+            Today's <br />
+            <span className="text-emerald-500">Top {TIER_LIMITS[tier].dailyIdeas}</span> Ideas
           </h2>
 
           {/* FIX (U-2): Tier notification toast — replaces alert() */}
@@ -226,7 +266,11 @@ export default function App() {
           )}
 
           {/* Tabs — FIX (U-6): Added role="tablist" and ARIA attributes */}
-          <div role="tablist" aria-label="Navigation tabs" className="flex flex-wrap gap-1 p-1 bg-zinc-900/60 border border-zinc-800/60 rounded-xl w-fit">
+          <div
+            role="tablist"
+            aria-label="Navigation tabs"
+            className="flex flex-wrap gap-1 p-1 bg-zinc-900/60 border border-zinc-800/60 rounded-xl w-fit"
+          >
             <button
               role="tab"
               aria-selected={activeTab === 'feed'}
@@ -243,7 +287,13 @@ export default function App() {
               onClick={() => setActiveTab('saved')}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'saved' ? 'bg-zinc-800 text-white shadow-md' : 'text-zinc-500 hover:text-zinc-300'}`}
             >
-              Saved {userSaves.length > 0 && <span className="ml-1 text-xs bg-zinc-700 text-zinc-300 px-1.5 py-0.5 rounded-full">{userSaves.length}{tier === 'free' ? `/${TIER_LIMITS.free.monthlySaves}` : ''}</span>}
+              Saved{' '}
+              {userSaves.length > 0 && (
+                <span className="ml-1 text-xs bg-zinc-700 text-zinc-300 px-1.5 py-0.5 rounded-full">
+                  {userSaves.length}
+                  {tier === 'free' ? `/${TIER_LIMITS.free.monthlySaves}` : ''}
+                </span>
+              )}
             </button>
             <button
               role="tab"
@@ -292,10 +342,13 @@ export default function App() {
               aria-selected={activeTab === 'pro'}
               aria-controls="tabpanel-pro"
               onClick={() => setActiveTab('pro')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'pro'
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                activeTab === 'pro'
                   ? 'bg-zinc-800 text-white shadow-md'
-                  : tier === 'builder' ? 'text-zinc-500 hover:text-zinc-300' : 'text-emerald-400 hover:text-emerald-300'
-                }`}
+                  : tier === 'builder'
+                    ? 'text-zinc-500 hover:text-zinc-300'
+                    : 'text-emerald-400 hover:text-emerald-300'
+              }`}
             >
               {tier === 'free' ? 'Upgrade' : 'Plan'}
             </button>
@@ -328,7 +381,10 @@ export default function App() {
                 loadingRadar={loadingRadar}
                 fetchWeeklyRadar={fetchWeeklyRadar}
                 error={radarError}
-                onRetry={() => { setRadarError(null); fetchWeeklyRadar(); }}
+                onRetry={() => {
+                  setRadarError(null);
+                  fetchWeeklyRadar();
+                }}
               />
             ) : activeTab === 'future' ? (
               <FuturecastingTab
@@ -336,7 +392,10 @@ export default function App() {
                 loadingFuture={loadingFuture}
                 fetchFuturecasting={fetchFuturecasting}
                 error={futureError}
-                onRetry={() => { setFutureError(null); fetchFuturecasting(); }}
+                onRetry={() => {
+                  setFutureError(null);
+                  fetchFuturecasting();
+                }}
               />
             ) : activeTab === 'digest' ? (
               <EmailDigestTab user={user} />
@@ -385,16 +444,23 @@ export default function App() {
                 <span className="text-xs font-medium">Disclaimer</span>
               </div>
               <p className="text-xs text-zinc-500 leading-relaxed italic">
-                {dailyGen?.disclaimer || "All ideas cite real signals. Inspiration only — do your own diligence."}
+                {dailyGen?.disclaimer ||
+                  'All ideas cite real signals. Inspiration only — do your own diligence.'}
               </p>
             </div>
 
             <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-[10px] text-zinc-600 font-bold uppercase tracking-widest">
               <p>© 2026 TREND EQUITY ENGINE</p>
               <div className="flex gap-6">
-                <a href="#" className="hover:text-emerald-500 transition-colors">Privacy</a>
-                <a href="#" className="hover:text-emerald-500 transition-colors">Terms</a>
-                <a href="#" className="hover:text-emerald-500 transition-colors">Contact</a>
+                <a href="#" className="hover:text-emerald-500 transition-colors">
+                  Privacy
+                </a>
+                <a href="#" className="hover:text-emerald-500 transition-colors">
+                  Terms
+                </a>
+                <a href="#" className="hover:text-emerald-500 transition-colors">
+                  Contact
+                </a>
               </div>
             </div>
           </footer>
@@ -425,7 +491,9 @@ export default function App() {
               <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
               <span className="truncate">{authError}</span>
               <button
-                onClick={() => { setAuthToastVisible(false); }}
+                onClick={() => {
+                  setAuthToastVisible(false);
+                }}
                 className="ml-1 flex-shrink-0 text-zinc-400 hover:text-white transition-colors"
                 aria-label="Dismiss"
               >
@@ -435,15 +503,11 @@ export default function App() {
           )}
         </AnimatePresence>
 
-        <TE100Modal 
-          user={user} 
-          isOpen={showTE100} 
-          onClose={() => setShowTE100(false)} 
-        />
-        <ApiAccessModal 
-          user={user} 
-          isOpen={showApiAccess} 
-          onClose={() => setShowApiAccess(false)} 
+        <TE100Modal user={user} isOpen={showTE100} onClose={() => setShowTE100(false)} />
+        <ApiAccessModal
+          user={user}
+          isOpen={showApiAccess}
+          onClose={() => setShowApiAccess(false)}
         />
       </div>
     </ErrorBoundary>

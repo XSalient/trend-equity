@@ -68,8 +68,13 @@ vi.mock('../../../api/_lib/usage', () => ({
 import handler from '../../../api/generate/daily';
 
 const EMPTY_SIGNALS = {
-  googleTrends: [], productHuntLaunches: [], redditHotThreads: [],
-  hnDiscussions: [], techCrunchFunding: [], fetchedAt: '', sourcesCached: false,
+  googleTrends: [],
+  productHuntLaunches: [],
+  redditHotThreads: [],
+  hnDiscussions: [],
+  techCrunchFunding: [],
+  fetchedAt: '',
+  sourcesCached: false,
 };
 
 describe('POST /api/generate/daily', () => {

@@ -99,10 +99,10 @@ describe('useWeeklyBest — aggregation logic', () => {
     const result = aggregateWeeklyBest(snaps);
 
     expect(result).toHaveLength(3);
-    result.forEach(r => expect(r.recurrenceCount).toBe(1));
-    expect(result[0].headline).toBe('Beta Idea');   // score 9 first
-    expect(result[1].headline).toBe('Alpha Idea');  // score 7 second
-    expect(result[2].headline).toBe('Gamma Idea');  // score 5 last
+    result.forEach((r) => expect(r.recurrenceCount).toBe(1));
+    expect(result[0].headline).toBe('Beta Idea'); // score 9 first
+    expect(result[1].headline).toBe('Alpha Idea'); // score 7 second
+    expect(result[2].headline).toBe('Gamma Idea'); // score 5 last
   });
 
   it('skips docs where snap.exists() is false', () => {
@@ -123,14 +123,24 @@ describe('useWeeklyBest — aggregation logic', () => {
   });
 
   it('idea with count=2 appears before count=1 even if its revenue score is lower', () => {
-    const highScore = { ...MOCK_IDEA, id: 'h', headline: 'High Score Idea', revenuePotentialScore: 10 };
-    const recurring = { ...MOCK_IDEA, id: 'r', headline: 'Recurring Idea', revenuePotentialScore: 3 };
+    const highScore = {
+      ...MOCK_IDEA,
+      id: 'h',
+      headline: 'High Score Idea',
+      revenuePotentialScore: 10,
+    };
+    const recurring = {
+      ...MOCK_IDEA,
+      id: 'r',
+      headline: 'Recurring Idea',
+      revenuePotentialScore: 3,
+    };
     // recurring appears in two snaps, highScore in one
     const snaps = [makeSnap([highScore, recurring]), makeSnap([recurring])];
     const result = aggregateWeeklyBest(snaps);
 
     expect(result).toHaveLength(2);
-    expect(result[0].headline).toBe('Recurring Idea');  // count=2 wins
+    expect(result[0].headline).toBe('Recurring Idea'); // count=2 wins
     expect(result[0].recurrenceCount).toBe(2);
     expect(result[1].headline).toBe('High Score Idea'); // count=1
   });
@@ -155,14 +165,19 @@ describe('useWeeklyBest — aggregation logic', () => {
       headline: 'Undefined Score Idea',
       revenuePotentialScore: undefined as unknown as number,
     };
-    const withZero = { ...MOCK_IDEA, id: 'z', headline: 'Zero Score Idea', revenuePotentialScore: 0 };
+    const withZero = {
+      ...MOCK_IDEA,
+      id: 'z',
+      headline: 'Zero Score Idea',
+      revenuePotentialScore: 0,
+    };
     const snaps = [makeSnap([withUndefined, withZero])];
 
     expect(() => aggregateWeeklyBest(snaps)).not.toThrow();
     const result = aggregateWeeklyBest(snaps);
     expect(result).toHaveLength(2);
     // both effectively score 0 — order is stable / either is fine
-    result.forEach(r => expect(r.recurrenceCount).toBe(1));
+    result.forEach((r) => expect(r.recurrenceCount).toBe(1));
   });
 });
 

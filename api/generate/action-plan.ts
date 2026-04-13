@@ -46,7 +46,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   // Sanitise headline before embedding in prompt (S-6)
-  const safeHeadline = idea.headline.replace(/[<>"`]/g, '').trim().slice(0, 200);
+  const safeHeadline = idea.headline
+    .replace(/[<>"`]/g, '')
+    .trim()
+    .slice(0, 200);
 
   const featureType = 'action-plan';
   const cacheKey = idea?.id ? `action-plan_${String(idea.id).slice(0, 100)}` : '';
@@ -54,7 +57,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const cached = await getCached(cacheKey);
     if (cached) {
-      return res.json({ ...cached, _cached: true, _usage: await buildUsageResponse(uid, tier, featureType) });
+      return res.json({
+        ...cached,
+        _cached: true,
+        _usage: await buildUsageResponse(uid, tier, featureType),
+      });
     }
 
     if (uid) {
@@ -67,7 +74,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    const data = await generateWithGemini(`Generate a detailed action plan and roadmap for building this startup idea: ${safeHeadline}`, schema);
+    const data = await generateWithGemini(
+      `Generate a detailed action plan and roadmap for building this startup idea: ${safeHeadline}`,
+      schema
+    );
     await setCached(cacheKey, data);
     return res.json({ ...data, _usage: await buildUsageResponse(uid, tier, featureType) });
   } catch (err: any) {

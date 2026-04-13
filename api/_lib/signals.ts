@@ -58,7 +58,7 @@ async function fetchWithTimeout(url: string, timeoutMs = 7000): Promise<Response
       signal: controller.signal,
       headers: {
         'User-Agent': 'Mozilla/5.0 (compatible; TrendEquity/1.0; +https://trend-equity.app)',
-        'Accept': 'text/html,application/xhtml+xml,application/xml,application/json,*/*',
+        Accept: 'text/html,application/xhtml+xml,application/xml,application/json,*/*',
         'Cache-Control': 'no-cache',
       },
     });
@@ -95,10 +95,10 @@ async function fetchProductHunt(): Promise<string[]> {
 async function fetchReddit(): Promise<string[]> {
   try {
     const res = await fetchWithTimeout(
-      'https://www.reddit.com/r/SaaS+startups+Entrepreneur+smallbusiness.json?sort=hot&limit=25&t=week',
+      'https://www.reddit.com/r/SaaS+startups+Entrepreneur+smallbusiness.json?sort=hot&limit=25&t=week'
     );
     if (!res.ok) return [];
-    const json = await res.json() as any;
+    const json = (await res.json()) as any;
     const children = json?.data?.children ?? [];
     return children
       .filter((p: any) => p.data?.ups > 30 && !p.data?.stickied)
@@ -114,10 +114,10 @@ async function fetchHackerNews(): Promise<string[]> {
     // Filter to last 30 days so we get recent signal, not all-time classics
     const thirtyDaysAgo = Math.floor(Date.now() / 1000) - 30 * 24 * 60 * 60;
     const res = await fetchWithTimeout(
-      `https://hn.algolia.com/api/v1/search?tags=story&numericFilters=points%3E30,created_at_i%3E${thirtyDaysAgo}&hitsPerPage=15`,
+      `https://hn.algolia.com/api/v1/search?tags=story&numericFilters=points%3E30,created_at_i%3E${thirtyDaysAgo}&hitsPerPage=15`
     );
     if (!res.ok) return [];
-    const json = await res.json() as any;
+    const json = (await res.json()) as any;
     return (json.hits ?? [])
       .slice(0, 12)
       .map((h: any) => `"${h.title}" (${h.points} pts)`)
@@ -158,11 +158,11 @@ export async function fetchLiveSignals(): Promise<LiveSignals> {
   ]);
 
   const signals: LiveSignals = {
-    googleTrends:        trends.status  === 'fulfilled' ? trends.value  : [],
-    productHuntLaunches: ph.status      === 'fulfilled' ? ph.value      : [],
-    redditHotThreads:    reddit.status  === 'fulfilled' ? reddit.value  : [],
-    hnDiscussions:       hn.status      === 'fulfilled' ? hn.value      : [],
-    techCrunchFunding:   tc.status      === 'fulfilled' ? tc.value      : [],
+    googleTrends: trends.status === 'fulfilled' ? trends.value : [],
+    productHuntLaunches: ph.status === 'fulfilled' ? ph.value : [],
+    redditHotThreads: reddit.status === 'fulfilled' ? reddit.value : [],
+    hnDiscussions: hn.status === 'fulfilled' ? hn.value : [],
+    techCrunchFunding: tc.status === 'fulfilled' ? tc.value : [],
     fetchedAt: new Date().toISOString(),
     sourcesCached: false,
   };
@@ -179,7 +179,9 @@ export async function fetchLiveSignals(): Promise<LiveSignals> {
     _cache = { data: signals, expiresAt: Date.now() + SIGNAL_TTL_MS };
   }
 
-  console.log(`[signals] Fetched: Google=${signals.googleTrends.length}, PH=${signals.productHuntLaunches.length}, Reddit=${signals.redditHotThreads.length}, HN=${signals.hnDiscussions.length}, TC=${signals.techCrunchFunding.length}`);
+  console.log(
+    `[signals] Fetched: Google=${signals.googleTrends.length}, PH=${signals.productHuntLaunches.length}, Reddit=${signals.redditHotThreads.length}, HN=${signals.hnDiscussions.length}, TC=${signals.techCrunchFunding.length}`
+  );
   return signals;
 }
 
@@ -209,7 +211,7 @@ export function formatSignalsForPrompt(signals: LiveSignals): string {
       `\n🔥 GOOGLE TRENDS — RISING SEARCHES (US, last 24h):`,
       `   Instruction: Look for gaps, underserved niches, or second-order`,
       `   opportunities triggered by these rising queries.`,
-      ...signals.googleTrends.map((t, i) => `   ${i + 1}. ${t}`),
+      ...signals.googleTrends.map((t, i) => `   ${i + 1}. ${t}`)
     );
   }
 
@@ -218,7 +220,7 @@ export function formatSignalsForPrompt(signals: LiveSignals): string {
       `\n🚀 PRODUCT HUNT — LAUNCHED THIS WEEK:`,
       `   Instruction: Do NOT copy these. Use them to find what's MISSING,`,
       `   the adjacent problem, or the underserved segment they ignore.`,
-      ...signals.productHuntLaunches.map((t, i) => `   ${i + 1}. ${t}`),
+      ...signals.productHuntLaunches.map((t, i) => `   ${i + 1}. ${t}`)
     );
   }
 
@@ -227,7 +229,7 @@ export function formatSignalsForPrompt(signals: LiveSignals): string {
       `\n📱 REDDIT HOT THREADS — r/SaaS, r/startups, r/Entrepreneur:`,
       `   Instruction: These are REAL founder pain points this week.`,
       `   Extract the frustration, find the product opportunity.`,
-      ...signals.redditHotThreads.map((t, i) => `   ${i + 1}. ${t}`),
+      ...signals.redditHotThreads.map((t, i) => `   ${i + 1}. ${t}`)
     );
   }
 
@@ -236,7 +238,7 @@ export function formatSignalsForPrompt(signals: LiveSignals): string {
       `\n💻 HACKER NEWS — TOP DISCUSSIONS:`,
       `   Instruction: Technical community signals. High-value problems`,
       `   that engineers are talking about = often pre-product opportunities.`,
-      ...signals.hnDiscussions.map((t, i) => `   ${i + 1}. ${t}`),
+      ...signals.hnDiscussions.map((t, i) => `   ${i + 1}. ${t}`)
     );
   }
 
@@ -246,14 +248,14 @@ export function formatSignalsForPrompt(signals: LiveSignals): string {
       `   Instruction: Where capital flows = validated markets. Find the`,
       `   adjacent opportunity, underserved segment, or SMB version of`,
       `   what these companies are building for enterprise.`,
-      ...signals.techCrunchFunding.map((t, i) => `   ${i + 1}. ${t}`),
+      ...signals.techCrunchFunding.map((t, i) => `   ${i + 1}. ${t}`)
     );
   }
 
   lines.push(
     `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
     `END OF LIVE SIGNALS. Now generate 35 ideas grounded in the above.`,
-    `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`,
+    `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`
   );
 
   return lines.join('\n');

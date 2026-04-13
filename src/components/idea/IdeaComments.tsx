@@ -52,7 +52,11 @@ export const IdeaComments: React.FC<IdeaCommentsProps> = ({ ideaId, user, handle
             <form onSubmit={handleSubmit} className="relative">
               <input
                 type="text"
-                placeholder={user ? "Share your feedback or ask a question..." : "Sign in to join the discussion"}
+                placeholder={
+                  user
+                    ? 'Share your feedback or ask a question...'
+                    : 'Sign in to join the discussion'
+                }
                 value={text}
                 onChange={(e) => setText(e.target.value)}
                 className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 pr-12 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-emerald-500/50 transition-all"
@@ -73,13 +77,22 @@ export const IdeaComments: React.FC<IdeaCommentsProps> = ({ ideaId, user, handle
                   <div className="w-4 h-4 border-2 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin" />
                 </div>
               ) : comments.length === 0 ? (
-                <p className="text-center py-4 text-xs text-zinc-600 italic">No comments yet. Be the first to start the thread.</p>
+                <p className="text-center py-4 text-xs text-zinc-600 italic">
+                  No comments yet. Be the first to start the thread.
+                </p>
               ) : (
                 comments.map((comment) => (
-                  <div key={comment.id} className="flex gap-3 animate-in fade-in slide-in-from-top-1">
+                  <div
+                    key={comment.id}
+                    className="flex gap-3 animate-in fade-in slide-in-from-top-1"
+                  >
                     <div className="flex-shrink-0">
                       {comment.userPhoto ? (
-                        <img src={comment.userPhoto} className="w-8 h-8 rounded-full border border-zinc-800" alt="" />
+                        <img
+                          src={comment.userPhoto}
+                          className="w-8 h-8 rounded-full border border-zinc-800"
+                          alt=""
+                        />
                       ) : (
                         <div className="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center border border-zinc-700">
                           <User className="w-4 h-4 text-zinc-500" />
@@ -88,7 +101,9 @@ export const IdeaComments: React.FC<IdeaCommentsProps> = ({ ideaId, user, handle
                     </div>
                     <div className="flex-1 space-y-1">
                       <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-bold text-white uppercase tracking-tight">{comment.userName}</span>
+                        <span className="text-[10px] font-bold text-white uppercase tracking-tight">
+                          {comment.userName}
+                        </span>
                         <div className="flex items-center gap-2">
                           <span className="text-[8px] text-zinc-600 font-bold uppercase tracking-widest">
                             {comment.timestamp ? 'JUST NOW' : 'PENDING...'}
@@ -104,7 +119,9 @@ export const IdeaComments: React.FC<IdeaCommentsProps> = ({ ideaId, user, handle
                           )}
                         </div>
                       </div>
-                      <p className="text-xs text-zinc-400 leading-relaxed font-medium">{comment.text}</p>
+                      <p className="text-xs text-zinc-400 leading-relaxed font-medium">
+                        {comment.text}
+                      </p>
                     </div>
                   </div>
                 ))

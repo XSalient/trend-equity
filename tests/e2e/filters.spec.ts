@@ -182,8 +182,10 @@ test.describe('Filter Panel — Tier-Gated Filters', () => {
     await page.click('button:has-text("Filters")');
     await page.waitForTimeout(500);
 
-    const keywordInput = page.locator('input[placeholder*="keyword"], input[placeholder*="Keyword"]');
-    if (await keywordInput.count() > 0) {
+    const keywordInput = page.locator(
+      'input[placeholder*="keyword"], input[placeholder*="Keyword"]'
+    );
+    if ((await keywordInput.count()) > 0) {
       await expect(keywordInput.first()).toBeVisible();
     }
   });
@@ -194,7 +196,9 @@ test.describe('Filter Panel — Tier-Gated Filters', () => {
     await page.click('button:has-text("Filters")');
     await page.waitForTimeout(500);
 
-    const keywordInput = page.locator('input[placeholder*="keyword"], input[placeholder*="Keyword"]');
+    const keywordInput = page.locator(
+      'input[placeholder*="keyword"], input[placeholder*="Keyword"]'
+    );
     expect(await keywordInput.count()).toBe(0);
   });
 });

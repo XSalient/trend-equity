@@ -56,7 +56,11 @@
       "Bash(powershell -Command \"Set-Location 'J:\\\\Repositories\\\\trend-equity'; npx eslint src/components/IdeaCard.tsx 2>&1 | Select-Object -First 30\")",
       "Bash(powershell -Command ':*)",
       "Bash(powershell -Command 'Get-ChildItem '\\\\''J:\\\\Repositories\\\\trend-equity'\\\\'' -Force -Name | Where-Object { $_ -match '\\\\''editorconfig|prettier|eslint|nvmrc|vscode'\\\\'' }')",
-      "Bash(powershell -Command \"Get-ChildItem 'J:\\\\Repositories\\\\trend-equity\\\\.vscode' -Name; Get-Content 'J:\\\\Repositories\\\\trend-equity\\\\.husky\\\\pre-commit' | Select-Object -First 3\")"
+      "Bash(powershell -Command \"Get-ChildItem 'J:\\\\Repositories\\\\trend-equity\\\\.vscode' -Name; Get-Content 'J:\\\\Repositories\\\\trend-equity\\\\.husky\\\\pre-commit' | Select-Object -First 3\")",
+      "Bash(powershell -Command \"Set-Location 'J:\\\\Repositories\\\\trend-equity'; git status --short 2>&1\")",
+      "Bash(powershell -Command \"Set-Location 'J:\\\\Repositories\\\\trend-equity'; git log --oneline -5 2>&1; Write-Output '---'; git diff --stat HEAD 2>&1 | Select-Object -Last 5\")",
+      "Bash(powershell -Command \"Set-Location 'J:\\\\Repositories\\\\trend-equity'; git status --short --untracked-files=normal 2>&1 | Select-String '^\\\\?\\\\?'\")",
+      "Bash(powershell -Command \"Set-Location 'J:\\\\Repositories\\\\trend-equity'; git diff --name-only HEAD 2>&1 | Measure-Object -Line; Write-Output '---'; git stash list 2>&1\")"
     ]
   }
 }

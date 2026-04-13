@@ -41,7 +41,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: 'Missing required field: idea.headline' });
   }
 
-  const safeHeadline = idea.headline.replace(/[<>"`]/g, '').trim().slice(0, 200);
+  const safeHeadline = idea.headline
+    .replace(/[<>"`]/g, '')
+    .trim()
+    .slice(0, 200);
 
   const featureType = 'build-me';
   const cacheKey = idea?.id ? `build-me_${String(idea.id).slice(0, 100)}` : '';
@@ -49,7 +52,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const cached = await getCached(cacheKey);
     if (cached) {
-      return res.json({ ...cached, _cached: true, _usage: await buildUsageResponse(uid, tier, featureType) });
+      return res.json({
+        ...cached,
+        _cached: true,
+        _usage: await buildUsageResponse(uid, tier, featureType),
+      });
     }
 
     if (uid) {
@@ -62,7 +69,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    const data = await generateWithGemini(`Generate a Build-with-me AI prompt pack and repo structure for: ${safeHeadline}`, schema);
+    const data = await generateWithGemini(
+      `Generate a Build-with-me AI prompt pack and repo structure for: ${safeHeadline}`,
+      schema
+    );
     await setCached(cacheKey, data);
     return res.json({ ...data, _usage: await buildUsageResponse(uid, tier, featureType) });
   } catch (err: any) {

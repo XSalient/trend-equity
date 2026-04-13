@@ -33,7 +33,7 @@ const mockDb = { collection: vi.fn(() => mockCollection) };
 
 vi.mock('firebase-admin/app', () => ({
   cert: vi.fn(),
-  getApps: vi.fn(() => [{}]),       // return non-empty — skip initializeApp
+  getApps: vi.fn(() => [{}]), // return non-empty — skip initializeApp
   initializeApp: vi.fn(),
 }));
 
@@ -140,9 +140,25 @@ describe('getRecentIdeaHeadlines', () => {
 
     // First call returns doc with 2 ideas, second with 1, third empty
     mockCollection.doc
-      .mockReturnValueOnce({ get: vi.fn().mockResolvedValue(makeDocSnap(true, { ideas: [{ headline: 'Idea A' }, { headline: 'Idea B' }] })), set: vi.fn(), delete: vi.fn() })
-      .mockReturnValueOnce({ get: vi.fn().mockResolvedValue(makeDocSnap(true, { ideas: [{ headline: 'Idea C' }] })), set: vi.fn(), delete: vi.fn() })
-      .mockReturnValueOnce({ get: vi.fn().mockResolvedValue(makeDocSnap(false)), set: vi.fn(), delete: vi.fn() });
+      .mockReturnValueOnce({
+        get: vi
+          .fn()
+          .mockResolvedValue(
+            makeDocSnap(true, { ideas: [{ headline: 'Idea A' }, { headline: 'Idea B' }] })
+          ),
+        set: vi.fn(),
+        delete: vi.fn(),
+      })
+      .mockReturnValueOnce({
+        get: vi.fn().mockResolvedValue(makeDocSnap(true, { ideas: [{ headline: 'Idea C' }] })),
+        set: vi.fn(),
+        delete: vi.fn(),
+      })
+      .mockReturnValueOnce({
+        get: vi.fn().mockResolvedValue(makeDocSnap(false)),
+        set: vi.fn(),
+        delete: vi.fn(),
+      });
 
     const result = await getRecentIdeaHeadlines('2026-04-11', 3);
 
@@ -151,7 +167,11 @@ describe('getRecentIdeaHeadlines', () => {
   });
 
   it('returns empty array when all docs are missing', async () => {
-    mockCollection.doc.mockReturnValue({ get: vi.fn().mockResolvedValue(makeDocSnap(false)), set: vi.fn(), delete: vi.fn() });
+    mockCollection.doc.mockReturnValue({
+      get: vi.fn().mockResolvedValue(makeDocSnap(false)),
+      set: vi.fn(),
+      delete: vi.fn(),
+    });
 
     const result = await getRecentIdeaHeadlines('2026-04-11', 3);
     expect(result).toEqual([]);
@@ -159,9 +179,25 @@ describe('getRecentIdeaHeadlines', () => {
 
   it('skips ideas with no headline field', async () => {
     mockCollection.doc
-      .mockReturnValueOnce({ get: vi.fn().mockResolvedValue(makeDocSnap(true, { ideas: [{ headline: 'Good Idea' }, { pitch: 'no headline here' }] })), set: vi.fn(), delete: vi.fn() })
-      .mockReturnValueOnce({ get: vi.fn().mockResolvedValue(makeDocSnap(false)), set: vi.fn(), delete: vi.fn() })
-      .mockReturnValueOnce({ get: vi.fn().mockResolvedValue(makeDocSnap(false)), set: vi.fn(), delete: vi.fn() });
+      .mockReturnValueOnce({
+        get: vi
+          .fn()
+          .mockResolvedValue(
+            makeDocSnap(true, { ideas: [{ headline: 'Good Idea' }, { pitch: 'no headline here' }] })
+          ),
+        set: vi.fn(),
+        delete: vi.fn(),
+      })
+      .mockReturnValueOnce({
+        get: vi.fn().mockResolvedValue(makeDocSnap(false)),
+        set: vi.fn(),
+        delete: vi.fn(),
+      })
+      .mockReturnValueOnce({
+        get: vi.fn().mockResolvedValue(makeDocSnap(false)),
+        set: vi.fn(),
+        delete: vi.fn(),
+      });
 
     const result = await getRecentIdeaHeadlines('2026-04-11', 3);
     expect(result).toEqual(['Good Idea']);

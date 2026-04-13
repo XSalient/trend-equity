@@ -22,9 +22,9 @@ export const TIER_LIMITS = {
 export type Tier = keyof typeof TIER_LIMITS;
 
 export const CATEGORIES = [
-  "Digital / SaaS / AI-SaaS",
-  "Physical / Sustainable / Hardware",
-  "Service / Local / On-Demand",
-  "Deep-Tech / Moonshot",
-  "Wildcard (creative/misc)"
+  'Digital / SaaS / AI-SaaS',
+  'Physical / Sustainable / Hardware',
+  'Service / Local / On-Demand',
+  'Deep-Tech / Moonshot',
+  'Wildcard (creative/misc)',
 ];

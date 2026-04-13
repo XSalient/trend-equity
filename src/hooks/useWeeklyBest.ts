@@ -28,7 +28,7 @@ export function useWeeklyBest() {
 
       // Fetch all docs in parallel
       const snaps = await Promise.all(
-        dates.map(date => getDoc(doc(db, 'daily_generations', date)))
+        dates.map((date) => getDoc(doc(db, 'daily_generations', date)))
       );
 
       // Aggregate: map normalized headline → { idea, count, date }

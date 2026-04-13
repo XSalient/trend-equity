@@ -45,13 +45,17 @@ export async function checkAndIncrementUsage(
       }
 
       const next = current + 1;
-      tx.set(docRef, {
-        uid,
-        featureType,
-        date: getToday(),
-        count: next,
-        updatedAt: FieldValue.serverTimestamp(),
-      }, { merge: true });
+      tx.set(
+        docRef,
+        {
+          uid,
+          featureType,
+          date: getToday(),
+          count: next,
+          updatedAt: FieldValue.serverTimestamp(),
+        },
+        { merge: true }
+      );
 
       return { allowed: true, count: next };
     });

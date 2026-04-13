@@ -65,9 +65,15 @@ export const TE100Modal: React.FC<TE100ModalProps> = ({ user, isOpen, onClose })
         <div className="p-4 border-b border-zinc-800 flex items-center justify-between bg-zinc-900/50">
           <div className="flex items-center gap-2">
             <Trophy className="w-4 h-4 text-emerald-500" />
-            <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-300">Trend-Equity 100</h3>
+            <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-300">
+              Trend-Equity 100
+            </h3>
           </div>
-          <button onClick={onClose} className="text-zinc-500 hover:text-white transition-colors" aria-label="Close">
+          <button
+            onClick={onClose}
+            className="text-zinc-500 hover:text-white transition-colors"
+            aria-label="Close"
+          >
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -82,7 +88,8 @@ export const TE100Modal: React.FC<TE100ModalProps> = ({ user, isOpen, onClose })
               <div className="space-y-2">
                 <h4 className="text-lg font-black uppercase italic">Application Sent</h4>
                 <p className="text-sm text-zinc-400">
-                  Our VC algorithms are reviewing your submission. We'll notify you via email if you make the TE-100 list.
+                  Our VC algorithms are reviewing your submission. We'll notify you via email if you
+                  make the TE-100 list.
                 </p>
               </div>
               <button
@@ -96,7 +103,9 @@ export const TE100Modal: React.FC<TE100ModalProps> = ({ user, isOpen, onClose })
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-1 text-center pb-2">
                 <h4 className="text-lg font-black uppercase italic">Apply for TE-100</h4>
-                <p className="text-xs text-zinc-400">The premier directory of AI-native startups built with Trend-Equity.</p>
+                <p className="text-xs text-zinc-400">
+                  The premier directory of AI-native startups built with Trend-Equity.
+                </p>
               </div>
 
               {/* BUG-6 FIX: inline auth gate instead of silent no-op */}
@@ -104,13 +113,16 @@ export const TE100Modal: React.FC<TE100ModalProps> = ({ user, isOpen, onClose })
                 <div className="flex items-start gap-2 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl">
                   <LogIn className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
                   <p className="text-xs text-amber-300">
-                    You need to be signed in to apply. Click <strong>Sign In</strong> in the header first.
+                    You need to be signed in to apply. Click <strong>Sign In</strong> in the header
+                    first.
                   </p>
                 </div>
               )}
 
               <div className="space-y-1">
-                <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest ml-1">Project Name</label>
+                <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest ml-1">
+                  Project Name
+                </label>
                 <input
                   type="text"
                   required
@@ -122,7 +134,9 @@ export const TE100Modal: React.FC<TE100ModalProps> = ({ user, isOpen, onClose })
               </div>
 
               <div className="space-y-1">
-                <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest ml-1">Website URL</label>
+                <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest ml-1">
+                  Website URL
+                </label>
                 <input
                   type="url"
                   required
@@ -134,7 +148,9 @@ export const TE100Modal: React.FC<TE100ModalProps> = ({ user, isOpen, onClose })
               </div>
 
               <div className="space-y-1">
-                <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest ml-1">One Sentence Pitch</label>
+                <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest ml-1">
+                  One Sentence Pitch
+                </label>
                 <input
                   type="text"
                   required
@@ -146,7 +162,9 @@ export const TE100Modal: React.FC<TE100ModalProps> = ({ user, isOpen, onClose })
               </div>
 
               <div className="space-y-1">
-                <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest ml-1">Current MRR (Optional)</label>
+                <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest ml-1">
+                  Current MRR (Optional)
+                </label>
                 <input
                   type="text"
                   value={formData.mrr}
@@ -169,7 +187,11 @@ export const TE100Modal: React.FC<TE100ModalProps> = ({ user, isOpen, onClose })
                 disabled={loading}
                 className="w-full mt-4 flex items-center justify-center gap-2 bg-emerald-600 text-white rounded-xl py-3 text-xs font-bold uppercase tracking-widest hover:bg-emerald-500 transition-colors disabled:opacity-50"
               >
-                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trophy className="w-4 h-4" />}
+                {loading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Trophy className="w-4 h-4" />
+                )}
                 {loading ? 'Submitting…' : 'Submit Application'}
               </button>
             </form>

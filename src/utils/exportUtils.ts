@@ -14,18 +14,18 @@ export const exportToPDF = (idea: Idea, format: string) => {
   };
 
   doc.setFontSize(22);
-  doc.setFont("helvetica", "bold");
+  doc.setFont('helvetica', 'bold');
   doc.text(idea.headline.toUpperCase(), margin, y);
   y += 12;
 
   doc.setFontSize(12);
-  doc.setFont("helvetica", "bold");
+  doc.setFont('helvetica', 'bold');
   doc.setTextColor(100);
   doc.text(`TAGS: ${(idea.categoryTags || []).join(', ')}`, margin, y);
   y += 10;
 
   doc.setFontSize(11);
-  doc.setFont("helvetica", "italic");
+  doc.setFont('helvetica', 'italic');
   doc.setTextColor(50);
   const pitchLines = doc.splitTextToSize(`"${idea.pitch}"`, 170);
   doc.text(pitchLines, margin, y);
@@ -35,20 +35,20 @@ export const exportToPDF = (idea: Idea, format: string) => {
   doc.line(margin, y, 190, y);
   y += 10;
 
-  doc.setFont("helvetica", "bold");
+  doc.setFont('helvetica', 'bold');
   doc.setTextColor(0);
-  doc.text("VC ANALYSIS", margin, y);
+  doc.text('VC ANALYSIS', margin, y);
   y += 7;
-  doc.setFont("helvetica", "normal");
+  doc.setFont('helvetica', 'normal');
   const vcLines = doc.splitTextToSize(idea.vcJustification, 170);
   doc.text(vcLines, margin, y);
   y += vcLines.length * 5 + 10;
 
   checkPage(30);
-  doc.setFont("helvetica", "bold");
-  doc.text("REVENUE MODEL", margin, y);
+  doc.setFont('helvetica', 'bold');
+  doc.text('REVENUE MODEL', margin, y);
   y += 7;
-  doc.setFont("helvetica", "normal");
+  doc.setFont('helvetica', 'normal');
   const revLines = doc.splitTextToSize(idea.revenueSkeleton, 170);
   doc.text(revLines, margin, y);
   y += revLines.length * 5 + 10;
@@ -56,20 +56,20 @@ export const exportToPDF = (idea: Idea, format: string) => {
   if (idea.fullActionPlan) {
     checkPage(30);
     doc.setFontSize(16);
-    doc.setFont("helvetica", "bold");
+    doc.setFont('helvetica', 'bold');
     doc.setTextColor(16, 185, 129);
-    doc.text("EXECUTION ROADMAP", margin, y);
+    doc.text('EXECUTION ROADMAP', margin, y);
     y += 10;
     doc.setTextColor(0);
 
     idea.fullActionPlan.roadmap.forEach((step, i) => {
       checkPage(25);
       doc.setFontSize(12);
-      doc.setFont("helvetica", "bold");
+      doc.setFont('helvetica', 'bold');
       doc.text(`${i + 1}. ${step.step}`, margin, y);
       y += 6;
       doc.setFontSize(10);
-      doc.setFont("helvetica", "normal");
+      doc.setFont('helvetica', 'normal');
       const stepLines = doc.splitTextToSize(step.details, 160);
       doc.text(stepLines, margin + 5, y);
       y += stepLines.length * 5 + 2;
@@ -84,33 +84,33 @@ export const exportToPDF = (idea: Idea, format: string) => {
     doc.addPage();
     y = 20;
     doc.setFontSize(16);
-    doc.setFont("helvetica", "bold");
+    doc.setFont('helvetica', 'bold');
     doc.setTextColor(16, 185, 129);
-    doc.text("VALIDATION TOOLKIT", margin, y);
+    doc.text('VALIDATION TOOLKIT', margin, y);
     y += 10;
     doc.setTextColor(0);
 
     doc.setFontSize(12);
-    doc.text("LANDING PAGE COPY", margin, y);
+    doc.text('LANDING PAGE COPY', margin, y);
     y += 7;
-    doc.setFont("helvetica", "normal");
+    doc.setFont('helvetica', 'normal');
     doc.text(`Hero: ${idea.validationToolkit.landingPage.hero}`, margin + 5, y);
     y += 6;
     doc.text(`Sub-hero: ${idea.validationToolkit.landingPage.subHero}`, margin + 5, y);
     y += 6;
-    doc.text("Value Props:", margin + 5, y);
+    doc.text('Value Props:', margin + 5, y);
     y += 6;
-    idea.validationToolkit.landingPage.valueProps.forEach(vp => {
+    idea.validationToolkit.landingPage.valueProps.forEach((vp) => {
       doc.text(`- ${vp}`, margin + 10, y);
       y += 6;
     });
     y += 4;
 
     checkPage(30);
-    doc.setFont("helvetica", "bold");
-    doc.text("CUSTOMER INTERVIEW QUESTIONS", margin, y);
+    doc.setFont('helvetica', 'bold');
+    doc.text('CUSTOMER INTERVIEW QUESTIONS', margin, y);
     y += 7;
-    doc.setFont("helvetica", "normal");
+    doc.setFont('helvetica', 'normal');
     idea.validationToolkit.interviewScript.forEach((q, i) => {
       checkPage(15);
       const qLines = doc.splitTextToSize(`${i + 1}. ${q}`, 160);
@@ -131,10 +131,10 @@ export const generateNotionMarkdown = (idea: Idea): string => {
   md += `**Tags**: ${(idea.categoryTags || []).join(', ')}\n`;
   md += `**Heat**: ${idea.heatBadge || 'Early Bird'}\n\n`;
   md += `> ${idea.pitch}\n\n`;
-  
+
   md += `## VC Justification\n${idea.vcJustification}\n\n`;
   md += `## Revenue Skeleton\n${idea.revenueSkeleton}\n\n`;
-  
+
   if (idea.fullActionPlan) {
     md += `## Execution Roadmap\n`;
     idea.fullActionPlan.roadmap.forEach((step, i) => {
@@ -143,21 +143,21 @@ export const generateNotionMarkdown = (idea: Idea): string => {
       md += `*Milestone: ${step.milestone}*\n\n`;
     });
   }
-  
+
   if (idea.validationToolkit) {
     md += `## Validation Toolkit\n`;
     md += `### Landing Page Copy\n`;
     md += `- **Hero**: ${idea.validationToolkit.landingPage.hero}\n`;
     md += `- **Sub-hero**: ${idea.validationToolkit.landingPage.subHero}\n`;
-    md += `- **Value Props**: \n${idea.validationToolkit.landingPage.valueProps.map(vp => `  - ${vp}`).join('\n')}\n\n`;
-    
+    md += `- **Value Props**: \n${idea.validationToolkit.landingPage.valueProps.map((vp) => `  - ${vp}`).join('\n')}\n\n`;
+
     md += `### Interview Script\n`;
     idea.validationToolkit.interviewScript.forEach((q, i) => {
       md += `${i + 1}. ${q}\n`;
     });
     md += `\n`;
   }
-  
+
   md += `---\n*Generated by Trend-Equity on ${new Date().toLocaleDateString()}*\n`;
   return md;
 };
@@ -165,11 +165,16 @@ export const generateNotionMarkdown = (idea: Idea): string => {
 export const exportDocument = (idea: Idea, format: string) => {
   if (format === 'notion' || format === 'gdocs') {
     const md = generateNotionMarkdown(idea);
-    navigator.clipboard.writeText(md).then(() => {
-      alert(`Content copied to clipboard! Paste it directly into ${format === 'notion' ? 'Notion' : 'Google Docs'}.`);
-    }).catch(() => {
-      alert("Failed to copy to clipboard. Please check permissions.");
-    });
+    navigator.clipboard
+      .writeText(md)
+      .then(() => {
+        alert(
+          `Content copied to clipboard! Paste it directly into ${format === 'notion' ? 'Notion' : 'Google Docs'}.`
+        );
+      })
+      .catch(() => {
+        alert('Failed to copy to clipboard. Please check permissions.');
+      });
   } else {
     exportToPDF(idea, format);
   }
@@ -177,23 +182,23 @@ export const exportDocument = (idea: Idea, format: string) => {
 
 export const exportListToCSV = (ideas: Idea[], activeTab: string, today: string) => {
   if (ideas.length === 0) {
-    alert("No ideas to export.");
+    alert('No ideas to export.');
     return;
   }
 
-  const headers = ["Idea Name", "Tags", "Description"];
-  const rows = ideas.map(idea => [
+  const headers = ['Idea Name', 'Tags', 'Description'];
+  const rows = ideas.map((idea) => [
     `"${idea.headline.replace(/"/g, '""')}"`,
     `"${(idea.categoryTags || []).join(', ').replace(/"/g, '""')}"`,
-    `"${idea.pitch.replace(/"/g, '""')}"`
+    `"${idea.pitch.replace(/"/g, '""')}"`,
   ]);
 
-  const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+  const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.setAttribute("href", url);
-  link.setAttribute("download", `Trend_Equity_Ideas_${activeTab}_${today}.csv`);
+  const link = document.createElement('a');
+  link.setAttribute('href', url);
+  link.setAttribute('download', `Trend_Equity_Ideas_${activeTab}_${today}.csv`);
   link.style.visibility = 'hidden';
   document.body.appendChild(link);
   link.click();
@@ -202,7 +207,7 @@ export const exportListToCSV = (ideas: Idea[], activeTab: string, today: string)
 
 export const exportListToPDF = (ideas: Idea[], activeTab: string, today: string) => {
   if (ideas.length === 0) {
-    alert("No ideas to export.");
+    alert('No ideas to export.');
     return;
   }
 
@@ -212,11 +217,11 @@ export const exportListToPDF = (ideas: Idea[], activeTab: string, today: string)
   const pageHeight = doc.internal.pageSize.getHeight();
 
   doc.setFontSize(20);
-  doc.setFont("helvetica", "bold");
+  doc.setFont('helvetica', 'bold');
   doc.text(`TREND EQUITY: ${activeTab.toUpperCase()} IDEAS`, margin, y);
   y += 10;
   doc.setFontSize(10);
-  doc.setFont("helvetica", "normal");
+  doc.setFont('helvetica', 'normal');
   doc.text(`Generated on ${new Date().toLocaleDateString()}`, margin, y);
   y += 15;
 
@@ -227,18 +232,18 @@ export const exportListToPDF = (ideas: Idea[], activeTab: string, today: string)
     }
 
     doc.setFontSize(14);
-    doc.setFont("helvetica", "bold");
+    doc.setFont('helvetica', 'bold');
     doc.setTextColor(16, 185, 129);
     doc.text(`${index + 1}. ${idea.headline.toUpperCase()}`, margin, y);
     y += 7;
 
     doc.setFontSize(10);
-    doc.setFont("helvetica", "bold");
+    doc.setFont('helvetica', 'bold');
     doc.setTextColor(100);
     doc.text(`TAGS: ${(idea.categoryTags || []).join(', ')}`, margin, y);
     y += 6;
 
-    doc.setFont("helvetica", "normal");
+    doc.setFont('helvetica', 'normal');
     doc.setTextColor(0);
     const pitchLines = doc.splitTextToSize(idea.pitch, 170);
     doc.text(pitchLines, margin, y);

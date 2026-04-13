@@ -21,7 +21,7 @@ vi.stubGlobal('fetch', mockFetch);
 
 // Helper to build a minimal RSS XML response
 function rssXml(titles: string[]) {
-  const items = titles.map(t => `<item><title><![CDATA[${t}]]></title></item>`).join('');
+  const items = titles.map((t) => `<item><title><![CDATA[${t}]]></title></item>`).join('');
   return `<rss><channel>${items}</channel></rss>`;
 }
 
@@ -29,7 +29,7 @@ function rssXml(titles: string[]) {
 function redditJson(posts: { title: string; ups: number; subreddit: string }[]) {
   return JSON.stringify({
     data: {
-      children: posts.map(p => ({
+      children: posts.map((p) => ({
         data: { title: p.title, ups: p.ups, subreddit: p.subreddit, stickied: false },
       })),
     },
@@ -47,8 +47,11 @@ function mockResponse(body: string, ok = true) {
     text: vi.fn().mockResolvedValue(body),
     // json() is lazy so XML bodies don't throw at mock creation time
     json: vi.fn().mockImplementation(() => {
-      try { return Promise.resolve(JSON.parse(body)); }
-      catch { return Promise.reject(new SyntaxError('Not valid JSON')); }
+      try {
+        return Promise.resolve(JSON.parse(body));
+      } catch {
+        return Promise.reject(new SyntaxError('Not valid JSON'));
+      }
     }),
   };
 }
@@ -67,11 +70,23 @@ describe('fetchLiveSignals', () => {
 
   it('returns signals from all 5 sources when all succeed', async () => {
     mockFetch
-      .mockResolvedValueOnce(mockResponse(rssXml(['Google Trend 1', 'Google Trend 2'])))       // Google Trends
-      .mockResolvedValueOnce(mockResponse(rssXml(['PH Launch 1'])))                             // Product Hunt
-      .mockResolvedValueOnce({ ok: true, text: vi.fn(), json: vi.fn().mockResolvedValue(JSON.parse(redditJson([{ title: 'Reddit Post 1', ups: 100, subreddit: 'SaaS' }]))) })
-      .mockResolvedValueOnce({ ok: true, text: vi.fn(), json: vi.fn().mockResolvedValue(JSON.parse(hnJson([{ title: 'HN Story 1', points: 150 }]))) })
-      .mockResolvedValueOnce(mockResponse(rssXml(['TC Funding 1'])));                           // TechCrunch
+      .mockResolvedValueOnce(mockResponse(rssXml(['Google Trend 1', 'Google Trend 2']))) // Google Trends
+      .mockResolvedValueOnce(mockResponse(rssXml(['PH Launch 1']))) // Product Hunt
+      .mockResolvedValueOnce({
+        ok: true,
+        text: vi.fn(),
+        json: vi
+          .fn()
+          .mockResolvedValue(
+            JSON.parse(redditJson([{ title: 'Reddit Post 1', ups: 100, subreddit: 'SaaS' }]))
+          ),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        text: vi.fn(),
+        json: vi.fn().mockResolvedValue(JSON.parse(hnJson([{ title: 'HN Story 1', points: 150 }]))),
+      })
+      .mockResolvedValueOnce(mockResponse(rssXml(['TC Funding 1']))); // TechCrunch
 
     const { fetchLiveSignals } = await import('../../../api/_lib/signals');
     const signals = await fetchLiveSignals();
@@ -89,10 +104,10 @@ describe('fetchLiveSignals', () => {
     // Only Google Trends succeeds, everything else throws
     mockFetch
       .mockResolvedValueOnce(mockResponse(rssXml(['Trend A', 'Trend B']))) // Google Trends — OK
-      .mockRejectedValueOnce(new Error('PH timeout'))                       // Product Hunt — fail
-      .mockRejectedValueOnce(new Error('Reddit timeout'))                   // Reddit — fail
-      .mockRejectedValueOnce(new Error('HN timeout'))                       // HN — fail
-      .mockRejectedValueOnce(new Error('TC timeout'));                       // TechCrunch — fail
+      .mockRejectedValueOnce(new Error('PH timeout')) // Product Hunt — fail
+      .mockRejectedValueOnce(new Error('Reddit timeout')) // Reddit — fail
+      .mockRejectedValueOnce(new Error('HN timeout')) // HN — fail
+      .mockRejectedValueOnce(new Error('TC timeout')); // TechCrunch — fail
 
     const { fetchLiveSignals } = await import('../../../api/_lib/signals');
     const signals = await fetchLiveSignals();
@@ -134,8 +149,16 @@ describe('fetchLiveSignals', () => {
     mockFetch
       .mockResolvedValueOnce(mockResponse(rssXml(['Trend A'])))
       .mockResolvedValueOnce(mockResponse(rssXml(['PH 1'])))
-      .mockResolvedValueOnce({ ok: true, text: vi.fn(), json: vi.fn().mockResolvedValue({ data: { children: [] } }) })
-      .mockResolvedValueOnce({ ok: true, text: vi.fn(), json: vi.fn().mockResolvedValue({ hits: [] }) })
+      .mockResolvedValueOnce({
+        ok: true,
+        text: vi.fn(),
+        json: vi.fn().mockResolvedValue({ data: { children: [] } }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        text: vi.fn(),
+        json: vi.fn().mockResolvedValue({ hits: [] }),
+      })
       .mockResolvedValueOnce(mockResponse(rssXml(['TC 1'])));
 
     const { fetchLiveSignals } = await import('../../../api/_lib/signals');
@@ -154,11 +177,19 @@ describe('fetchLiveSignals', () => {
       { title: 'High upvote post', ups: 200, subreddit: 'startups' },
     ];
     mockFetch
-      .mockResolvedValueOnce(mockResponse(rssXml([])))                        // Google
-      .mockResolvedValueOnce(mockResponse(rssXml([])))                        // PH
-      .mockResolvedValueOnce({ ok: true, json: vi.fn().mockResolvedValue(JSON.parse(redditJson(posts))), text: vi.fn() })
-      .mockResolvedValueOnce({ ok: true, json: vi.fn().mockResolvedValue({ hits: [] }), text: vi.fn() })
-      .mockResolvedValueOnce(mockResponse(rssXml([])));                       // TC
+      .mockResolvedValueOnce(mockResponse(rssXml([]))) // Google
+      .mockResolvedValueOnce(mockResponse(rssXml([]))) // PH
+      .mockResolvedValueOnce({
+        ok: true,
+        json: vi.fn().mockResolvedValue(JSON.parse(redditJson(posts))),
+        text: vi.fn(),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: vi.fn().mockResolvedValue({ hits: [] }),
+        text: vi.fn(),
+      })
+      .mockResolvedValueOnce(mockResponse(rssXml([]))); // TC
 
     const { fetchLiveSignals } = await import('../../../api/_lib/signals');
     const signals = await fetchLiveSignals();
