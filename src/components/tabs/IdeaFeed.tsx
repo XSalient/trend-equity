@@ -71,22 +71,42 @@ export const IdeaFeed: React.FC<IdeaFeedProps> = ({
       {loading ? (
         <IdeaFeedSkeleton />
       ) : !dailyGen ? (
-        <div className="p-10 bg-zinc-900/50 border border-zinc-800 rounded-2xl text-center space-y-4">
-          <AlertCircle className="w-10 h-10 text-zinc-600 mx-auto" />
-          <div className="space-y-1">
-            <p className="text-zinc-300 font-semibold">Today's ideas couldn't be generated</p>
-            <p className="text-zinc-500 text-sm max-w-xs mx-auto">
-              The AI service is temporarily unavailable. This is usually resolved within a few
-              minutes.
-            </p>
+        <div className="p-12 bg-zinc-900/40 border border-zinc-800/60 rounded-3xl text-center space-y-6 backdrop-blur-sm relative overflow-hidden group">
+          <div className="absolute inset-0 bg-gradient-to-b from-emerald-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+
+          <div className="relative">
+            <div className="w-16 h-16 bg-zinc-800/50 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-zinc-700/50">
+              <RefreshCw className="w-8 h-8 text-zinc-600 animate-pulse" />
+            </div>
+
+            <div className="space-y-2">
+              <h3 className="text-xl font-bold text-white tracking-tight">
+                {tier === 'builder' ? "Generate Today's Insights" : 'Curation in Progress'}
+              </h3>
+              <p className="text-zinc-500 text-sm max-w-sm mx-auto leading-relaxed">
+                {tier === 'builder'
+                  ? "As a Builder, you have the first move. Trigger the VC engine to scan today's high-signal trends and populate the global feed."
+                  : "Our VC squad is currently scanning real-time signals from the last 24 hours to identify today's highest conviction opportunities. Check back shortly."}
+              </p>
+            </div>
           </div>
-          <button
-            onClick={triggerGeneration}
-            className="inline-flex items-center gap-2 px-5 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-white text-sm font-medium rounded-full transition-all"
-          >
-            <RefreshCw className="w-3.5 h-3.5" />
-            Try Again
-          </button>
+
+          <div className="pt-2">
+            {tier === 'builder' ? (
+              <button
+                onClick={triggerGeneration}
+                className="inline-flex items-center gap-2 px-8 py-3 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold rounded-full transition-all shadow-lg shadow-emerald-900/20 active:scale-95"
+              >
+                <RefreshCw className="w-4 h-4" />
+                TRIGGER GENERATION
+              </button>
+            ) : (
+              <div className="inline-flex items-center gap-2 px-4 py-2 bg-zinc-800/30 text-zinc-500 text-xs font-bold uppercase tracking-widest rounded-full border border-zinc-800/50">
+                <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping" />
+                SCANNING LIVE SIGNALS
+              </div>
+            )}
+          </div>
         </div>
       ) : (
         <>

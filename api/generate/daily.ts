@@ -39,8 +39,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const uid = authCtx?.uid;
   const tier = authCtx?.tier || 'free';
 
-  if (!uid) return res.status(401).json({ error: 'Authentication required.' });
-
   // Rate limiting (S-4) omitted here because the Singleton pattern handles it via locking
   // and tier restriction.
 

@@ -122,24 +122,12 @@ export function useIdeas(user: User | null, tier: Tier, authReady: boolean) {
       // 2. Try Firestore
       try {
         const docRef = doc(db, 'daily_generations', today);
-        let docSnap;
-        try {
-          docSnap = await getDoc(docRef);
-        } catch (err: any) {
-          const msg = err?.message || '';
-          if (msg.includes('Quota exceeded')) {
-            setError('Daily quota reached. Please try again tomorrow.');
-            setLoading(false);
-            return;
-          }
-          throw err;
-        }
+        const docSnap = await getDoc(docRef);
 
         if (docSnap.exists()) {
           const data = docSnap.data() as DailyGeneration;
           // Stale mock doc from before mock removal — discard and regenerate
           if (data._isMock) {
-            // FIX: Don't auto-regenerate. Just clear local and suggest refresh.
             localStorage.removeItem(CACHE_KEY);
             setDailyGen(null);
           } else {
@@ -147,14 +135,16 @@ export function useIdeas(user: User | null, tier: Tier, authReady: boolean) {
             setCachedFeed(data);
           }
         } else {
-          // FIX (Once for all users): Do NOT auto-trigger.
-          // Just set dailyGen to null, UI will show 'Wait for curation' state.
+          // Document doesn't exist yet — this is a valid state (awaiting curation)
           setDailyGen(null);
         }
       } catch (err: any) {
         console.error('Fetch Error:', err);
         const msg = err?.message || '';
-        if (msg.includes('Quota exceeded')) {
+        if (msg.includes('permission-denied') || msg.includes('permissions')) {
+          // This is a real issue — likely rules or auth sync
+          setError('Access denied. Please ensure you are signed in.');
+        } else if (msg.includes('Quota exceeded')) {
           setError('Daily quota reached. Please try again tomorrow.');
         } else if (msg.includes('offline')) {
           setError('You appear to be offline.');
