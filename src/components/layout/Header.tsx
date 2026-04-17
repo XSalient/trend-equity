@@ -57,12 +57,12 @@ export const Header: React.FC<HeaderProps> = ({
           {user && (
             <>
               <div className="flex items-center gap-1">
-                {tier !== 'free' && (
+                {tier === 'builder' && (
                   <button
                     onClick={triggerGeneration}
                     disabled={generating}
                     className="p-2 text-zinc-500 hover:text-emerald-500 transition-colors disabled:opacity-50"
-                    title="Force Refresh Feed"
+                    title="Generate/Refresh Today's Feed (Admin Only)"
                   >
                     <RefreshCw className={`w-4 h-4 ${generating ? 'animate-spin' : ''}`} />
                   </button>

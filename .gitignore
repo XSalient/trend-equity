@@ -48,3 +48,21 @@ __pycache__
 .env.local
 .next
 .github
+# User-specific assets and secrets
+firebase-service-account.json
+sample-ideas.json
+scratch/
+tests/e2e/snapshots/
+
+# Local utility scripts (one-offs)
+check_env.ts
+check_services.ts
+list_models.ts
+probe_full.ts
+probe_models_final.ts
+verify-ai.ts
+test_json_parse.ts
+
+# Claude / AI settings
+.claude/
+CLAUDE.md

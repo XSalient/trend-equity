@@ -1,9 +1,9 @@
 import { useState, useCallback, useRef } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
-import { Idea, WeeklyBestIdea } from '../types';
+import { Idea, WeeklyBestIdea, Tier } from '../types';
 
-export function useWeeklyBest() {
+export function useWeeklyBest(tier: Tier) {
   const [weeklyBest, setWeeklyBest] = useState<WeeklyBestIdea[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -12,7 +12,7 @@ export function useWeeklyBest() {
   const loadingRef = useRef(false);
 
   const fetchWeeklyBest = useCallback(async () => {
-    if (loadingRef.current) return;
+    if (loadingRef.current || tier === 'free') return;
     loadingRef.current = true;
     setLoading(true);
     setError(null);

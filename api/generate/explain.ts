@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { generateWithGemini } from '../_lib/gemini';
+import AI from '../_lib/ai-provider';
+const { generateWithAI } = AI;
 import { getCached, setCached } from '../_lib/cache';
 import { getAuthContext } from '../_lib/auth';
 import { checkAndIncrementUsage } from '../_lib/usage';
@@ -59,7 +60,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    const data = await generateWithGemini(
+    const data = await generateWithAI(
       `Explain the "${safeSection}" aspect for this startup idea: ${safeHeadline}${safeContext ? `. Additional context: ${safeContext}` : ''}`
     );
     await setCached(cacheKey, data);

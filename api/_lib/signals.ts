@@ -255,6 +255,11 @@ export function formatSignalsForPrompt(signals: LiveSignals): string {
   lines.push(
     `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
     `END OF LIVE SIGNALS. Now generate 35 ideas grounded in the above.`,
+    ``,
+    `CRITICAL: You MUST return a single valid JSON object — no markdown fences, no array at the top level.`,
+    `Required structure:`,
+    `{ "intro": "<1-2 sentence editorial intro>", "ideas": [<35 idea objects>], "disclaimer": "<disclaimer>" }`,
+    `Each idea object must have: headline, pitch, vcJustification, categoryTags (array), costEffort, revenuePotentialScore (number), revenueSkeleton, unfairAdvantage, potentialExit, trendSources (array), saturationLabel, heatBadge, nextSteps (array), marketSize, competitorLandscape, regulatoryFlags.`,
     `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`
   );
 

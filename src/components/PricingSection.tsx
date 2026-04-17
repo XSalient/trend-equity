@@ -14,6 +14,7 @@ import {
   Mail,
   Wrench,
   Eye,
+  Wand2,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -31,13 +32,17 @@ type PlanKey = 'free' | 'pro' | 'builder';
 const TIER_FEATURES: Record<string, { label: string; tiers: string[] }[]> = {
   pro: [
     { label: 'Up to 25 ideas / day (vs 10 on Free)', tiers: ['pro', 'builder'] },
-    { label: 'Unlimited Saves', tiers: ['pro', 'builder'] },
+    { label: 'Unlimited Daily Feed Saves', tiers: ['pro', 'builder'] },
+    { label: 'Analyze 5 Custom Ideas / mo', tiers: ['pro', 'builder'] },
+    { label: 'Save 3 Custom Ideas to Library', tiers: ['pro', 'builder'] },
     { label: 'Notion / GDocs Templates', tiers: ['pro', 'builder'] },
     { label: 'Priority Email Digest', tiers: ['pro', 'builder'] },
     { label: 'Validation Toolkit', tiers: ['pro', 'builder'] },
   ],
   builder: [
     { label: 'Up to 35 ideas / day', tiers: ['builder'] },
+    { label: 'Analyze 20 Custom Ideas / mo', tiers: ['builder'] },
+    { label: 'Save 10 Custom Ideas to Library', tiers: ['builder'] },
     { label: 'Build with Me Suite', tiers: ['builder'] },
     { label: 'Advanced Alerts', tiers: ['builder'] },
     { label: 'Weekly Trend Radar', tiers: ['builder'] },
@@ -75,6 +80,8 @@ const TIER_SHOWCASE: Record<PlanKey, { icon: React.ReactNode; label: string; onC
       },
     ],
     builder: [
+      { icon: <Wand2 className="w-5 h-5 text-amber-500 mx-auto" />, label: '20 Analyses / mo' },
+      { icon: <Bookmark className="w-5 h-5 text-amber-500 mx-auto" />, label: '10 Custom Saves' },
       { icon: <Bell className="w-5 h-5 text-amber-500 mx-auto" />, label: 'Real-time Alerts' },
       { icon: <Users className="w-5 h-5 text-amber-500 mx-auto" />, label: 'Team-up Access' },
       {
@@ -98,7 +105,9 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
   onOpenApiAccess,
 }) => {
   const [pendingDowngrade, setPendingDowngrade] = useState<'free' | 'pro' | null>(null);
-  const [selectedTier, setSelectedTier] = useState<PlanKey>(currentPlan);
+  const validPlans: PlanKey[] = ['free', 'pro', 'builder'];
+  const safePlan: PlanKey = validPlans.includes(currentPlan) ? currentPlan : 'free';
+  const [selectedTier, setSelectedTier] = useState<PlanKey>(safePlan);
 
   const featuresLost = pendingDowngrade ? getFeaturesLost(currentPlan, pendingDowngrade) : [];
 
@@ -311,9 +320,9 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
               : `Preview: ${selectedTier.toUpperCase()} Features`}
           </p>
           <div
-            className={`grid grid-cols-2 md:grid-cols-${Math.max(TIER_SHOWCASE[selectedTier].length, 3)} gap-4`}
+            className={`grid grid-cols-2 md:grid-cols-${Math.max((TIER_SHOWCASE[selectedTier] ?? TIER_SHOWCASE['free']).length, 3)} gap-4`}
           >
-            {TIER_SHOWCASE[selectedTier].map((item, i) => {
+            {(TIER_SHOWCASE[selectedTier] ?? TIER_SHOWCASE['free']).map((item, i) => {
               const isClickable = item.onClick && currentPlan === 'builder';
               const Wrapper = isClickable ? 'button' : 'div';
               return (

@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { generateWithGemini, Type } from '../_lib/gemini';
+import AI from '../_lib/ai-provider';
+const { generateWithAI, Type } = AI;
 import { getCached, setCached } from '../_lib/cache';
 import { getAuthContext } from '../_lib/auth';
 import { checkAndIncrementUsage, buildUsageResponse } from '../_lib/usage';
@@ -24,7 +25,18 @@ const schema = {
         required: ['title', 'probability', 'rationale', 'winners', 'losers'],
       },
     },
-    paradigmShifts: { type: Type.ARRAY, items: { type: Type.STRING } },
+    paradigmShifts: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          title: { type: Type.STRING },
+          rationale: { type: Type.STRING },
+          impact: { type: Type.STRING },
+        },
+        required: ['title', 'rationale', 'impact'],
+      },
+    },
   },
   required: ['horizon', 'predictions', 'paradigmShifts'],
 };
@@ -41,7 +53,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const horizon = VALID_HORIZONS.includes(rawHorizon) ? rawHorizon : '2030';
 
   const featureType = 'futurecasting';
-  const cacheKey = `futurecasting_${horizon}`;
+  // FIX: Futurecasting cache is now unique per day and shared across all users
+  const today = new Date().toISOString().split('T')[0];
+  const cacheKey = `futurecasting_${horizon}_${today}`;
 
   try {
     const cached = await getCached(cacheKey);
@@ -63,10 +77,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    const data = await generateWithGemini(
+    const rawData = await generateWithAI(
       `Perform a deep-future technology and market simulation up to the year ${horizon}. Provide 5 high-probability predictions with rationale, winners, and losers, plus 3 paradigm shifts.`,
       schema
     );
+
+    const { normalizeAIResponse } = require('../_lib/ai-provider');
+    const data = normalizeAIResponse(rawData, ['predictions', 'paradigmShifts'], {
+      horizon,
+      predictions: [],
+      paradigmShifts: [],
+      generatedAt: new Date().toISOString(),
+    });
+
     await setCached(cacheKey, data);
     return res.json({ ...data, _usage: await buildUsageResponse(uid, tier, featureType) });
   } catch (err: any) {

@@ -82,14 +82,29 @@ export const FuturecastingTab: React.FC<FuturecastingTabProps> = ({
               <h4 className="text-xs font-black uppercase italic text-amber-500 tracking-widest">
                 Paradigm Shifts
               </h4>
-              <div className="space-y-2">
-                {futurecasting.paradigmShifts.map((shift, i) => (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {(futurecasting.paradigmShifts || []).map((shift, i) => (
                   <div
                     key={i}
-                    className="flex items-start gap-3 p-3 bg-amber-500/5 border border-amber-500/10 rounded-xl"
+                    className="flex flex-col gap-2 p-4 bg-amber-500/5 border border-amber-500/10 rounded-2xl group hover:bg-amber-500/10 transition-all duration-300"
                   >
-                    <Zap className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
-                    <p className="text-xs text-amber-100 leading-relaxed">{shift}</p>
+                    <div className="flex items-center gap-2">
+                      <Zap className="w-4 h-4 text-amber-500 flex-shrink-0" />
+                      <h5 className="text-[11px] font-black uppercase italic text-amber-100 italic tracking-wide">
+                        {typeof shift === 'string' ? 'Paradigm Shift' : shift.title}
+                      </h5>
+                    </div>
+                    <p className="text-[10px] text-amber-200/70 leading-relaxed">
+                      {typeof shift === 'string' ? shift : shift.rationale}
+                    </p>
+                    {typeof shift !== 'string' && shift.impact && (
+                      <div className="pt-2 mt-auto border-t border-amber-500/10">
+                        <p className="text-[9px] font-bold uppercase text-amber-500 tracking-widest mb-1">
+                          Market Impact
+                        </p>
+                        <p className="text-[10px] text-zinc-300 leading-snug">{shift.impact}</p>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -100,7 +115,7 @@ export const FuturecastingTab: React.FC<FuturecastingTabProps> = ({
                 Industry Predictions
               </h4>
               <div className="space-y-4">
-                {futurecasting.predictions.map((pred, i) => (
+                {(futurecasting.predictions || []).map((pred, i) => (
                   <div
                     key={i}
                     className="p-4 bg-zinc-800/50 border border-white/5 rounded-2xl space-y-4"

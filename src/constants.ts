@@ -21,6 +21,20 @@ export const TIER_LIMITS = {
 
 export type Tier = keyof typeof TIER_LIMITS;
 
+// Monthly limit for custom idea analysis (Pro/Builder only)
+export const ANALYZE_IDEA_MONTHLY_LIMITS = {
+  free: 0,
+  pro: 5,
+  builder: 20,
+} as const;
+
+// Max custom ideas that can be manually saved (separate quota from feed saves)
+export const CUSTOM_SAVES_LIMITS = {
+  free: 0,
+  pro: 3,
+  builder: 10,
+} as const;
+
 export const CATEGORIES = [
   'Digital / SaaS / AI-SaaS',
   'Physical / Sustainable / Hardware',

@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { generateWithGemini, Type } from '../_lib/gemini';
+import AI from '../_lib/ai-provider';
+const { generateWithAI, Type } = AI;
 import { getCached, setCached } from '../_lib/cache';
 import { getAuthContext } from '../_lib/auth';
 import { checkAndIncrementUsage, buildUsageResponse } from '../_lib/usage';
@@ -68,10 +69,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    const data = await generateWithGemini(
+    const rawData = await generateWithAI(
       `Generate a validation toolkit for: ${safeHeadline}`,
       schema
     );
+
+    const { normalizeAIResponse } = require('../_lib/ai-provider');
+    const data = normalizeAIResponse(rawData, ['interviewScript', 'successMetrics'], {
+      landingPage: {
+        hero: 'Landing page being drafted...',
+        subHero: '',
+        valueProps: [],
+      },
+      interviewScript: [],
+      smokeTest: 'Smoke test strategy being designed...',
+      successMetrics: [],
+      generatedAt: new Date().toISOString(),
+    });
+
     await setCached(cacheKey, data);
     return res.json({ ...data, _usage: await buildUsageResponse(uid, tier, featureType) });
   } catch (err: any) {

@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Trophy, RefreshCw } from 'lucide-react';
+import { Trophy, RefreshCw, Lock } from 'lucide-react';
 import { Idea, WeeklyBestIdea, Tier } from '../../types';
 import { IdeaCard } from '../IdeaCard';
 import { IdeaFeedSkeleton } from '../layout/SkeletonLoaders';
@@ -34,8 +34,8 @@ export const WeeklyBestTab: React.FC<WeeklyBestProps> = ({
   handleLogin,
 }) => {
   useEffect(() => {
-    if (!fetched && !loading) onFetch();
-  }, [fetched, loading, onFetch]);
+    if (!fetched && !loading && tier !== 'free') onFetch();
+  }, [fetched, loading, onFetch, tier]);
 
   return (
     <div className="space-y-6">
@@ -80,13 +80,16 @@ export const WeeklyBestTab: React.FC<WeeklyBestProps> = ({
       )}
 
       {/* Empty state */}
-      {!loading && !error && fetched && weeklyBest.length === 0 && (
-        <div className="py-20 text-center space-y-4">
-          <Trophy className="w-12 h-12 text-zinc-800 mx-auto" />
-          <div className="space-y-1">
-            <p className="text-zinc-400 font-bold">Not enough data yet</p>
-            <p className="text-zinc-600 text-sm max-w-xs mx-auto">
-              Check back after a few days of idea generation — recurring ideas will appear here.
+      {!loading && !error && weeklyBest.length === 0 && (
+        <div className="py-20 text-center space-y-6">
+          <div className="w-20 h-20 bg-amber-500/5 rounded-full flex items-center justify-center mx-auto ring-1 ring-amber-500/10">
+            <Trophy className="w-10 h-10 text-amber-500/20" />
+          </div>
+          <div className="space-y-2 max-w-sm mx-auto">
+            <h4 className="text-white font-bold tracking-tight">Recurring Signal Tracking</h4>
+            <p className="text-zinc-500 text-sm leading-relaxed">
+              We track historical recurrence across every daily feed. When an idea appears multiple
+              times, it’s a high-probability market signal.
             </p>
           </div>
         </div>

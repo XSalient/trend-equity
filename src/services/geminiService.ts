@@ -1,4 +1,4 @@
-import { Idea } from '../types';
+import { Idea, AnalyzeIdeaUsage } from '../types';
 
 // Base URL for API calls. Empty string on web (relative URLs work via same origin).
 // Set VITE_API_BASE=https://trend-equity.vercel.app when building for native (Capacitor).
@@ -179,4 +179,47 @@ export async function generateFuturecasting(horizon: '2027' | '2030' | '2035') {
   const data = await response.json();
   storeUsage(data);
   return data;
+}
+
+export async function analyzeCustomIdea(
+  ideaDescription: string
+): Promise<{ idea: Idea; _usage: AnalyzeIdeaUsage }> {
+  const response = await fetch(`${API_BASE}/api/generate/analyze-idea`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({ ideaDescription }),
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    if (err._usage) _lastUsage['analyze-idea'] = err._usage;
+    if (response.status === 403) {
+      throw Object.assign(new Error(err.error || 'Pro or Builder plan required.'), {
+        upgradeRequired: true,
+      });
+    }
+    if (response.status === 429) {
+      throw Object.assign(new Error(err.error || 'Monthly analysis limit reached.'), {
+        limitReached: true,
+      });
+    }
+    throw new Error(err.error || 'Failed to analyze idea');
+  }
+  const data = await response.json();
+  storeUsage(data);
+  return data;
+}
+
+export async function fetchAnalyzeIdeaUsage(): Promise<AnalyzeIdeaUsage | null> {
+  try {
+    const response = await fetch(`${API_BASE}/api/usage/analyze-idea`, {
+      method: 'GET',
+      headers: authHeaders(),
+    });
+    if (!response.ok) return null;
+    const data = await response.json();
+    _lastUsage['analyze-idea'] = data;
+    return data as AnalyzeIdeaUsage;
+  } catch {
+    return null;
+  }
 }

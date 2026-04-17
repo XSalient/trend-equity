@@ -13,6 +13,7 @@ import {
   addDoc,
 } from 'firebase/firestore';
 import { TIER_LIMITS } from '../constants';
+import { useTierLimits } from './useTierLimits';
 import { db } from '../firebase';
 import { Idea, DailyGeneration, UserSave, FilterState, Tier } from '../types';
 import { generateDailyIdeas } from '../services/geminiService';
@@ -26,6 +27,7 @@ function stableId(str: string): string {
 }
 
 export function useIdeas(user: User | null, tier: Tier, authReady: boolean) {
+  const { getCustomSavesLimit } = useTierLimits();
   const [dailyGen, setDailyGen] = useState<DailyGeneration | null>(null);
   const [userSaves, setUserSaves] = useState<UserSave[]>([]);
   const [loading, setLoading] = useState(true);
@@ -137,13 +139,17 @@ export function useIdeas(user: User | null, tier: Tier, authReady: boolean) {
           const data = docSnap.data() as DailyGeneration;
           // Stale mock doc from before mock removal — discard and regenerate
           if (data._isMock) {
-            await triggerGeneration();
+            // FIX: Don't auto-regenerate. Just clear local and suggest refresh.
+            localStorage.removeItem(CACHE_KEY);
+            setDailyGen(null);
           } else {
             setDailyGen(data);
             setCachedFeed(data);
           }
         } else {
-          await triggerGeneration();
+          // FIX (Once for all users): Do NOT auto-trigger.
+          // Just set dailyGen to null, UI will show 'Wait for curation' state.
+          setDailyGen(null);
         }
       } catch (err: any) {
         console.error('Fetch Error:', err);
@@ -246,7 +252,8 @@ export function useIdeas(user: User | null, tier: Tier, authReady: boolean) {
     idea: Idea,
     TIER_LIMITS: any,
     onLoginNeeded: () => void,
-    onUpgradeNeeded: () => void
+    onUpgradeNeeded: () => void,
+    saveType: 'feed' | 'custom' = 'feed'
   ) => {
     if (!user) {
       onLoginNeeded();
@@ -254,13 +261,18 @@ export function useIdeas(user: User | null, tier: Tier, authReady: boolean) {
     }
 
     // FIX (B-5/B-6): Use TIER_LIMITS constant instead of hardcoded 5
-    const saveLimit = TIER_LIMITS[tier]?.monthlySaves ?? Infinity;
-    if (isFinite(saveLimit) && userSaves.length >= saveLimit) {
-      onUpgradeNeeded();
-      return;
+    // Only apply feed save limit for feed saves
+    if (saveType === 'feed') {
+      const saveLimit = TIER_LIMITS[tier]?.monthlySaves ?? Infinity;
+      if (isFinite(saveLimit) && feedSaves.length >= saveLimit) {
+        onUpgradeNeeded();
+        return;
+      }
     }
 
-    const existing = userSaves.find((s) => s.idea.id === idea.id);
+    const existing = userSaves.find(
+      (s) => s.idea.id === idea.id && (!s.saveType || s.saveType === saveType)
+    );
     try {
       if (existing) {
         await deleteDoc(doc(db, 'user_saves', existing.id!));
@@ -269,10 +281,40 @@ export function useIdeas(user: User | null, tier: Tier, authReady: boolean) {
           userId: user.uid,
           idea,
           savedAt: serverTimestamp(),
+          saveType,
         });
       }
     } catch (err: any) {
       console.error('Save Error:', err);
+      setError('Failed to save idea. Please try again.');
+    }
+  };
+
+  const saveCustomIdea = async (
+    idea: Idea,
+    onLoginNeeded: () => void,
+    onUpgradeNeeded: () => void
+  ) => {
+    if (!user) {
+      onLoginNeeded();
+      return;
+    }
+    const customLimit = getCustomSavesLimit(tier);
+    if (customSaves.length >= customLimit) {
+      onUpgradeNeeded();
+      return;
+    }
+    const alreadySaved = customSaves.some((s) => s.idea.id === idea.id);
+    if (alreadySaved) return; // already saved — no-op
+    try {
+      await addDoc(collection(db, 'user_saves'), {
+        userId: user.uid,
+        idea,
+        savedAt: serverTimestamp(),
+        saveType: 'custom',
+      });
+    } catch (err: any) {
+      console.error('Custom Save Error:', err);
       setError('Failed to save idea. Please try again.');
     }
   };
@@ -440,15 +482,22 @@ export function useIdeas(user: User | null, tier: Tier, authReady: boolean) {
     [filters, tier]
   );
 
+  // Derived saves — backwards compat: docs without saveType treated as 'feed'
+  const feedSaves = userSaves.filter((s) => !s.saveType || s.saveType === 'feed');
+  const customSaves = userSaves.filter((s) => s.saveType === 'custom');
+
   return {
     dailyGen,
     userSaves,
+    feedSaves,
+    customSaves,
     loading,
     generating,
     error,
     filters,
     setFilters,
     toggleSave,
+    saveCustomIdea,
     updateIdea,
     getFilteredIdeas,
     triggerGeneration,

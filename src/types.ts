@@ -75,6 +75,22 @@ export interface UserSave {
   userId: string;
   idea: Idea;
   savedAt: any;
+  saveType?: 'feed' | 'custom'; // omission treated as 'feed' (backwards compat)
+}
+
+export interface UserLatestIdea {
+  userId: string;
+  idea: Idea;
+  analyzedAt: any; // Firestore Timestamp
+  inputDescription: string; // original text the user entered
+}
+
+export interface AnalyzeIdeaUsage {
+  featureType: 'analyze-idea';
+  used: number;
+  limit: number;
+  remaining: number;
+  resetsAt: string; // ISO date string "YYYY-MM-DD" (first day of next month)
 }
 
 export interface Alert {
@@ -90,7 +106,10 @@ export interface Alert {
 export interface WeeklyTrendRadar {
   week: string;
   topTrends: { title: string; description: string; impact: string; sector: string }[];
-  marketShift: string;
+  marketShift: {
+    title: string;
+    description: string;
+  };
   opportunityAreas: string[];
   generatedAt: any;
 }
@@ -104,7 +123,11 @@ export interface Futurecasting {
     winners: string[];
     losers: string[];
   }[];
-  paradigmShifts: string[];
+  paradigmShifts: {
+    title: string;
+    rationale: string;
+    impact: string;
+  }[];
   generatedAt: any;
 }
 

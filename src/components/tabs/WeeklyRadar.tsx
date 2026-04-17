@@ -54,15 +54,27 @@ export const WeeklyRadarTab: React.FC<WeeklyRadarTabProps> = ({
           <RadarSkeleton />
         ) : weeklyRadar ? (
           <div className="space-y-8">
-            <div className="p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-2xl">
-              <p className="text-sm text-emerald-200 leading-relaxed">
-                <span className="font-black uppercase italic mr-2">Market Shift:</span>
-                {weeklyRadar.marketShift}
-              </p>
+            <div className="p-5 bg-emerald-500/5 border border-emerald-500/20 rounded-2xl md:p-6">
+              <div className="space-y-1">
+                <p className="text-[10px] font-black uppercase italic text-emerald-500 tracking-widest">
+                  Market Shift
+                </p>
+                <h4 className="text-lg font-black uppercase italic text-emerald-100 tracking-tight leading-none">
+                  {typeof weeklyRadar.marketShift === 'string'
+                    ? weeklyRadar.marketShift
+                    : weeklyRadar.marketShift.title}
+                </h4>
+              </div>
+              {typeof weeklyRadar.marketShift !== 'string' &&
+                weeklyRadar.marketShift.description && (
+                  <p className="mt-3 text-xs text-zinc-400 leading-relaxed italic border-l-2 border-emerald-500/30 pl-4">
+                    {weeklyRadar.marketShift.description}
+                  </p>
+                )}
             </div>
 
             <div className="grid gap-4">
-              {weeklyRadar.topTrends.map((trend, i) => (
+              {(weeklyRadar.topTrends || []).map((trend, i) => (
                 <div
                   key={i}
                   className="p-4 bg-zinc-800/50 border border-white/5 rounded-2xl space-y-2"
@@ -88,7 +100,7 @@ export const WeeklyRadarTab: React.FC<WeeklyRadarTabProps> = ({
                 Opportunity Areas
               </h4>
               <div className="flex flex-wrap gap-2">
-                {weeklyRadar.opportunityAreas.map((area, i) => (
+                {(weeklyRadar.opportunityAreas || []).map((area, i) => (
                   <span
                     key={i}
                     className="px-3 py-1 bg-zinc-800 border border-zinc-700 text-zinc-300 text-[10px] font-bold rounded-full"

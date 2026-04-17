@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { TrendingUp, AlertCircle, RefreshCw, Calendar, Rocket, Wand2, Lock, X } from 'lucide-react';
+import { TrendingUp, AlertCircle, RefreshCw, Calendar, Rocket, Wand2, Lock, X } from 'lucide-react'; // eslint-disable-line @typescript-eslint/no-unused-vars
 import { motion, AnimatePresence } from 'motion/react';
 
 // --- Types & Constants ---
@@ -12,6 +12,7 @@ import { useTier } from './hooks/useTier';
 import { useAlerts } from './hooks/useAlerts';
 import { useIdeas } from './hooks/useIdeas';
 import { useWeeklyBest } from './hooks/useWeeklyBest';
+import { useAnalyzeIdea } from './hooks/useAnalyzeIdea';
 
 // --- Components ---
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -21,6 +22,7 @@ import { AlertsPanel } from './components/layout/AlertsPanel';
 import { IdeaFeedSkeleton, RadarSkeleton } from './components/layout/SkeletonLoaders';
 import { TE100Modal } from './components/builder/TE100Modal';
 import { ApiAccessModal } from './components/builder/ApiAccessModal';
+import { AnalyzeIdeaModal } from './components/AnalyzeIdeaModal';
 
 // --- Tab Views ---
 import { IdeaFeed } from './components/tabs/IdeaFeed';
@@ -54,17 +56,22 @@ export default function App() {
   const {
     dailyGen,
     userSaves,
+    feedSaves,
+    customSaves,
     loading,
     generating,
     error: ideasError,
     filters,
     setFilters,
     toggleSave,
+    saveCustomIdea,
     updateIdea,
     getFilteredIdeas,
     triggerGeneration,
     fetchDaily,
   } = useIdeas(user, tier, authReady);
+
+  const analyzeIdeaHook = useAnalyzeIdea(user, tier, authReady);
 
   // FIX (S-2): Sync Firebase ID token into geminiService for server-side auth.
   // Token refreshes every 50 min (Firebase tokens expire in 1 hour).
@@ -98,7 +105,7 @@ export default function App() {
     error: errorWeekly,
     fetched: fetchedWeekly,
     fetchWeeklyBest,
-  } = useWeeklyBest();
+  } = useWeeklyBest(tier);
   const [weeklyRadar, setWeeklyRadar] = useState<WeeklyTrendRadar | null>(null);
   const [futurecasting, setFuturecasting] = useState<Futurecasting | null>(null);
   const [loadingRadar, setLoadingRadar] = useState(false);
@@ -110,6 +117,7 @@ export default function App() {
   // Builder Modal States
   const [showTE100, setShowTE100] = useState(false);
   const [showApiAccess, setShowApiAccess] = useState(false);
+  const [showAnalyzeModal, setShowAnalyzeModal] = useState(false);
 
   // BUG-1 / BUG-3 FIX: Auth errors get their own dismissable toast, separate from ideas retry banner.
   const [authToastVisible, setAuthToastVisible] = useState(false);
@@ -189,6 +197,10 @@ export default function App() {
 
   const onToggleSaveLocal = (idea: Idea) => {
     toggleSave(idea, TIER_LIMITS, handleLogin, () => setActiveTab('pro'));
+  };
+
+  const onSaveCustomIdeaLocal = (idea: Idea) => {
+    saveCustomIdea(idea, handleLogin, () => setActiveTab('pro'));
   };
 
   const onUpgradeToBuilder = () => upgradeToBuilder(handleLogin);
@@ -288,22 +300,24 @@ export default function App() {
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'saved' ? 'bg-zinc-800 text-white shadow-md' : 'text-zinc-500 hover:text-zinc-300'}`}
             >
               Saved{' '}
-              {userSaves.length > 0 && (
+              {(userSaves.length > 0 || analyzeIdeaHook.latestIdea) && (
                 <span className="ml-1 text-xs bg-zinc-700 text-zinc-300 px-1.5 py-0.5 rounded-full">
-                  {userSaves.length}
+                  {userSaves.length + (analyzeIdeaHook.latestIdea ? 1 : 0)}
                   {tier === 'free' ? `/${TIER_LIMITS.free.monthlySaves}` : ''}
                 </span>
               )}
             </button>
-            <button
-              role="tab"
-              aria-selected={activeTab === 'weekly'}
-              aria-controls="tabpanel-weekly"
-              onClick={() => setActiveTab('weekly')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'weekly' ? 'bg-zinc-800 text-white shadow-md' : 'text-zinc-500 hover:text-zinc-300'}`}
-            >
-              Weekly Best
-            </button>
+            {tier !== 'free' && (
+              <button
+                role="tab"
+                aria-selected={activeTab === 'weekly'}
+                aria-controls="tabpanel-weekly"
+                onClick={() => setActiveTab('weekly')}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'weekly' ? 'bg-zinc-800 text-white shadow-md' : 'text-zinc-500 hover:text-zinc-300'}`}
+              >
+                Weekly Best
+              </button>
+            )}
             {tier === 'builder' && (
               <button
                 role="tab"
@@ -401,14 +415,20 @@ export default function App() {
               <EmailDigestTab user={user} />
             ) : activeTab === 'saved' ? (
               <SavedIdeasTab
-                userSaves={userSaves}
+                feedSaves={feedSaves}
+                customSaves={customSaves}
+                latestIdea={analyzeIdeaHook.latestIdea}
+                loadingLatest={analyzeIdeaHook.loadingLatest}
                 toggleSave={onToggleSaveLocal}
+                toggleCustomSave={onSaveCustomIdeaLocal}
                 updateIdea={updateIdea}
                 tier={tier}
                 exportToPDF={exportDocument}
                 loading={loading}
                 user={user}
                 handleLogin={handleLogin}
+                onOpenAnalyzeModal={() => setShowAnalyzeModal(true)}
+                onUpgradeNeeded={() => setActiveTab('pro')}
               />
             ) : activeTab === 'weekly' ? (
               <WeeklyBestTab
@@ -508,6 +528,19 @@ export default function App() {
           user={user}
           isOpen={showApiAccess}
           onClose={() => setShowApiAccess(false)}
+        />
+        <AnalyzeIdeaModal
+          isOpen={showAnalyzeModal}
+          onClose={() => setShowAnalyzeModal(false)}
+          tier={tier}
+          user={user}
+          handleLogin={handleLogin}
+          onAnalyzeComplete={() => {}}
+          onSaveCustomIdea={onSaveCustomIdeaLocal}
+          customSavesCount={customSaves.length}
+          analyzeIdeaHook={analyzeIdeaHook}
+          updateIdea={updateIdea}
+          exportToPDF={exportDocument}
         />
       </div>
     </ErrorBoundary>

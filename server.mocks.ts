@@ -282,12 +282,51 @@ export const DEV_MOCKS: Record<string, any> = {
   explain: {
     text: 'This step is critical because it de-risks the entire venture before you invest significant capital. The core insight is to separate real signal from wishful thinking — most founders skip this phase and build on assumptions. By completing 20 ICP interviews in the first 2 weeks, you establish a baseline of authentic customer language that you can use directly in your landing page copy, pitch deck, and sales emails. The milestone is deliberately set at "10+ confirmed pain points" rather than just "interviews completed" — because you want quality signal, not volume. If you cannot find 10 people describing the same pain independently, that is valuable data telling you to pivot before you write a line of code.',
   },
+
+  'analyze-idea': {
+    headline: 'AI-Powered Contract Intelligence for SME Legal Teams',
+    pitch:
+      'Mid-market companies spend $340K/year on legal reviews that 80% agree are repetitive boilerplate checks. An AI-native contract layer trained on 10M+ SME contracts cuts that cost by 70% while surfacing non-standard clauses instantly.',
+    vcJustification:
+      'Harvey AI raised $100M at $1.5B targeting BigLaw. The SME segment ($28B TAM) is completely unserved — no dominant player owns mid-market legal AI. Seed-stage companies in this space are closing rounds in under 3 weeks.',
+    categoryTags: ['AI/SaaS', 'LegalTech', 'B2B'],
+    costEffort: 'Medium capital / small team (2–3 engineers + 1 legal domain expert)',
+    revenuePotentialScore: 8,
+    revenueSkeleton:
+      '$299–$999/mo per company seat. 500 SME customers = $1.8M ARR. Expand to $2,999/mo enterprise tier with custom training on client contract corpus.',
+    unfairAdvantage:
+      'Proprietary SME contract training corpus built from early design partners creates a data moat that improves with each new customer. Harvey and Ironclad are both focused on enterprise — no one owns the mid-market.',
+    potentialExit:
+      'Strategic acquisition by DocuSign, Adobe, or a mid-market accounting platform (5–8× ARR). Comparable: Ironclad–DocuSign discussions at ~$1.5B; Drata at $2B.',
+    trendSources: [
+      'Harvey AI $100M raise at $1.5B (Feb 2026) signals massive VC conviction in legal AI',
+      'EU AI Act compliance requirements for automated legal decision tools spiking SME demand 240% YoY',
+      'Google Trends: "contract review software" +180% YoY as remote deal-making scales',
+    ],
+    saturationLabel: 'Emerging',
+    heatBadge: 'Rising Fast',
+    nextSteps: [
+      'Partner with 3 mid-market law firms under NDA to access contract training data as design partners',
+      'Build a free "contract health check" tool to generate top-of-funnel leads and proprietary training data simultaneously',
+      'Target CFOs and General Counsels at 50–500 person companies via LinkedIn outreach + warm VC intros',
+    ],
+    marketSize:
+      '$28B TAM (global SME legal services), $4.2B SAM (contract review specifically), $840M SOM (English-speaking markets, 5-year horizon)',
+    competitorLandscape:
+      'Harvey (enterprise BigLaw focus only), Ironclad (CLM platform, not AI-native review), LexCheck (limited clause flagging, no SME go-to-market). No dominant SME-focused contract AI player.',
+    regulatoryFlags:
+      'Medium — AI-assisted legal advice requires careful UX framing to avoid unauthorized practice of law (UPL) in key jurisdictions. Consult legal counsel before launch in US, UK, and Australia.',
+  },
 };
 
 /**
  * Returns mock data for a given feature type, optionally personalised with idea data.
  */
-export function getMockResponse(featureType: string, idea?: { headline?: string }): any {
+export function getMockResponse(
+  featureType: string,
+  idea?: { headline?: string },
+  inputDescription?: string
+): any {
   const base = DEV_MOCKS[featureType];
   if (!base) return null;
 
@@ -306,6 +345,17 @@ export function getMockResponse(featureType: string, idea?: { headline?: string 
 
   if (idea?.headline && featureType === 'explain') {
     return { text: `For "${idea.headline}": ${base.text}` };
+  }
+
+  // Personalise analyze-idea mock with the user's description
+  if (featureType === 'analyze-idea') {
+    const descriptionSnippet = inputDescription
+      ? inputDescription.slice(0, 60).trim()
+      : 'your idea';
+    return {
+      ...base,
+      headline: `[Mock] ${descriptionSnippet}${inputDescription && inputDescription.length > 60 ? '...' : ''}`,
+    };
   }
 
   return base;

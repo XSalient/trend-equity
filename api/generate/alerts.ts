@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { generateWithGemini, Type, getToday } from '../_lib/gemini';
+import AI from '../_lib/ai-provider';
+const { generateWithAI, Type, getToday } = AI;
 import { getCached, setCached } from '../_lib/cache';
 import { getAuthContext } from '../_lib/auth';
 import { checkAndIncrementUsage } from '../_lib/usage';
@@ -39,7 +40,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    const data = await generateWithGemini('Generate 3-5 high-signal Market Trend Alerts.', schema);
+    const data = await generateWithAI('Generate 3-5 high-signal Market Trend Alerts.', schema);
     await setCached(cacheKey, data);
     return res.json(data);
   } catch (err: any) {
