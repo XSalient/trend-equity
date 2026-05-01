@@ -47,7 +47,6 @@ __pycache__
 *.pyc
 .env.local
 .next
-.github
 # User-specific assets and secrets
 firebase-service-account.json
 sample-ideas.json
