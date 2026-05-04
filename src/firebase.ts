@@ -25,6 +25,13 @@ if (missingKeys.length > 0) {
   }
 }
 
+if (import.meta.env.VITE_FIREBASE_API_KEY) {
+  console.info(
+    '[FIREBASE] Using API Key starting with:',
+    import.meta.env.VITE_FIREBASE_API_KEY.slice(0, 8) + '...'
+  );
+}
+
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 export const auth = getAuth(app);
