@@ -11,10 +11,14 @@ import {
   AlertCircle,
   X,
   Trash2,
+  ThumbsUp,
+  ThumbsDown,
+  Hammer,
 } from 'lucide-react';
 import { Idea } from '../types';
 import { useIdeaActions } from '../hooks/useIdeaActions';
 import { IdeaComments } from './idea/IdeaComments';
+import { useIdeaFeedback } from '../hooks/useIdeaFeedback';
 
 // Sub-components
 import { IdeaCardHeader } from './idea/IdeaCardHeader';
@@ -84,6 +88,8 @@ export const IdeaCard: React.FC<IdeaCardProps> = ({
       setActiveToolkit(null);
     }
   });
+
+  const { reaction, toggleReaction, loading: reactionLoading } = useIdeaFeedback(idea.id, user?.uid);
 
   const isFree = tier === 'free';
   const isBuilder = tier === 'builder';
@@ -358,7 +364,7 @@ export const IdeaCard: React.FC<IdeaCardProps> = ({
         </div>
 
         {/* Community & Collaboration Footer */}
-        <div className="pt-3 border-t border-zinc-800/40 flex items-center justify-between">
+        <div className="pt-3 border-t border-zinc-800/40 flex items-center justify-between flex-wrap gap-2">
           <button
             onClick={() => {
               if (!onUpdateIdea) return;
@@ -373,6 +379,45 @@ export const IdeaCard: React.FC<IdeaCardProps> = ({
             <Users className="w-3.5 h-3.5" />
             {idea.seekingPartner ? 'Seeking co-founder' : 'Find co-founder'}
           </button>
+
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => user ? toggleReaction('up') : handleLogin()}
+              disabled={reactionLoading}
+              title="Upvote"
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-all border ${
+                reaction === 'up'
+                  ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+                  : 'text-zinc-500 border-zinc-800 hover:border-zinc-600 hover:text-zinc-300'
+              }`}
+            >
+              <ThumbsUp className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={() => user ? toggleReaction('down') : handleLogin()}
+              disabled={reactionLoading}
+              title="Downvote"
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-all border ${
+                reaction === 'down'
+                  ? 'bg-red-500/15 text-red-400 border-red-500/30'
+                  : 'text-zinc-500 border-zinc-800 hover:border-zinc-600 hover:text-zinc-300'
+              }`}
+            >
+              <ThumbsDown className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={() => user ? toggleReaction('building') : handleLogin()}
+              disabled={reactionLoading}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-all border ${
+                reaction === 'building'
+                  ? 'bg-amber-500/15 text-amber-400 border-amber-500/30'
+                  : 'text-zinc-500 border-zinc-800 hover:border-zinc-600 hover:text-zinc-300'
+              }`}
+            >
+              <Hammer className="w-3.5 h-3.5" />
+              {reaction === 'building' ? 'Building' : "I'm building this"}
+            </button>
+          </div>
         </div>
 
         <IdeaComments ideaId={idea.id} user={user} handleLogin={handleLogin} />

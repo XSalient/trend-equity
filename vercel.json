@@ -1,6 +1,9 @@
 {
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
+  "crons": [
+    { "path": "/api/cron/digest", "schedule": "0 7 * * *" }
+  ],
   "headers": [
     {
       "source": "/api/(.*)",

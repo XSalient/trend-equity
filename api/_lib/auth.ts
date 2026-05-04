@@ -6,6 +6,7 @@
  * This prevents clients from spoofing their identity or tier level.
  */
 import type { VercelRequest } from '@vercel/node';
+import { createHash } from 'crypto';
 import { getAdminDb, getAdminAuth } from './admin';
 
 export interface AuthContext {
@@ -23,6 +24,21 @@ export async function getAuthContext(req: VercelRequest): Promise<AuthContext | 
 
   const token = authHeader.slice(7);
   if (!token) return null;
+
+  // API key path: te_live_ prefix → hash lookup in Firestore
+  if (token.startsWith('te_live_')) {
+    try {
+      const keyHash = createHash('sha256').update(token).digest('hex');
+      const db = getAdminDb();
+      const snap = await db.collection('api_keys').doc(keyHash).get();
+      if (!snap.exists || !snap.data()?.active) return null;
+      const d = snap.data()!;
+      snap.ref.update({ lastUsed: new Date() }).catch(() => {});
+      return { uid: d.uid, tier: d.tier as AuthContext['tier'] };
+    } catch {
+      return null;
+    }
+  }
 
   try {
     const decoded = await getAdminAuth().verifyIdToken(token);

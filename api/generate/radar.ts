@@ -4,6 +4,7 @@ const { generateWithAI, radarSchema, getToday, normalizeAIResponse } = AI;
 import { getCached, setCached } from '../_lib/cache';
 import { getAuthContext } from '../_lib/auth';
 import { checkAndIncrementUsage, buildUsageResponse } from '../_lib/usage';
+import { fetchLiveSignals, formatSignalsForPrompt } from '../_lib/signals';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -36,14 +37,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    const rawData = await generateWithAI(
-      `Perform an intensive VC-grade market analysis for the week of ${getToday()}. 
-       1. Identify the single most significant MARKET SHIFT.
-       2. Detail 5 TOP TRENDS with descriptions, sector focus, and specific market impact.
-       3. List 5 OPPORTUNITY AREAS for builders and founders to target.
-       Focus on real, high-signal data from the last 7 days.`,
-      radarSchema
-    );
+    const signals = await fetchLiveSignals();
+    const signalContext = formatSignalsForPrompt(signals);
+
+    const radarInstruction = `Perform an intensive VC-grade market analysis for the week of ${getToday()}.
+1. Identify the single most significant MARKET SHIFT.
+2. Detail 5 TOP TRENDS with descriptions, sector focus, and specific market impact.
+3. List 5 OPPORTUNITY AREAS for builders and founders to target.
+Draw on the live signals above. Focus on real, high-signal data from the last 7 days.`;
+
+    const promptStr = signalContext
+      ? `${signalContext}\n\n${radarInstruction}`
+      : radarInstruction;
+
+    const rawData = await generateWithAI(promptStr, radarSchema);
 
     const data = normalizeAIResponse(rawData, ['topTrends', 'opportunityAreas'], {
       week: `Week of ${getToday()}`,
