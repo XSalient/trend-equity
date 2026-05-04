@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Mail, Check, LogIn } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { User } from 'firebase/auth';
+import { doc, setDoc } from 'firebase/firestore';
+import { db } from '../../firebase';
 
 interface EmailDigestTabProps {
   user: User | null;
@@ -14,13 +16,20 @@ export const EmailDigestTab: React.FC<EmailDigestTabProps> = ({ user }) => {
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
-    if (!user) return; // guard: button is hidden when no user
+    if (!user) return;
     setSaving(true);
-    // Simulate a short async save (replace with Firestore write when ready)
-    await new Promise((r) => setTimeout(r, 600));
-    setSaving(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3500);
+    try {
+      await setDoc(doc(db, 'user_digest_prefs', user.uid), {
+        dailyOn,
+        radarOn,
+        email: user.email,
+        updatedAt: new Date().toISOString(),
+      });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3500);
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
