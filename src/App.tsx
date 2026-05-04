@@ -31,6 +31,7 @@ import { WeeklyRadarTab } from './components/tabs/WeeklyRadar';
 import { FuturecastingTab } from './components/tabs/Futurecasting';
 import { EmailDigestTab } from './components/tabs/EmailDigest';
 import { SavedIdeasTab } from './components/tabs/SavedIdeas';
+import EnterpriseLanding from './pages/EnterpriseLanding';
 
 // --- Utils ---
 import {
@@ -41,6 +42,10 @@ import {
 import { exportDocument, exportListToCSV, exportListToPDF } from './utils/exportUtils';
 
 export default function App() {
+  if (window.location.pathname === '/enterprise') {
+    return <EnterpriseLanding />;
+  }
+
   const { user, authReady, handleLogin, handleLogout, error: authError } = useAuth();
   const { tier, handleUpgrade, handleDowngrade, upgradeToBuilder, tierNotification } =
     useTier(user);

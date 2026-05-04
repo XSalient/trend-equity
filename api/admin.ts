@@ -89,7 +89,9 @@ async function handleDigest(res: VercelResponse) {
           html,
         }),
       });
-      if (emailRes.ok) { sent++; } else {
+      if (emailRes.ok) {
+        sent++;
+      } else {
         console.error(`[digest] Failed for ${sub.email}:`, await emailRes.text());
         failed++;
       }
@@ -170,20 +172,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const subRef = db.collection('te100_submissions').doc(submissionId);
     const subSnap = await subRef.get();
     if (!subSnap.exists) return res.status(404).json({ error: 'Submission not found' });
-    if (subSnap.data()?.status === 'approved') return res.status(409).json({ error: 'Already approved' });
+    if (subSnap.data()?.status === 'approved')
+      return res.status(409).json({ error: 'Already approved' });
     const d = subSnap.data()!;
     await Promise.all([
-      db.collection('te100').doc(submissionId).set({
-        projectName: d.projectName,
-        url: d.url,
-        pitch: d.pitch,
-        mrr: d.mrr || null,
-        userId: d.userId,
-        userEmail: d.userEmail,
-        submissionId,
-        approvedAt: new Date(),
-        approvedBy: uid,
-      }),
+      db
+        .collection('te100')
+        .doc(submissionId)
+        .set({
+          projectName: d.projectName,
+          url: d.url,
+          pitch: d.pitch,
+          mrr: d.mrr || null,
+          userId: d.userId,
+          userEmail: d.userEmail,
+          submissionId,
+          approvedAt: new Date(),
+          approvedBy: uid,
+        }),
       subRef.update({ status: 'approved', approvedAt: new Date(), approvedBy: uid }),
     ]);
     return res.json({ success: true, submissionId });

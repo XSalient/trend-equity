@@ -16,6 +16,7 @@ To empower entrepreneurs by providing high-signal business opportunities and the
 - **Serial Founders:** Experienced builders seeking validated market gaps.
 - **Side-Hustlers:** Professionals looking for high-potential, low-effort business models.
 - **Investors/VCs:** Staying ahead of emerging trends and early-stage concepts.
+- **Corporate Innovation Teams:** Monitoring sector shifts and white space analysis for strategic planning.
 
 ---
 
@@ -23,15 +24,17 @@ To empower entrepreneurs by providing high-signal business opportunities and the
 
 Trend Equity uses a tiered subscription model:
 
-| Feature            | Free              | Pro                | Builder                           |
-| :----------------- | :---------------- | :----------------- | :-------------------------------- |
-| **Daily Ideas**    | 10 ideas / day    | 25 ideas / day     | 35 ideas / day                    |
-| **Saves**          | 5 saves / month   | Unlimited          | Unlimited                         |
-| **Exporting**      | PDF Pitch Deck    | PDF, Notion, GDocs | PDF, Notion, GDocs                |
-| **Analysis**       | Basic VC Analysis | Full VC Analysis   | Full VC Analysis + Expert Vetting |
-| **Execution**      | 3 Next Steps      | 7 Next Steps       | Full 10+ Step Roadmap             |
-| **Advanced Tools** | Locked            | Email Digest       | Radar, Futurecasting, TE100, API  |
-| **Community**      | Read-only         | Post & Reply       | Priority Threads                  |
+| Feature                    | Free              | Pro                        | Builder                           | Enterprise (Validation)           |
+| :------------------------- | :---------------- | :------------------------- | :-------------------------------- | :------------------------------- |
+| **Daily Ideas**            | 10 ideas / day    | 25 ideas / day             | 35 ideas / day                    | Custom / Full Access             |
+| **Saves**                  | 5 saves / month   | Unlimited                  | Unlimited                         | Unlimited                        |
+| **Custom Idea Analysis**   | —                 | 5 / month                  | 20 / month                        | Unlimited                        |
+| **Exporting**              | PDF Pitch Deck    | PDF, Notion/GDocs (clipboard) | PDF, Notion/GDocs (clipboard)  | Custom Data Integration (API)    |
+| **Analysis**               | Basic VC Analysis | Full VC Analysis           | Full VC Analysis + Expert Vetting | Proprietary Thesis Alignment     |
+| **Execution**              | 3 Next Steps      | 7 Next Steps               | Full 10+ Step Roadmap             | Full 10+ Step Roadmap            |
+| **Weekly Best**            | —                 | ✓                          | ✓                                 | ✓                                |
+| **Advanced Tools**         | Locked            | Email Digest *(planned)*   | Radar, Futurecasting, TE100, API  | Custom Alerts + Dashboard        |
+| **Community**              | Read-only         | Post & Reply               | Priority Threads                  | Private Slack/Discord Connect    |
 
 ---
 
@@ -53,10 +56,17 @@ Trend Equity uses a tiered subscription model:
 
 ### 4.3. Market Intelligence (Pro/Builder)
 
-- **Weekly Best:** Aggregated top-performing ideas based on user engagement and market signals.
+- **Weekly Best (Pro/Builder):** Aggregated top-performing ideas based on user engagement and market signals.
 - **Weekly Trend Radar (Builder):** Macro analysis of emerging market shifts and opportunity areas.
 - **Futurecasting (Builder):** Long-term predictions for 2027, 2030, and 2035 horizons with rationale and impact analysis.
-- **Email Digest (Pro/Builder):** Daily or weekly summaries of high-signal opportunities.
+- **Email Digest (Pro/Builder):** Daily or weekly summaries of high-signal opportunities. *(UI shipped; backend delivery in development.)*
+
+### 4.3b. Custom Idea Analysis (Pro/Builder)
+
+- **Analyze Any Idea:** Submit a custom business concept for full AI-driven VC analysis outside the daily feed.
+- **Monthly Quota:** Pro users receive 5 analyses/month; Builder users receive 20 analyses/month.
+- **Output:** Same VC analysis depth as feed ideas — justification, revenue model, unfair advantage, market size, competitor landscape, and regulatory flags.
+- **Persistence:** Most recent analysis is stored per-user in `user_latest_idea/{uid}` and surfaced in the Saved tab.
 
 ### 4.4. VC Analysis & Vetting
 
@@ -77,13 +87,21 @@ Trend Equity uses a tiered subscription model:
 
 ### 4.6. Exporting & Sharing
 
-- One-click export to PDF, Notion, or Google Docs for pitch preparation.
+- One-click export to **PDF** (generated client-side via jsPDF).
+- **Notion / Google Docs:** Generates formatted Markdown copied to clipboard for direct paste — no OAuth integration required.
 - **CSV Export:** Bulk export of idea lists for external analysis.
 
 ### 4.7. Community & Interaction
 
 - **Idea Threads:** Real-time commenting and feedback loop for every business concept.
 - **Alerts System:** Instant notifications for system updates, trend shifts, or community replies.
+
+### 4.8. Enterprise Landing Page (`/enterprise`)
+
+- **B2B Positioning:** A dedicated landing page targeted at VCs and Corporate Innovation teams.
+- **Messaging:** Focused on "Deal Flow Intelligence," "Sector Trend Monitoring," and "White Space Analysis."
+- **Lead Capture:** Integrated submission form for investment teams to request early access.
+- **Persistence:** Leads are captured in the `enterprise_leads` Firestore collection with source tracking.
 
 ---
 
@@ -93,7 +111,7 @@ Trend Equity uses a tiered subscription model:
 - **Mobile:** Capacitor 8 (Android & iOS integration).
 - **Animations:** Motion (framer-motion v12).
 - **Icons:** Lucide-React.
-- **Backend/Database:** Firebase (Authentication & Firestore) + Express.
+- **Backend/Database:** Firebase (Authentication & Firestore); Vercel Serverless Functions (production API); Express BFF (local dev only, port 3001).
 - **AI Engine:** Google Gemini SDK (`@google/genai`).
 - **PDF Generation:** jsPDF.
 

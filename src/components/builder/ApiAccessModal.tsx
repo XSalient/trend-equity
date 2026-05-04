@@ -1,5 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, X, Copy, CheckCircle2, Terminal, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
+import {
+  Settings,
+  X,
+  Copy,
+  CheckCircle2,
+  Terminal,
+  Loader2,
+  AlertCircle,
+  RefreshCw,
+} from 'lucide-react';
 import { User } from 'firebase/auth';
 
 interface ApiAccessModalProps {
@@ -151,9 +160,7 @@ export const ApiAccessModal: React.FC<ApiAccessModalProps> = ({ user, isOpen, on
               </p>
             </div>
             <div className="space-y-1">
-              <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
-                Tier
-              </p>
+              <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Tier</p>
               <p className="text-lg font-black text-white">Builder</p>
             </div>
             <div className="space-y-1">

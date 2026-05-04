@@ -89,7 +89,11 @@ export const IdeaCard: React.FC<IdeaCardProps> = ({
     }
   });
 
-  const { reaction, toggleReaction, loading: reactionLoading } = useIdeaFeedback(idea.id, user?.uid);
+  const {
+    reaction,
+    toggleReaction,
+    loading: reactionLoading,
+  } = useIdeaFeedback(idea.id, user?.uid);
 
   const isFree = tier === 'free';
   const isBuilder = tier === 'builder';
@@ -382,7 +386,7 @@ export const IdeaCard: React.FC<IdeaCardProps> = ({
 
           <div className="flex items-center gap-1.5">
             <button
-              onClick={() => user ? toggleReaction('up') : handleLogin()}
+              onClick={() => (user ? toggleReaction('up') : handleLogin())}
               disabled={reactionLoading}
               title="Upvote"
               className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-all border ${
@@ -394,7 +398,7 @@ export const IdeaCard: React.FC<IdeaCardProps> = ({
               <ThumbsUp className="w-3.5 h-3.5" />
             </button>
             <button
-              onClick={() => user ? toggleReaction('down') : handleLogin()}
+              onClick={() => (user ? toggleReaction('down') : handleLogin())}
               disabled={reactionLoading}
               title="Downvote"
               className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-all border ${
@@ -406,7 +410,7 @@ export const IdeaCard: React.FC<IdeaCardProps> = ({
               <ThumbsDown className="w-3.5 h-3.5" />
             </button>
             <button
-              onClick={() => user ? toggleReaction('building') : handleLogin()}
+              onClick={() => (user ? toggleReaction('building') : handleLogin())}
               disabled={reactionLoading}
               className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-all border ${
                 reaction === 'building'

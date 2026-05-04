@@ -1,9 +1,7 @@
 {
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
-  "crons": [
-    { "path": "/api/admin", "schedule": "0 7 * * *" }
-  ],
+  "crons": [{ "path": "/api/admin", "schedule": "0 7 * * *" }],
   "headers": [
     {
       "source": "/api/(.*)",

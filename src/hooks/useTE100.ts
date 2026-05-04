@@ -20,9 +20,7 @@ export function useCuratedTE100() {
     const q = query(collection(db, 'te100'), orderBy('approvedAt', 'desc'), limit(50));
     getDocs(q)
       .then((snap) => {
-        setEntries(
-          snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<TE100Entry, 'id'>) }))
-        );
+        setEntries(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<TE100Entry, 'id'>) })));
       })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));

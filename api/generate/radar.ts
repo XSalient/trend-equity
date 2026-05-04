@@ -46,9 +46,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 3. List 5 OPPORTUNITY AREAS for builders and founders to target.
 Draw on the live signals above. Focus on real, high-signal data from the last 7 days.`;
 
-    const promptStr = signalContext
-      ? `${signalContext}\n\n${radarInstruction}`
-      : radarInstruction;
+    const promptStr = signalContext ? `${signalContext}\n\n${radarInstruction}` : radarInstruction;
 
     const rawData = await generateWithAI(promptStr, radarSchema);
 
