@@ -40,7 +40,16 @@ export function useAuth() {
         // Popups are blocked in native WebViews — use full-page redirect instead
         await signInWithRedirect(auth, provider);
       } else {
-        await signInWithPopup(auth, provider);
+        try {
+          await signInWithPopup(auth, provider);
+        } catch (err: any) {
+          // If popup is blocked, fallback to redirect
+          if (err.code === 'auth/popup-blocked') {
+            await signInWithRedirect(auth, provider);
+            return;
+          }
+          throw err;
+        }
       }
     } catch (err: any) {
       if (err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request') {
