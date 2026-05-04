@@ -11,12 +11,19 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
-// Simple validation to prevent runtime errors
-Object.entries(firebaseConfig).forEach(([key, value]) => {
-  if (!value) {
-    console.error(`[FIREBASE] Missing configuration for ${key}. Check your .env file.`);
+// Robust validation to prevent cryptic Firebase errors
+const missingKeys = Object.entries(firebaseConfig)
+  .filter(([_, value]) => !value || value === 'undefined')
+  .map(([key]) => key);
+
+if (missingKeys.length > 0) {
+  const errorMsg = `[FIREBASE] Critical missing environment variables: ${missingKeys.join(', ')}. Ensure they are set in your Vercel/Doppler settings with the VITE_ prefix.`;
+  console.error(errorMsg);
+  // Throwing here prevents the app from crashing later with "invalid-api-key"
+  if (import.meta.env.PROD) {
+    // In production, we might want to show a UI error instead of just throwing
   }
-});
+}
 
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);

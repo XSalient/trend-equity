@@ -36,9 +36,9 @@ function initAdmin() {
   }
 
   // Fall back to Application Default Credentials
-  if (!projectId) {
+  if (!projectId || projectId === 'undefined') {
     throw new Error(
-      '[FIREBASE ADMIN] Missing FIREBASE_PROJECT_ID or VITE_FIREBASE_PROJECT_ID in environment.'
+      '[FIREBASE ADMIN] Missing FIREBASE_PROJECT_ID. Please ensure VITE_FIREBASE_PROJECT_ID or FIREBASE_PROJECT_ID is set in your Vercel environment.'
     );
   }
   initializeApp({ projectId });
