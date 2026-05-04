@@ -9,8 +9,6 @@ import AI from './api/_lib/ai-provider';
 const { generateWithAI, Type, getToday, dailyResponseSchema: responseSchema, ideaSchema } = AI;
 
 console.log('[DEBUG] Server starting, imports resolved.');
-debugger;
-
 // Load modules dynamically to bypass persistent tsx resolution issues
 async function getUsageModule() {
   return await import('./api/_lib/usage');
@@ -169,7 +167,6 @@ app.post('/api/generate/daily', async (req, res) => {
     console.log(`[SERVER] Initiating singleton generation for ${today}...`);
     const { fetchLiveSignals, formatSignalsForPrompt } = await getSignalsModule();
     console.log('[DEBUG] Fetching live signals...');
-    debugger;
     const signals = await fetchLiveSignals();
     console.log('[DEBUG] Live signals fetched:', !!signals);
     const signalContext = formatSignalsForPrompt(signals);

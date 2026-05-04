@@ -1,12 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import {
-  BarChart3,
-  Shield,
-  Loader2,
-  Wand2,
-  Zap,
-} from 'lucide-react';
+import { BarChart3, Shield, Loader2, Wand2, Zap } from 'lucide-react';
 import { Idea } from '../../types';
 import { ToolkitSkeleton } from '../layout/SkeletonLoaders';
 

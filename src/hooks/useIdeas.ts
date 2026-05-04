@@ -84,7 +84,7 @@ export function useIdeas(user: User | null, tier: Tier, authReady: boolean) {
     try {
       // If dailyGen already exists, this is a REFRESH (admin only)
       const isRefresh = !!dailyGen;
-      
+
       const result = await generateDailyIdeas(undefined, undefined, isRefresh);
       const newGen: DailyGeneration = {
         date: today,

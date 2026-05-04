@@ -44,7 +44,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const db = getAdminDb();
     const docRef = db.collection('daily_generations').doc(today);
-    
+
     // 1. Singleton Check: If it exists, return it immediately UNLESS refresh is requested
     if (!refresh) {
       const existing = await docRef.get();
@@ -120,7 +120,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.json(data);
   } catch (err: any) {
     console.error('[daily] Generation error:', err);
-    
+
     // Attempt to unlock on failure
     try {
       const db = getAdminDb();
@@ -129,6 +129,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // Ignore unlock errors
     }
 
-    return res.status(503).json({ error: 'AI generation temporarily unavailable. ' + (err?.message || '') });
+    return res
+      .status(503)
+      .json({ error: 'AI generation temporarily unavailable. ' + (err?.message || '') });
   }
 }

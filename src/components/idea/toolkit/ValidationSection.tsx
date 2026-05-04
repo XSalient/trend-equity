@@ -124,7 +124,9 @@ export const ValidationSection: React.FC<ValidationSectionProps> = ({
           <div className="space-y-4">
             <div className="flex items-center gap-2 text-emerald-400">
               <Target className="w-4 h-4" />
-              <span className="text-xs font-bold uppercase tracking-wider">Smoke Test Strategy</span>
+              <span className="text-xs font-bold uppercase tracking-wider">
+                Smoke Test Strategy
+              </span>
             </div>
             <div className="p-4 bg-emerald-500/5 rounded-xl border border-emerald-500/10">
               <p className="text-xs text-zinc-300 leading-relaxed italic">

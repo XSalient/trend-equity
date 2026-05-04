@@ -45,7 +45,11 @@ function authHeaders(): Record<string, string> {
   return headers;
 }
 
-export async function generateDailyIdeas(country?: string, countryCount?: number, refresh?: boolean) {
+export async function generateDailyIdeas(
+  country?: string,
+  countryCount?: number,
+  refresh?: boolean
+) {
   const response = await fetch(`${API_BASE}/api/generate/daily`, {
     method: 'POST',
     headers: authHeaders(),

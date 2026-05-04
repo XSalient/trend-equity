@@ -1,5 +1,14 @@
 import React from 'react';
-import { X, CheckCircle2, Circle, Trash2, Plus, HelpCircle, Loader2, RefreshCw } from 'lucide-react';
+import {
+  X,
+  CheckCircle2,
+  Circle,
+  Trash2,
+  Plus,
+  HelpCircle,
+  Loader2,
+  RefreshCw,
+} from 'lucide-react';
 import { Idea } from '../../../types';
 import { ToolkitSkeleton } from '../../layout/SkeletonLoaders';
 
@@ -96,7 +105,9 @@ export const RoadmapSection: React.FC<RoadmapSectionProps> = ({
               className="p-2 text-zinc-500 hover:text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition-all disabled:opacity-50"
               title="Force refresh analysis"
             >
-              <RefreshCw className={`w-4 h-4 ${isRefreshing || isGeneratingPlan ? 'animate-spin' : ''}`} />
+              <RefreshCw
+                className={`w-4 h-4 ${isRefreshing || isGeneratingPlan ? 'animate-spin' : ''}`}
+              />
             </button>
           )}
           <button
@@ -130,7 +141,11 @@ export const RoadmapSection: React.FC<RoadmapSectionProps> = ({
                     item.isDone ? 'text-emerald-500' : 'text-zinc-600 hover:text-zinc-400'
                   }`}
                 >
-                  {item.isDone ? <CheckCircle2 className="w-5 h-5" /> : <Circle className="w-5 h-5" />}
+                  {item.isDone ? (
+                    <CheckCircle2 className="w-5 h-5" />
+                  ) : (
+                    <Circle className="w-5 h-5" />
+                  )}
                 </button>
                 <div className="flex-1 space-y-1.5">
                   <div className="flex items-center justify-between gap-2">
@@ -162,7 +177,9 @@ export const RoadmapSection: React.FC<RoadmapSectionProps> = ({
                       )}
                     </div>
                   </div>
-                  <p className="text-xs text-zinc-400 leading-relaxed">{safeString(item.details)}</p>
+                  <p className="text-xs text-zinc-400 leading-relaxed">
+                    {safeString(item.details)}
+                  </p>
                   <div className="flex items-center gap-4 pt-1">
                     {item.milestone && (
                       <div className="flex items-center gap-1.5">
@@ -235,10 +252,7 @@ export const RoadmapSection: React.FC<RoadmapSectionProps> = ({
         <div className="absolute inset-0 z-50 bg-zinc-950/90 backdrop-blur-sm p-6 flex flex-col justify-center">
           <div className="flex items-center justify-between mb-4">
             <h5 className="text-sm font-bold text-emerald-400">Expert Explanation</h5>
-            <button
-              onClick={() => setExplanation(null)}
-              className="text-zinc-500 hover:text-white"
-            >
+            <button onClick={() => setExplanation(null)} className="text-zinc-500 hover:text-white">
               <X className="w-4 h-4" />
             </button>
           </div>

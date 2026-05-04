@@ -13,10 +13,7 @@ const safeString = (val: any) => {
   return JSON.stringify(val);
 };
 
-export const ProgressSection: React.FC<ProgressSectionProps> = ({
-  idea,
-  setActiveToolkit,
-}) => {
+export const ProgressSection: React.FC<ProgressSectionProps> = ({ idea, setActiveToolkit }) => {
   const fullPlan = idea.fullActionPlan;
   if (!fullPlan) return null;
 

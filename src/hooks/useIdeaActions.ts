@@ -10,7 +10,7 @@ import {
 
 export function useIdeaActions(idea: Idea, onUpdateIdea?: (idea: Idea) => void) {
   const ideaRef = useRef(idea);
-  
+
   // Sync ref whenever idea prop changes
   useEffect(() => {
     ideaRef.current = idea;

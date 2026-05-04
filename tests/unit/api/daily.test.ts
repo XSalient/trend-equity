@@ -99,7 +99,9 @@ describe('POST /api/generate/daily', () => {
     };
     mockGetAdminDb.mockReturnValue({
       collection: vi.fn().mockReturnValue({ doc: vi.fn().mockReturnValue(mockDocRef) }),
-      runTransaction: vi.fn((cb) => cb({ get: vi.fn().mockResolvedValue({ exists: false }), set: vi.fn() })),
+      runTransaction: vi.fn((cb) =>
+        cb({ get: vi.fn().mockResolvedValue({ exists: false }), set: vi.fn() })
+      ),
     });
   });
 

@@ -34,26 +34,19 @@ export function useAuth() {
   const handleLogin = async () => {
     try {
       const provider = new GoogleAuthProvider();
-      if (Capacitor.isNativePlatform()) {
-        // Popups are blocked in native WebViews — use full-page redirect instead
+      const isLocalhost =
+        window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
+      if (Capacitor.isNativePlatform() || !isLocalhost) {
+        // Use redirect for native and production to avoid popup blockers
         await signInWithRedirect(auth, provider);
       } else {
+        // Local dev optimization: popups are fine here
         try {
           await signInWithPopup(auth, provider);
         } catch (err: any) {
           console.warn('Login popup issue:', err.code, err.message);
-          // If popup is blocked, cancelled, or has an internal error, fallback to redirect
-          const shouldRedirect =
-            err.code === 'auth/popup-blocked' ||
-            err.code === 'auth/internal-error' ||
-            err.message?.toLowerCase().includes('popup');
-
-          if (shouldRedirect) {
-            console.info('Falling back to redirect sign-in...');
-            await signInWithRedirect(auth, provider);
-            return;
-          }
-          throw err;
+          await signInWithRedirect(auth, provider);
         }
       }
     } catch (err: any) {

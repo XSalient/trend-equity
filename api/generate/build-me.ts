@@ -106,9 +106,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.json({ ...data, _usage: await buildUsageResponse(uid, tier, featureType) });
   } catch (err: any) {
     console.error('[build-me] Generation error:', err);
-    return res.status(500).json({ 
+    return res.status(500).json({
       error: 'Build pack generation failed. Please try again.',
-      _details: err?.message 
+      _details: err?.message,
     });
   }
 }

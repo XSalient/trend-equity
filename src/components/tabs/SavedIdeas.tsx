@@ -56,7 +56,7 @@ export const SavedIdeasTab: React.FC<SavedIdeasTabProps> = ({
               </span>
             )}
           </div>
-          
+
           {tier !== 'free' && (
             <button
               onClick={onOpenAnalyzeModal}
@@ -105,7 +105,7 @@ export const SavedIdeasTab: React.FC<SavedIdeasTabProps> = ({
         ) : (
           <div className="p-8 rounded-xl border border-dashed border-zinc-800 text-center space-y-3 bg-zinc-900/20">
             <div className="w-10 h-10 bg-zinc-800/50 rounded-full flex items-center justify-center mx-auto text-zinc-600">
-               <Wand2 className="w-5 h-5" />
+              <Wand2 className="w-5 h-5" />
             </div>
             <div className="space-y-1">
               <p className="text-zinc-500 text-sm font-semibold">No custom ideas saved</p>

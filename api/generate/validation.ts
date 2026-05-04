@@ -108,8 +108,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.json({ ...data, _usage: await buildUsageResponse(uid, tier, featureType) });
   } catch (err: any) {
     console.error('[validation] Generation error:', err);
-    return res
-      .status(500)
-      .json({ error: 'Validation toolkit generation failed. Please try again.', _details: err?.message });
+    return res.status(500).json({
+      error: 'Validation toolkit generation failed. Please try again.',
+      _details: err?.message,
+    });
   }
 }

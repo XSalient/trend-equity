@@ -154,13 +154,13 @@ export function normalizeAIResponse<T extends object>(
 
   // Handle Case: AI returned an object but might be missing expected array fields or have corrupted string fields
   const result: any = { ...fallback };
-  
+
   const findKey = (target: string, obj: any) => {
     if (!obj || typeof obj !== 'object') return undefined;
     if (obj[target] !== undefined) return obj[target];
     const lowerTarget = target.toLowerCase();
-    const snakeTarget = target.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
-    
+    const snakeTarget = target.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
+
     for (const k in obj) {
       const lowerK = k.toLowerCase();
       if (lowerK === lowerTarget) return obj[k];
@@ -185,7 +185,7 @@ export function normalizeAIResponse<T extends object>(
       } else {
         // If the first item in fallback is a string, ensure all items in val are strings
         if (typeof fallbackVal[0] === 'string') {
-          result[key] = val.map(item => typeof item === 'string' ? item : JSON.stringify(item));
+          result[key] = val.map((item) => (typeof item === 'string' ? item : JSON.stringify(item)));
         } else {
           result[key] = val;
         }

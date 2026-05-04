@@ -3,12 +3,13 @@ import { jsPDF } from 'jspdf';
 
 export const exportToPDF = (idea: Idea, _format: string) => {
   try {
+    let doc: any;
     if (typeof jsPDF !== 'function' && typeof (jsPDF as any).jsPDF === 'function') {
       // Handle different build tool import behaviors
       const DocClass = (jsPDF as any).jsPDF;
-      var doc = new DocClass();
+      doc = new DocClass();
     } else {
-      var doc = new jsPDF();
+      doc = new jsPDF();
     }
     const margin = 20;
     let y = 20;
@@ -85,13 +86,15 @@ export const exportToPDF = (idea: Idea, _format: string) => {
       y += 8;
       doc.setFontSize(10);
       doc.setTextColor(0);
-      
+
       (idea.nextSteps || []).forEach((step, i) => {
-        const parts = safe(step).split('|').map((s) => s.trim());
+        const parts = safe(step)
+          .split('|')
+          .map((s) => s.trim());
         const title = parts[0] || safe(step);
         const timeline = parts[1];
         const risk = parts[2];
-        
+
         checkPage(15);
         doc.setFont('helvetica', 'bold');
         doc.text(`${i + 1}. ${title}`, margin + 5, y);
@@ -120,7 +123,7 @@ export const exportToPDF = (idea: Idea, _format: string) => {
     y += 7;
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(9);
-    
+
     const analysisY = y;
     let maxColY = y;
 
@@ -192,7 +195,11 @@ export const exportToPDF = (idea: Idea, _format: string) => {
 
       doc.setFontSize(12);
       doc.setTextColor(0);
-      doc.text(`VERDICT: ${safe(idea.expertVetting.verdict) || 'Moderate'} (Score: ${idea.expertVetting.score || 50}/100)`, margin + 5, y);
+      doc.text(
+        `VERDICT: ${safe(idea.expertVetting.verdict) || 'Moderate'} (Score: ${idea.expertVetting.score || 50}/100)`,
+        margin + 5,
+        y
+      );
       y += 8;
 
       doc.setFontSize(10);
@@ -223,7 +230,10 @@ export const exportToPDF = (idea: Idea, _format: string) => {
         if (idea.expertVetting?.riskMitigation?.[idx]) {
           doc.setFont('helvetica', 'italic');
           doc.setTextColor(16, 185, 129); // Emerald
-          const rmLines = doc.splitTextToSize(`Mitigation: ${safe(idea.expertVetting.riskMitigation[idx])}`, 150);
+          const rmLines = doc.splitTextToSize(
+            `Mitigation: ${safe(idea.expertVetting.riskMitigation[idx])}`,
+            150
+          );
           checkPage(rmLines.length * 5 + 5);
           doc.text(rmLines, margin + 15, y);
           y += rmLines.length * 5 + 3;
@@ -266,7 +276,11 @@ export const exportToPDF = (idea: Idea, _format: string) => {
       y += 10;
       doc.setFontSize(10);
       doc.setFont('helvetica', 'italic');
-      doc.text('Trigger expert vetting in the app to see risk assessment and pivot logic.', margin + 5, y);
+      doc.text(
+        'Trigger expert vetting in the app to see risk assessment and pivot logic.',
+        margin + 5,
+        y
+      );
       y += 15;
     }
 
@@ -289,7 +303,7 @@ export const exportToPDF = (idea: Idea, _format: string) => {
         const status = step.isDone ? '[DONE] ' : '[ ] ';
         const stepLines = doc.splitTextToSize(safe(step.details), 160);
         checkPage(stepLines.length * 5 + 15);
-        
+
         doc.setFontSize(11);
         doc.setFont('helvetica', 'bold');
         doc.text(`${status}${i + 1}. ${safe(step.step)}`, margin + 5, y);
@@ -346,7 +360,11 @@ export const exportToPDF = (idea: Idea, _format: string) => {
       y += 10;
       doc.setFontSize(10);
       doc.setFont('helvetica', 'italic');
-      doc.text('Generate the full action plan to see the detailed step-by-step roadmap.', margin + 5, y);
+      doc.text(
+        'Generate the full action plan to see the detailed step-by-step roadmap.',
+        margin + 5,
+        y
+      );
       y += 15;
     }
 
@@ -363,7 +381,7 @@ export const exportToPDF = (idea: Idea, _format: string) => {
       (idea.buildWithMe.promptPack || []).forEach((p) => {
         const pLines = doc.splitTextToSize(safe(p.prompt), 160);
         checkPage(pLines.length * 5 + 10);
-        
+
         doc.setFontSize(12);
         doc.setFont('helvetica', 'bold');
         doc.text(safe(p.title), margin + 5, y);
@@ -410,7 +428,11 @@ export const exportToPDF = (idea: Idea, _format: string) => {
       y += 10;
       doc.setFontSize(10);
       doc.setFont('helvetica', 'italic');
-      doc.text('Generate the Build Pack to get ready-to-use AI prompts and repo architecture.', margin + 5, y);
+      doc.text(
+        'Generate the Build Pack to get ready-to-use AI prompts and repo architecture.',
+        margin + 5,
+        y
+      );
       y += 15;
     }
 
@@ -429,14 +451,20 @@ export const exportToPDF = (idea: Idea, _format: string) => {
       y += 8;
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
-      const heroLines = doc.splitTextToSize(`Hero: ${safe(idea.validationToolkit.landingPage?.hero)}`, 160);
+      const heroLines = doc.splitTextToSize(
+        `Hero: ${safe(idea.validationToolkit.landingPage?.hero)}`,
+        160
+      );
       doc.text(heroLines, margin + 10, y);
       y += heroLines.length * 5 + 2;
-      
-      const subLines = doc.splitTextToSize(`Sub-hero: ${safe(idea.validationToolkit.landingPage?.subHero)}`, 160);
+
+      const subLines = doc.splitTextToSize(
+        `Sub-hero: ${safe(idea.validationToolkit.landingPage?.subHero)}`,
+        160
+      );
       doc.text(subLines, margin + 10, y);
       y += subLines.length * 5 + 5;
-      
+
       doc.setFont('helvetica', 'bold');
       doc.text('Value Props:', margin + 10, y);
       y += 6;
@@ -458,7 +486,10 @@ export const exportToPDF = (idea: Idea, _format: string) => {
       doc.text(smokeLines, margin + 10, y);
       y += smokeLines.length * 5 + 10;
 
-      if (idea.validationToolkit.successMetrics && idea.validationToolkit.successMetrics.length > 0) {
+      if (
+        idea.validationToolkit.successMetrics &&
+        idea.validationToolkit.successMetrics.length > 0
+      ) {
         checkPage(30);
         doc.setFontSize(12);
         doc.setFont('helvetica', 'bold');
@@ -496,7 +527,11 @@ export const exportToPDF = (idea: Idea, _format: string) => {
       y += 10;
       doc.setFontSize(10);
       doc.setFont('helvetica', 'italic');
-      doc.text('Generate the validation toolkit to see interview scripts and landing page copy.', margin + 5, y);
+      doc.text(
+        'Generate the validation toolkit to see interview scripts and landing page copy.',
+        margin + 5,
+        y
+      );
       y += 15;
     }
 
@@ -522,8 +557,16 @@ export const exportToPDF = (idea: Idea, _format: string) => {
     doc.setFontSize(9);
     doc.setTextColor(150);
     const footerY = 285;
-    doc.text(` 2026 Trend-Equity Intelligence Unit | Generated on ${new Date().toLocaleDateString()}`, margin, footerY);
-    doc.text('Confidential Analysis - Builder Tier Access Only', 190 - doc.getTextWidth('Confidential Analysis - Builder Tier Access Only'), footerY);
+    doc.text(
+      ` 2026 Trend-Equity Intelligence Unit | Generated on ${new Date().toLocaleDateString()}`,
+      margin,
+      footerY
+    );
+    doc.text(
+      'Confidential Analysis - Builder Tier Access Only',
+      190 - doc.getTextWidth('Confidential Analysis - Builder Tier Access Only'),
+      footerY
+    );
 
     doc.save(`${safe(idea.headline).replace(/\s+/g, '_')}_TrendEquity_Report.pdf`);
   } catch (err) {
@@ -532,7 +575,6 @@ export const exportToPDF = (idea: Idea, _format: string) => {
   }
 };
 
-
 export const generateNotionMarkdown = (idea: Idea): string => {
   let md = `# ${idea.headline}\n\n`;
   md += `**Tags**: ${(idea.categoryTags || []).join(', ')}\n`;
@@ -540,7 +582,7 @@ export const generateNotionMarkdown = (idea: Idea): string => {
   md += `> ${idea.pitch}\n\n`;
 
   md += `## VC Justification\n${idea.vcJustification}\n\n`;
-  
+
   if (idea.unfairAdvantage) {
     md += `## Unfair Advantage\n${idea.unfairAdvantage}\n\n`;
   }

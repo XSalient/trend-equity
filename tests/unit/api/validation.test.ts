@@ -10,7 +10,7 @@ vi.mock('../../../api/_lib/ai-provider', () => ({
     OBJECT: 'OBJECT',
     STRING: 'STRING',
     ARRAY: 'ARRAY',
-    NUMBER: 'NUMBER'
+    NUMBER: 'NUMBER',
   },
   default: {
     generateWithAI: vi.fn(),
@@ -19,23 +19,23 @@ vi.mock('../../../api/_lib/ai-provider', () => ({
       OBJECT: 'OBJECT',
       STRING: 'STRING',
       ARRAY: 'ARRAY',
-      NUMBER: 'NUMBER'
-    }
-  }
+      NUMBER: 'NUMBER',
+    },
+  },
 }));
 
 vi.mock('../../../api/_lib/cache', () => ({
   getCached: vi.fn(),
-  setCached: vi.fn()
+  setCached: vi.fn(),
 }));
 
 vi.mock('../../../api/_lib/auth', () => ({
-  getAuthContext: vi.fn()
+  getAuthContext: vi.fn(),
 }));
 
 vi.mock('../../../api/_lib/usage', () => ({
   checkAndIncrementUsage: vi.fn(),
-  buildUsageResponse: vi.fn()
+  buildUsageResponse: vi.fn(),
 }));
 
 import { generateWithAI } from '../../../api/_lib/ai-provider';
@@ -70,7 +70,12 @@ describe('validation handler', () => {
     vi.mocked(getAuthContext).mockResolvedValue({ uid: 'user1', tier: 'builder' });
     vi.mocked(getCached).mockResolvedValue(null);
     vi.mocked(checkAndIncrementUsage).mockResolvedValue({ allowed: true, limit: 10 } as any);
-    vi.mocked(generateWithAI).mockResolvedValue({ landingPage: { hero: 'Test Hero', subHero: 'Test Sub', valueProps: [] }, interviewScript: [], smokeTest: 'Test Smoke', successMetrics: [] });
+    vi.mocked(generateWithAI).mockResolvedValue({
+      landingPage: { hero: 'Test Hero', subHero: 'Test Sub', valueProps: [] },
+      interviewScript: [],
+      smokeTest: 'Test Smoke',
+      successMetrics: [],
+    });
 
     await handler(req as any, res as any);
 

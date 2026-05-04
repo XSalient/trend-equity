@@ -1,5 +1,10 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { generateWithAI, ideaSchema, DEFAULT_SYSTEM_PROMPT, normalizeAIResponse } from '../_lib/ai-provider';
+import {
+  generateWithAI,
+  ideaSchema,
+  DEFAULT_SYSTEM_PROMPT,
+  normalizeAIResponse,
+} from '../_lib/ai-provider';
 import { getAuthContext } from '../_lib/auth';
 import { checkAndIncrementMonthlyUsage, buildMonthlyUsageResponse } from '../_lib/usage';
 import { getTierConfig, getAnalyzeIdeaLimit } from '../_lib/tier-config';
