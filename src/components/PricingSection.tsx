@@ -147,7 +147,7 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
         <p className="text-zinc-500 text-sm">No ads ever. Just high-signal opportunities.</p>
       </div>
 
-      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid md:grid-cols-3 gap-6">
         {/* Free Plan */}
         <div
           onClick={() => setSelectedTier('free')}
@@ -300,37 +300,35 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
             {currentPlan === 'builder' ? 'CURRENT PLAN' : 'UPGRADE TO BUILDER'}
           </button>
         </div>
+      </div>
 
-        {/* Enterprise Plan (Validation) */}
-        <div
-          onClick={() => (window.location.href = '/enterprise')}
-          className="p-6 rounded-3xl border border-zinc-800 bg-zinc-900/50 space-y-6 flex flex-col cursor-pointer hover:border-emerald-500/50 transition-all duration-200 group"
-        >
-          <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <h4 className="text-lg font-black uppercase italic">Enterprise</h4>
-              <p className="text-3xl font-black">Custom</p>
+      {/* Enterprise Upgrade Option */}
+      <div
+        onClick={() => (window.location.href = '/enterprise')}
+        className="p-1 rounded-3xl bg-gradient-to-r from-emerald-500/20 via-emerald-500/40 to-emerald-500/20 border border-emerald-500/30 cursor-pointer group hover:scale-[1.01] transition-all duration-300"
+      >
+        <div className="bg-zinc-950 p-6 rounded-[22px] flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-emerald-500/10 rounded-2xl group-hover:bg-emerald-500/20 transition-colors">
+              <Users className="w-6 h-6 text-emerald-500" />
             </div>
-            <div className="p-2 bg-emerald-500/10 rounded-xl group-hover:bg-emerald-500/20 transition-colors">
-              <Users className="w-5 h-5 text-emerald-500" />
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <h4 className="text-xl font-black uppercase italic tracking-tight">
+                  Enterprise Intelligence
+                </h4>
+                <span className="px-2 py-0.5 bg-emerald-500 text-black text-[8px] font-black uppercase tracking-widest rounded-full">
+                  New
+                </span>
+              </div>
+              <p className="text-zinc-500 text-xs max-w-md">
+                Custom deal flow intelligence and sector white space analysis for VC partners and
+                corporate innovation teams.
+              </p>
             </div>
           </div>
-          <ul className="space-y-3 flex-1">
-            <li className="flex items-center gap-2 text-xs text-zinc-400">
-              <CheckCircle2 className="w-4 h-4 text-emerald-500" /> Deal Flow Intelligence
-            </li>
-            <li className="flex items-center gap-2 text-xs text-zinc-400">
-              <CheckCircle2 className="w-4 h-4 text-emerald-500" /> Sector Trend Monitoring
-            </li>
-            <li className="flex items-center gap-2 text-xs text-zinc-400">
-              <CheckCircle2 className="w-4 h-4 text-emerald-500" /> White Space Analysis
-            </li>
-            <li className="flex items-center gap-2 text-xs text-zinc-400">
-              <CheckCircle2 className="w-4 h-4 text-emerald-500" /> Thesis Alignment
-            </li>
-          </ul>
-          <button className="w-full py-2 rounded-xl text-xs font-bold uppercase tracking-widest bg-emerald-500 hover:bg-emerald-400 text-black transition-all">
-            LEARN MORE
+          <button className="whitespace-nowrap px-8 py-3 rounded-xl text-xs font-black uppercase tracking-widest bg-emerald-500 hover:bg-emerald-400 text-black transition-all shadow-lg shadow-emerald-500/20">
+            Request Early Access
           </button>
         </div>
       </div>
@@ -353,7 +351,7 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
               : `Preview: ${selectedTier.toUpperCase()} Features`}
           </p>
           <div
-            className={`grid grid-cols-2 md:grid-cols-${Math.max((TIER_SHOWCASE[selectedTier] ?? TIER_SHOWCASE['free']).length, 4)} gap-4`}
+            className={`grid grid-cols-2 md:grid-cols-${Math.max((TIER_SHOWCASE[selectedTier] ?? TIER_SHOWCASE['free']).length, 3)} gap-4`}
           >
             {(TIER_SHOWCASE[selectedTier] ?? TIER_SHOWCASE['free']).map((item, i) => {
               const isClickable = item.onClick && currentPlan === 'builder';
