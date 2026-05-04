@@ -1,6 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import AI from '../_lib/ai-provider';
-const { generateWithAI, Type } = AI;
+import { generateWithAI, Type, normalizeAIResponse } from '../_lib/ai-provider';
 import { getCached, setCached } from '../_lib/cache';
 import { getAuthContext } from '../_lib/auth';
 import { checkAndIncrementUsage, buildUsageResponse } from '../_lib/usage';
@@ -36,7 +35,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const uid = authCtx?.uid;
   const tier = authCtx?.tier || 'free';
 
-  const { idea } = req.body;
+  const { idea, refresh } = req.body;
 
   // FIX (B-8, D-1): Validate required input before use
   if (!idea || typeof idea !== 'object') {
@@ -57,7 +56,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const cached = await getCached(cacheKey);
-    if (cached) {
+    if (cached && !refresh) {
       return res.json({
         ...cached,
         _cached: true,
@@ -75,12 +74,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    const rawData = await generateWithAI(
-      `Generate a detailed action plan and roadmap for building this startup idea: ${safeHeadline}`,
-      schema
-    );
+    const prompt = `
+      You are Trend-Equity's principal product strategist. Generate a high-conviction implementation roadmap for the startup idea: "${safeHeadline}".
+      
+      TASK:
+      Create a detailed 4-phase roadmap (30-60-90 day + scaling) and identifying necessary tools and risks.
+      
+      REQUIRED JSON STRUCTURE:
+      - roadmap: An array of objects, each with:
+        - id: string (e.g. "step-1")
+        - step: string (Phase name or main task)
+        - details: string (2-3 sentences of specific implementation advice)
+        - milestone: string (A clear KPI or output for this step)
+      - tools: An array of 5-7 specific technical tools or platforms (e.g. "Vercel", "Supabase", "Stripe").
+      - risks: An array of 3-4 specific business or technical risks.
+      - timeline: A short string summarizing the total time to MVP.
+      
+      IMPORTANT: You MUST return a valid JSON object matching the schema. No conversational text.
+    `;
 
-    const { normalizeAIResponse } = require('../_lib/ai-provider');
+    const rawData = await generateWithAI(prompt, schema);
+
     const data = normalizeAIResponse(rawData, ['roadmap', 'tools', 'risks'], {
       roadmap: [],
       tools: [],

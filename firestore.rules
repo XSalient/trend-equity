@@ -43,12 +43,12 @@ service cloud.firestore {
     }
 
     match /daily_generations/{date} {
-      allow read: if true;
+      allow get, list: if true;
       allow write: if isAdmin();
     }
 
     match /app_config/{docId} {
-      allow read: if true;
+      allow get, list: if true;
       allow write: if isAdmin();
     }
 

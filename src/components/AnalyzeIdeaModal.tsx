@@ -11,7 +11,7 @@ interface AnalyzeIdeaModalProps {
   user: any;
   handleLogin: () => void;
   onAnalyzeComplete: (idea: Idea) => void;
-  onSaveCustomIdea: (idea: Idea) => void;
+  onSaveCustomIdea: (idea: Idea, userInput?: string) => void;
   customSavesCount: number;
   analyzeIdeaHook: {
     isAnalyzing: boolean;
@@ -53,6 +53,7 @@ export const AnalyzeIdeaModal: React.FC<AnalyzeIdeaModalProps> = ({
   const [phase, setPhase] = useState<Phase>('input');
   const [loadingMsgIdx, setLoadingMsgIdx] = useState(0);
   const [justSavedCustom, setJustSavedCustom] = useState(false);
+  const [analysisDescription, setAnalysisDescription] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const {
@@ -99,7 +100,9 @@ export const AnalyzeIdeaModal: React.FC<AnalyzeIdeaModalProps> = ({
   const handleAnalyze = async () => {
     setPhase('loading');
     setLoadingMsgIdx(0);
-    const idea = await analyze(inputText);
+    const description = inputText.trim();
+    setAnalysisDescription(description);
+    const idea = await analyze(description);
     if (idea) {
       setPhase('result');
       onAnalyzeComplete(idea);
@@ -110,7 +113,7 @@ export const AnalyzeIdeaModal: React.FC<AnalyzeIdeaModalProps> = ({
 
   const handleSaveCustom = () => {
     if (!analyzedIdea) return;
-    onSaveCustomIdea(analyzedIdea);
+    onSaveCustomIdea(analyzedIdea, analysisDescription);
     setJustSavedCustom(true);
   };
 
@@ -275,6 +278,11 @@ export const AnalyzeIdeaModal: React.FC<AnalyzeIdeaModalProps> = ({
                 isSaved={false}
                 onToggleSave={() => {}} // toggling handled via "Save to Custom Ideas" below
                 onUpdateIdea={(updated) => {
+                  // Important: Update the local analysis state so UI reflects changes
+                  if (analyzeIdeaHook.updateAnalyzedIdea) {
+                    analyzeIdeaHook.updateAnalyzedIdea(updated);
+                  }
+                  // Also call the global update if it's already saved
                   updateIdea(updated);
                 }}
                 isSaving={false}
@@ -282,6 +290,7 @@ export const AnalyzeIdeaModal: React.FC<AnalyzeIdeaModalProps> = ({
                 onExport={(fmt) => exportToPDF(analyzedIdea, fmt)}
                 user={user}
                 handleLogin={handleLogin}
+                userInput={analysisDescription}
               />
 
               {/* Save to Custom Ideas */}

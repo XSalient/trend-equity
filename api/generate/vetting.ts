@@ -1,6 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import AI from '../_lib/ai-provider';
-const { generateWithAI, Type } = AI;
+import { generateWithAI, Type, normalizeAIResponse } from '../_lib/ai-provider';
 import { getCached, setCached } from '../_lib/cache';
 import { getAuthContext } from '../_lib/auth';
 import { checkAndIncrementUsage, buildUsageResponse } from '../_lib/usage';
@@ -12,10 +11,19 @@ const schema = {
     verdict: { type: Type.STRING, enum: ['High Conviction', 'Moderate', 'Pass'] },
     strengths: { type: Type.ARRAY, items: { type: Type.STRING } },
     weaknesses: { type: Type.ARRAY, items: { type: Type.STRING } },
+    riskMitigation: { type: Type.ARRAY, items: { type: Type.STRING } },
     pivotSuggestions: { type: Type.ARRAY, items: { type: Type.STRING } },
     comparableExits: { type: Type.ARRAY, items: { type: Type.STRING } },
   },
-  required: ['score', 'verdict', 'strengths', 'weaknesses', 'pivotSuggestions', 'comparableExits'],
+  required: [
+    'score',
+    'verdict',
+    'strengths',
+    'weaknesses',
+    'riskMitigation',
+    'pivotSuggestions',
+    'comparableExits',
+  ],
 };
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -25,7 +33,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const uid = authCtx?.uid;
   const tier = authCtx?.tier || 'free';
 
-  const { idea } = req.body;
+  const { idea, refresh } = req.body;
 
   // FIX (B-9, D-1): Validate required input
   if (!idea || typeof idea !== 'object') {
@@ -45,7 +53,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const cached = await getCached(cacheKey);
-    if (cached) {
+    if (cached && !refresh) {
       return res.json({
         ...cached,
         _cached: true,
@@ -64,19 +72,32 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const rawData = await generateWithAI(
-      `Perform expert VC-grade vetting for this startup idea: ${safeHeadline}`,
+      `Perform expert VC-grade vetting for this startup idea: ${safeHeadline}
+      
+      PITCH: ${idea.pitch || ''}
+      JUSTIFICATION: ${idea.vcJustification || ''}
+      
+      TASK:
+      1. Score 1-100 and provide a verdict.
+      2. List 3-5 core strengths.
+      3. List 3-5 critical weaknesses/risks.
+      4. For EACH weakness, provide a specific risk mitigation strategy.
+      5. Provide 3 pivot suggestions if needed.
+      6. List 3 comparable startup exits.
+      
+      IMPORTANT: Return riskMitigation as an array of strings corresponding to the weaknesses.`,
       schema
     );
 
-    const { normalizeAIResponse } = require('../_lib/ai-provider');
     const data = normalizeAIResponse(
       rawData,
-      ['strengths', 'weaknesses', 'pivotSuggestions', 'comparableExits'],
+      ['strengths', 'weaknesses', 'riskMitigation', 'pivotSuggestions', 'comparableExits'],
       {
         score: 50,
         verdict: 'Moderate',
         strengths: [],
         weaknesses: [],
+        riskMitigation: [],
         pivotSuggestions: [],
         comparableExits: [],
         generatedAt: new Date().toISOString(),

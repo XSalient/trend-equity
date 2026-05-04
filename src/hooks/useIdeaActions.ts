@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Idea, ExpertVetting } from '../types';
 import {
   generateFullActionPlan,
@@ -9,6 +9,13 @@ import {
 } from '../services/geminiService';
 
 export function useIdeaActions(idea: Idea, onUpdateIdea?: (idea: Idea) => void) {
+  const ideaRef = useRef(idea);
+  
+  // Sync ref whenever idea prop changes
+  useEffect(() => {
+    ideaRef.current = idea;
+  }, [idea]);
+
   const [isGeneratingPlan, setIsGeneratingPlan] = useState(false);
   const [isGeneratingBuild, setIsGeneratingBuild] = useState(false);
   const [isGeneratingValidation, setIsGeneratingValidation] = useState(false);
@@ -23,64 +30,74 @@ export function useIdeaActions(idea: Idea, onUpdateIdea?: (idea: Idea) => void) 
 
   const clearActionError = () => setActionError(null);
 
-  const handleGenerateFullPlan = async () => {
-    setIsGeneratingPlan(true);
-    setActionError(null);
-    try {
-      const plan = await generateFullActionPlan(idea);
-      const updatedIdea = {
-        ...idea,
-        fullActionPlan: { ...plan, generatedAt: new Date().toISOString() },
-      };
-      onUpdateIdea?.(updatedIdea);
-      return true;
-    } catch (error: any) {
-      console.error('Failed to generate full plan:', error);
-      // FIX (U-1, U-7): Set error state instead of using alert()
-      setActionError(error?.message || 'Failed to generate action plan. Please try again.');
-      return false;
-    } finally {
-      setIsGeneratingPlan(false);
+  const handleError = (error: any, fallback: string) => {
+    console.error(fallback, error);
+    if (typeof error === 'string') {
+      setActionError(error);
+    } else if (error?.message) {
+      // If message is an object (like Zod issues), stringify it or take a generic message
+      if (typeof error.message === 'string') {
+        setActionError(error.message);
+      } else {
+        setActionError(JSON.stringify(error.message));
+      }
+    } else {
+      setActionError(fallback);
     }
   };
 
-  const handleGenerateBuild = async () => {
+  const handleGenerateFullPlan = async (refresh?: boolean) => {
+    setIsGeneratingPlan(true);
+    setActionError(null);
+    try {
+      const plan = await generateFullActionPlan(idea, refresh);
+      const updatedIdea = {
+        ...ideaRef.current,
+        fullActionPlan: { ...plan, generatedAt: new Date().toISOString() },
+      };
+      setIsGeneratingPlan(false);
+      onUpdateIdea?.(updatedIdea);
+      return true;
+    } catch (error: any) {
+      handleError(error, 'Failed to generate action plan. Please try again.');
+      setIsGeneratingPlan(false);
+      return false;
+    }
+  };
+
+  const handleGenerateBuild = async (refresh?: boolean) => {
     setIsGeneratingBuild(true);
     setActionError(null);
     try {
-      const build = await generateBuildWithMe(idea);
+      const build = await generateBuildWithMe(idea, refresh);
+      setIsGeneratingBuild(false);
       onUpdateIdea?.({
-        ...idea,
+        ...ideaRef.current,
         buildWithMe: { ...build, generatedAt: new Date().toISOString() },
       });
       return true;
     } catch (error: any) {
-      console.error('Failed to generate build toolkit:', error);
-      // FIX (U-1): Previously swallowed silently — now surfaces to the user
-      setActionError(error?.message || 'Failed to generate build toolkit. Please try again.');
-      return false;
-    } finally {
+      handleError(error, 'Failed to generate build toolkit. Please try again.');
       setIsGeneratingBuild(false);
+      return false;
     }
   };
 
-  const handleGenerateValidation = async () => {
+  const handleGenerateValidation = async (refresh?: boolean) => {
     setIsGeneratingValidation(true);
     setActionError(null);
     try {
-      const validation = await generateValidationToolkit(idea);
+      const validation = await generateValidationToolkit(idea, refresh);
+      setIsGeneratingValidation(false);
       onUpdateIdea?.({
-        ...idea,
+        ...ideaRef.current,
         validationToolkit: { ...validation, generatedAt: new Date().toISOString() },
       });
       return true;
     } catch (error: any) {
-      console.error('Failed to generate validation toolkit:', error);
-      // FIX (U-1): Previously swallowed silently — now surfaces to the user
-      setActionError(error?.message || 'Failed to generate validation toolkit. Please try again.');
-      return false;
-    } finally {
+      handleError(error, 'Failed to generate validation toolkit. Please try again.');
       setIsGeneratingValidation(false);
+      return false;
     }
   };
 
@@ -91,25 +108,22 @@ export function useIdeaActions(idea: Idea, onUpdateIdea?: (idea: Idea) => void) 
       const text = await explainPlanSection(idea, section, context);
       setExplanation({ section, text });
     } catch (error: any) {
-      console.error('Failed to explain section:', error);
-      setActionError('Explanation unavailable. Please try again.');
+      handleError(error, 'Explanation unavailable. Please try again.');
     } finally {
       setExplainingSection(null);
     }
   };
 
-  const handleExpertVetting = async () => {
+  const handleExpertVetting = async (refresh?: boolean) => {
     setIsVetting(true);
     setActionError(null);
     try {
-      const result = await generateExpertVetting(idea);
+      const result = await generateExpertVetting(idea, refresh);
       setVettingResult(result);
-      onUpdateIdea?.({ ...idea, expertVetting: result });
+      onUpdateIdea?.({ ...ideaRef.current, expertVetting: result });
       return true;
     } catch (error: any) {
-      console.error('Failed to vet idea:', error);
-      // FIX (U-1): Previously swallowed silently — now surfaces to the user
-      setActionError(error?.message || 'Expert vetting failed. Please try again.');
+      handleError(error, 'Expert vetting failed. Please try again.');
       return false;
     } finally {
       setIsVetting(false);

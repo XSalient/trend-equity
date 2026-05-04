@@ -33,9 +33,10 @@ function SectionLabel({
 }
 
 export const IdeaCardAnalysis: React.FC<IdeaCardAnalysisProps> = ({ idea }) => {
-  const regulatoryColor = idea.regulatoryFlags?.startsWith('High')
+  const regFlags = String(idea.regulatoryFlags || '');
+  const regulatoryColor = regFlags.startsWith('High')
     ? 'text-red-400'
-    : idea.regulatoryFlags?.startsWith('Medium')
+    : regFlags.startsWith('Medium')
       ? 'text-amber-400'
       : 'text-green-400';
 

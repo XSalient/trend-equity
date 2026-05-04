@@ -1,6 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import AI from '../_lib/ai-provider';
-const { generateWithAI, Type } = AI;
+import { generateWithAI, Type, normalizeAIResponse } from '../_lib/ai-provider';
 import { getCached, setCached } from '../_lib/cache';
 import { getAuthContext } from '../_lib/auth';
 import { checkAndIncrementUsage, buildUsageResponse } from '../_lib/usage';
@@ -32,7 +31,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const uid = authCtx?.uid;
   const tier = authCtx?.tier || 'free';
 
-  const { idea } = req.body;
+  const { idea, refresh } = req.body;
 
   // FIX (B-9, D-1): Validate required input
   if (!idea || typeof idea !== 'object') {
@@ -48,11 +47,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     .slice(0, 200);
 
   const featureType = 'build-me';
-  const cacheKey = idea?.id ? `build-me_${String(idea.id).slice(0, 100)}` : '';
+  // Bumping version to v3 to clear any corrupted cache
+  const cacheKey = idea?.id ? `build-me_v3_${String(idea.id).slice(0, 100)}` : '';
 
   try {
     const cached = await getCached(cacheKey);
-    if (cached) {
+    if (cached && !refresh) {
       return res.json({
         ...cached,
         _cached: true,
@@ -70,12 +70,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
+    console.log('[build-me] Generating for:', safeHeadline);
+
     const rawData = await generateWithAI(
-      `Generate a Build-with-me AI prompt pack and repo structure for: ${safeHeadline}`,
+      `Act as a Senior Technical Lead. Create a high-value "Build-with-Me" starter pack for this startup idea: ${safeHeadline}
+
+      PITCH: ${idea.pitch || ''}
+
+      TASK:
+      1. PROMPT PACK: Provide 3 high-leverage AI prompts (System Design, Data Schema, and Core Feature Logic) that a developer can copy-paste into an LLM to start implementation.
+      2. REPO STRUCTURE: Provide a clean, text-based visual tree of the recommended file structure (e.g., using ├── and └── characters). Do not return a JSON array.
+      3. FIRST 24 HOURS: List 5-7 technical tasks to get a functional MVP live within one day.
+
+      IMPORTANT: 
+      - Return exactly 3 prompts in the promptPack array.
+      - repoStructure must be a single string formatted as a visual file tree.`,
       schema
     );
 
-    const { normalizeAIResponse } = require('../_lib/ai-provider');
     const data = normalizeAIResponse(rawData, ['promptPack', 'first24Hours'], {
       promptPack: [],
       repoStructure: 'Project structure being generated...',
@@ -83,10 +95,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       generatedAt: new Date().toISOString(),
     });
 
+    // FIX: Ensure repoStructure is a string and formatted if AI returned an array
+    if (Array.isArray(data.repoStructure)) {
+      data.repoStructure = data.repoStructure.join('\n');
+    } else if (typeof data.repoStructure !== 'string') {
+      data.repoStructure = String(data.repoStructure || '');
+    }
+
     await setCached(cacheKey, data);
     return res.json({ ...data, _usage: await buildUsageResponse(uid, tier, featureType) });
   } catch (err: any) {
     console.error('[build-me] Generation error:', err);
-    return res.status(500).json({ error: 'Build pack generation failed. Please try again.' });
+    return res.status(500).json({ 
+      error: 'Build pack generation failed. Please try again.',
+      _details: err?.message 
+    });
   }
 }

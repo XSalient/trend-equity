@@ -6,6 +6,7 @@
 import { cert, getApps, initializeApp } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
+import { readFileSync } from 'fs';
 
 function initAdmin() {
   if (getApps().length > 0) return;
@@ -29,7 +30,6 @@ function initAdmin() {
   }
 
   if (serviceAccountPath) {
-    const { readFileSync } = require('fs');
     const sa = JSON.parse(readFileSync(serviceAccountPath, 'utf8'));
     initializeApp({ credential: cert(sa), projectId });
     return;

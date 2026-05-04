@@ -20,14 +20,14 @@ import { MOCK_RADAR_RESPONSE, MOCK_USAGE_RESPONSE } from '../helpers/fixtures';
 // ── Module mocks ──────────────────────────────────────────────────────────────
 
 const {
-  mockGenerateWithGemini,
+  mockGenerateWithAI,
   mockGetCached,
   mockSetCached,
   mockCheckAndIncrementUsage,
   mockBuildUsageResponse,
   mockGetAuthContext,
 } = vi.hoisted(() => ({
-  mockGenerateWithGemini: vi.fn(),
+  mockGenerateWithAI: vi.fn(),
   mockGetCached: vi.fn(),
   mockSetCached: vi.fn(),
   mockCheckAndIncrementUsage: vi.fn(),
@@ -35,11 +35,15 @@ const {
   mockGetAuthContext: vi.fn(),
 }));
 
-vi.mock('../../../api/_lib/gemini', () => ({
-  generateWithGemini: mockGenerateWithGemini,
-  radarSchema: { type: 'OBJECT' },
-  getToday: vi.fn(() => '2026-04-11'),
-}));
+vi.mock('../../../api/_lib/ai-provider', () => {
+  const mockAI = {
+    generateWithAI: mockGenerateWithAI,
+    normalizeAIResponse: vi.fn((data) => data),
+    radarSchema: { type: 'OBJECT' },
+    getToday: vi.fn(() => '2026-04-11'),
+  };
+  return { ...mockAI, default: mockAI };
+});
 
 vi.mock('../../../api/_lib/cache', () => ({
   getCached: mockGetCached,
@@ -64,7 +68,7 @@ describe('POST /api/generate/radar', () => {
     mockSetCached.mockResolvedValue(undefined);
     mockCheckAndIncrementUsage.mockResolvedValue({ allowed: true, remaining: 2, limit: 3 });
     mockBuildUsageResponse.mockResolvedValue({ ...MOCK_USAGE_RESPONSE, featureType: 'radar' });
-    mockGenerateWithGemini.mockResolvedValue(MOCK_RADAR_RESPONSE);
+    mockGenerateWithAI.mockResolvedValue(MOCK_RADAR_RESPONSE);
     mockGetAuthContext.mockResolvedValue(null); // unauthenticated by default
   });
 
@@ -95,7 +99,7 @@ describe('POST /api/generate/radar', () => {
     await handler(req, res);
 
     expect(res._body._cached).toBe(true);
-    expect(mockGenerateWithGemini).not.toHaveBeenCalled();
+    expect(mockGenerateWithAI).not.toHaveBeenCalled();
     expect(mockCheckAndIncrementUsage).not.toHaveBeenCalled();
   });
 
@@ -167,11 +171,11 @@ describe('POST /api/generate/radar', () => {
     expect(res._status).toBe(429);
     expect(res._body.error).toContain('limit reached');
     expect(res._body._usage.remaining).toBe(0);
-    expect(mockGenerateWithGemini).not.toHaveBeenCalled();
+    expect(mockGenerateWithAI).not.toHaveBeenCalled();
   });
 
   it('returns 503 when Gemini throws — no mock data in response', async () => {
-    mockGenerateWithGemini.mockRejectedValue(new Error('Gemini API error'));
+    mockGenerateWithAI.mockRejectedValue(new Error('Gemini API error'));
 
     const req = createMockRequest({ body: {} });
     const res = createMockResponse();

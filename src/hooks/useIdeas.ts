@@ -82,9 +82,10 @@ export function useIdeas(user: User | null, tier: Tier, authReady: boolean) {
     setGenerating(true);
     setError(null);
     try {
-      // Country is not passed — browser locale is unreliable (e.g. English speaker
-      // in Germany). Users can specify their market via Builder Personalization filters.
-      const result = await generateDailyIdeas();
+      // If dailyGen already exists, this is a REFRESH (admin only)
+      const isRefresh = !!dailyGen;
+      
+      const result = await generateDailyIdeas(undefined, undefined, isRefresh);
       const newGen: DailyGeneration = {
         date: today,
         intro: result.intro,
@@ -100,23 +101,25 @@ export function useIdeas(user: User | null, tier: Tier, authReady: boolean) {
       setCachedFeed(newGen);
     } catch (err: any) {
       console.error('Generation Error:', err);
-      setError('AI generation failed. Please refresh to try again.');
+      setError(err?.message || 'AI generation failed. Please refresh to try again.');
     } finally {
       setGenerating(false);
     }
-  }, [today, tier]);
+  }, [today, tier, dailyGen]);
 
   const fetchDaily = useCallback(
     async (isRetry = false) => {
       if (!isRetry) setLoading(true);
       setError(null);
 
-      // 1. Check localStorage first (instant, zero network)
-      const cached = getCachedFeed();
-      if (cached) {
-        setDailyGen(cached);
-        setLoading(false);
-        return;
+      // 1. Check localStorage first (instant, zero network) — BYPASS ON RETRY
+      if (!isRetry) {
+        const cached = getCachedFeed();
+        if (cached) {
+          setDailyGen(cached);
+          setLoading(false);
+          return;
+        }
       }
 
       // 2. Try Firestore
@@ -142,7 +145,6 @@ export function useIdeas(user: User | null, tier: Tier, authReady: boolean) {
         console.error('Fetch Error:', err);
         const msg = err?.message || '';
         if (msg.includes('permission-denied') || msg.includes('permissions')) {
-          // This is a real issue — likely rules or auth sync
           setError('Access denied. Please ensure you are signed in.');
         } else if (msg.includes('Quota exceeded')) {
           setError('Daily quota reached. Please try again tomorrow.');
@@ -155,7 +157,7 @@ export function useIdeas(user: User | null, tier: Tier, authReady: boolean) {
         setLoading(false);
       }
     },
-    [today, triggerGeneration]
+    [today]
   );
 
   useEffect(() => {
@@ -243,15 +245,14 @@ export function useIdeas(user: User | null, tier: Tier, authReady: boolean) {
     TIER_LIMITS: any,
     onLoginNeeded: () => void,
     onUpgradeNeeded: () => void,
-    saveType: 'feed' | 'custom' = 'feed'
+    saveType: 'feed' | 'custom' = 'feed',
+    userInput?: string
   ) => {
     if (!user) {
       onLoginNeeded();
       return;
     }
 
-    // FIX (B-5/B-6): Use TIER_LIMITS constant instead of hardcoded 5
-    // Only apply feed save limit for feed saves
     if (saveType === 'feed') {
       const saveLimit = TIER_LIMITS[tier]?.monthlySaves ?? Infinity;
       if (isFinite(saveLimit) && feedSaves.length >= saveLimit) {
@@ -272,39 +273,11 @@ export function useIdeas(user: User | null, tier: Tier, authReady: boolean) {
           idea,
           savedAt: serverTimestamp(),
           saveType,
+          userInput,
         });
       }
     } catch (err: any) {
       console.error('Save Error:', err);
-      setError('Failed to save idea. Please try again.');
-    }
-  };
-
-  const saveCustomIdea = async (
-    idea: Idea,
-    onLoginNeeded: () => void,
-    onUpgradeNeeded: () => void
-  ) => {
-    if (!user) {
-      onLoginNeeded();
-      return;
-    }
-    const customLimit = getCustomSavesLimit(tier);
-    if (customSaves.length >= customLimit) {
-      onUpgradeNeeded();
-      return;
-    }
-    const alreadySaved = customSaves.some((s) => s.idea.id === idea.id);
-    if (alreadySaved) return; // already saved — no-op
-    try {
-      await addDoc(collection(db, 'user_saves'), {
-        userId: user.uid,
-        idea,
-        savedAt: serverTimestamp(),
-        saveType: 'custom',
-      });
-    } catch (err: any) {
-      console.error('Custom Save Error:', err);
       setError('Failed to save idea. Please try again.');
     }
   };
@@ -327,10 +300,12 @@ export function useIdeas(user: User | null, tier: Tier, authReady: boolean) {
     }
 
     if (dailyGen && dailyGen.ideas.some((i) => i.id === updatedIdea.id)) {
-      setDailyGen({
+      const updatedFeed = {
         ...dailyGen,
         ideas: dailyGen.ideas.map((i) => (i.id === updatedIdea.id ? updatedIdea : i)),
-      });
+      };
+      setDailyGen(updatedFeed);
+      setCachedFeed(updatedFeed);
     }
   };
 
@@ -472,7 +447,6 @@ export function useIdeas(user: User | null, tier: Tier, authReady: boolean) {
     [filters, tier]
   );
 
-  // Derived saves — backwards compat: docs without saveType treated as 'feed'
   const feedSaves = userSaves.filter((s) => !s.saveType || s.saveType === 'feed');
   const customSaves = userSaves.filter((s) => s.saveType === 'custom');
 
@@ -487,7 +461,6 @@ export function useIdeas(user: User | null, tier: Tier, authReady: boolean) {
     filters,
     setFilters,
     toggleSave,
-    saveCustomIdea,
     updateIdea,
     getFilteredIdeas,
     triggerGeneration,

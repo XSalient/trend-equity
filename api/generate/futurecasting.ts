@@ -1,6 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import AI from '../_lib/ai-provider';
-const { generateWithAI, Type } = AI;
+import { generateWithAI, Type, normalizeAIResponse } from '../_lib/ai-provider';
 import { getCached, setCached } from '../_lib/cache';
 import { getAuthContext } from '../_lib/auth';
 import { checkAndIncrementUsage, buildUsageResponse } from '../_lib/usage';
@@ -82,7 +81,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       schema
     );
 
-    const { normalizeAIResponse } = require('../_lib/ai-provider');
     const data = normalizeAIResponse(rawData, ['predictions', 'paradigmShifts'], {
       horizon,
       predictions: [],

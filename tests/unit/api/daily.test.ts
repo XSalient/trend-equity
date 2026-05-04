@@ -21,7 +21,7 @@ import { generateMockIdeas, MOCK_DAILY_GENERATION } from '../helpers/fixtures';
 // ── Module mocks ──────────────────────────────────────────────────────────────
 
 const {
-  mockGenerateWithGemini,
+  mockGenerateWithAI,
   mockFetchLiveSignals,
   mockFormatSignalsForPrompt,
   mockGetRecentIdeaHeadlines,
@@ -29,7 +29,7 @@ const {
   mockGetAdminDb,
   mockCheckAndIncrementUsage,
 } = vi.hoisted(() => ({
-  mockGenerateWithGemini: vi.fn(),
+  mockGenerateWithAI: vi.fn(),
   mockFetchLiveSignals: vi.fn(),
   mockFormatSignalsForPrompt: vi.fn(),
   mockGetRecentIdeaHeadlines: vi.fn(),
@@ -38,11 +38,15 @@ const {
   mockCheckAndIncrementUsage: vi.fn(),
 }));
 
-vi.mock('../../../api/_lib/gemini', () => ({
-  generateWithGemini: mockGenerateWithGemini,
-  dailyResponseSchema: { type: 'OBJECT' },
-  getToday: vi.fn(() => '2026-04-11'),
-}));
+vi.mock('../../../api/_lib/ai-provider', () => {
+  const mockAI = {
+    generateWithAI: mockGenerateWithAI,
+    normalizeAIResponse: vi.fn((data) => data),
+    dailyResponseSchema: { type: 'OBJECT' },
+    getToday: vi.fn(() => '2026-04-11'),
+  };
+  return { ...mockAI, default: mockAI };
+});
 
 vi.mock('../../../api/_lib/signals', () => ({
   fetchLiveSignals: mockFetchLiveSignals,
@@ -83,17 +87,19 @@ describe('POST /api/generate/daily', () => {
     mockFetchLiveSignals.mockResolvedValue(EMPTY_SIGNALS);
     mockFormatSignalsForPrompt.mockReturnValue('');
     mockGetRecentIdeaHeadlines.mockResolvedValue([]);
-    mockGenerateWithGemini.mockResolvedValue(MOCK_DAILY_GENERATION);
-    // Auth: authenticated by default to bypass IP rate limiter (module-level state)
-    mockGetAuthContext.mockResolvedValue({ uid: 'user-1', tier: 'free' });
+    mockGenerateWithAI.mockResolvedValue(MOCK_DAILY_GENERATION);
+    // Auth: builder tier required to trigger daily generation
+    mockGetAuthContext.mockResolvedValue({ uid: 'user-1', tier: 'builder' });
     mockCheckAndIncrementUsage.mockResolvedValue({ allowed: true, remaining: 10, limit: null });
     // Admin Firestore: idempotent persist stub
     const mockDocRef = {
       get: vi.fn().mockResolvedValue({ exists: false }),
       set: vi.fn().mockResolvedValue(undefined),
+      delete: vi.fn().mockResolvedValue(undefined),
     };
     mockGetAdminDb.mockReturnValue({
       collection: vi.fn().mockReturnValue({ doc: vi.fn().mockReturnValue(mockDocRef) }),
+      runTransaction: vi.fn((cb) => cb({ get: vi.fn().mockResolvedValue({ exists: false }), set: vi.fn() })),
     });
   });
 
@@ -129,7 +135,7 @@ describe('POST /api/generate/daily', () => {
 
     await handler(req, res);
 
-    const promptArg: string = mockGenerateWithGemini.mock.calls[0][0];
+    const promptArg: string = mockGenerateWithAI.mock.calls[0][0];
     expect(promptArg).toContain('DO NOT REPEAT RECENT IDEAS');
     expect(promptArg).toContain('Old Idea 1');
     expect(promptArg).toContain('Old Idea 2');
@@ -143,7 +149,7 @@ describe('POST /api/generate/daily', () => {
 
     await handler(req, res);
 
-    const promptArg: string = mockGenerateWithGemini.mock.calls[0][0];
+    const promptArg: string = mockGenerateWithAI.mock.calls[0][0];
     expect(promptArg).not.toContain('DO NOT REPEAT RECENT IDEAS');
   });
 
@@ -155,7 +161,7 @@ describe('POST /api/generate/daily', () => {
 
     await handler(req, res);
 
-    const promptArg: string = mockGenerateWithGemini.mock.calls[0][0];
+    const promptArg: string = mockGenerateWithAI.mock.calls[0][0];
     expect(promptArg).toContain('LIVE MARKET SIGNALS');
   });
 
@@ -167,7 +173,7 @@ describe('POST /api/generate/daily', () => {
 
     await handler(req, res);
 
-    const promptArg: string = mockGenerateWithGemini.mock.calls[0][0];
+    const promptArg: string = mockGenerateWithAI.mock.calls[0][0];
     expect(promptArg).toContain('Generate exactly 35');
     expect(promptArg).not.toContain('LIVE MARKET SIGNALS');
   });
@@ -180,7 +186,7 @@ describe('POST /api/generate/daily', () => {
 
     await handler(req, res);
 
-    const promptArg: string = mockGenerateWithGemini.mock.calls[0][0];
+    const promptArg: string = mockGenerateWithAI.mock.calls[0][0];
     expect(promptArg).toContain('India');
     expect(promptArg).toContain('5');
     expect(promptArg).toContain('Local Market');
@@ -194,7 +200,7 @@ describe('POST /api/generate/daily', () => {
 
     await handler(req, res);
 
-    const promptArg: string = mockGenerateWithGemini.mock.calls[0][0];
+    const promptArg: string = mockGenerateWithAI.mock.calls[0][0];
     expect(promptArg).not.toContain('Local Market');
   });
 
@@ -220,7 +226,7 @@ describe('POST /api/generate/daily', () => {
   });
 
   it('returns 503 when Gemini throws — no mock fallback', async () => {
-    mockGenerateWithGemini.mockRejectedValue(new Error('API quota exceeded'));
+    mockGenerateWithAI.mockRejectedValue(new Error('API quota exceeded'));
 
     const req = createMockRequest({ body: { date: '2026-04-11' } });
     const res = createMockResponse();

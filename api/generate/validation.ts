@@ -1,6 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import AI from '../_lib/ai-provider';
-const { generateWithAI, Type } = AI;
+import { generateWithAI, Type, normalizeAIResponse } from '../_lib/ai-provider';
 import { getCached, setCached } from '../_lib/cache';
 import { getAuthContext } from '../_lib/auth';
 import { checkAndIncrementUsage, buildUsageResponse } from '../_lib/usage';
@@ -31,7 +30,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const uid = authCtx?.uid;
   const tier = authCtx?.tier || 'free';
 
-  const { idea } = req.body;
+  const { idea, refresh } = req.body;
 
   // FIX (B-9, D-1): Validate required input
   if (!idea || typeof idea !== 'object') {
@@ -47,11 +46,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     .slice(0, 200);
 
   const featureType = 'validation';
-  const cacheKey = idea?.id ? `validation_${String(idea.id).slice(0, 100)}` : '';
+  // Bumping version to v3 to clear any corrupted cache
+  const cacheKey = idea?.id ? `validation_v3_${String(idea.id).slice(0, 100)}` : '';
 
   try {
     const cached = await getCached(cacheKey);
-    if (cached) {
+    if (cached && !refresh) {
       return res.json({
         ...cached,
         _cached: true,
@@ -69,12 +69,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    const rawData = await generateWithAI(
-      `Generate a validation toolkit for: ${safeHeadline}`,
-      schema
-    );
+    const pitch = idea.pitch || '';
+    const justification = idea.vcJustification || '';
 
-    const { normalizeAIResponse } = require('../_lib/ai-provider');
+    const prompt = `
+      You are a specialized GTM (Go-To-Market) strategist. Create a professional validation toolkit for the following business idea:
+      
+      HEADLINE: ${safeHeadline}
+      PITCH: ${pitch}
+      CONTEXT: ${justification}
+      
+      TASK:
+      Generate a validation strategy to prove market demand before building.
+      Include:
+      1. High-conversion landing page copy (hero, subhero, and 3 specific value props).
+      2. A 5-question problem-interview script for potential customers.
+      3. A specific 'smoke test' strategy (e.g. ad campaign, waitlist, pre-order).
+      4. 3 success metrics to track.
+      
+      IMPORTANT: You MUST use camelCase for all keys (e.g., landingPage, interviewScript, smokeTest, successMetrics). Return valid JSON matching the schema.
+    `;
+
+    const rawData = await generateWithAI(prompt, schema);
+
     const data = normalizeAIResponse(rawData, ['interviewScript', 'successMetrics'], {
       landingPage: {
         hero: 'Landing page being drafted...',
@@ -93,6 +110,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.error('[validation] Generation error:', err);
     return res
       .status(500)
-      .json({ error: 'Validation toolkit generation failed. Please try again.' });
+      .json({ error: 'Validation toolkit generation failed. Please try again.', _details: err?.message });
   }
 }

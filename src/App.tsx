@@ -64,7 +64,6 @@ export default function App() {
     filters,
     setFilters,
     toggleSave,
-    saveCustomIdea,
     updateIdea,
     getFilteredIdeas,
     triggerGeneration,
@@ -82,11 +81,9 @@ export default function App() {
         .then(setCurrentIdToken)
         .catch(() => setCurrentIdToken(null));
       const interval = setInterval(
-        () => {
-          user
-            .getIdToken(true)
-            .then(setCurrentIdToken)
-            .catch(() => setCurrentIdToken(null));
+        async () => {
+          const token = await user.getIdToken(true);
+          setCurrentIdToken(token);
         },
         50 * 60 * 1000
       );
@@ -199,8 +196,8 @@ export default function App() {
     toggleSave(idea, TIER_LIMITS, handleLogin, () => setActiveTab('pro'));
   };
 
-  const onSaveCustomIdeaLocal = (idea: Idea) => {
-    saveCustomIdea(idea, handleLogin, () => setActiveTab('pro'));
+  const onSaveCustomIdeaLocal = (idea: Idea, userInput?: string) => {
+    toggleSave(idea, TIER_LIMITS, handleLogin, () => setActiveTab('pro'), 'custom', userInput);
   };
 
   const onUpgradeToBuilder = () => upgradeToBuilder(handleLogin);
@@ -215,8 +212,8 @@ export default function App() {
     return `Welcome to the ${dateStr} edition of Trend-Equity. Today we navigate the convergence of emerging market signals and high-velocity AI-native shifts. The following ${count} ideas have been filtered through our strict VC engine for maximum investability and timing relevance.`;
   };
 
-  // Full-page loader only for Daily AI Generation (the big event)
-  if (generating) {
+  // Full-page loader only for INITIAL Daily AI Generation
+  if (generating && !dailyGen) {
     return (
       <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center p-6 text-center">
         <div className="relative">
@@ -300,9 +297,9 @@ export default function App() {
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'saved' ? 'bg-zinc-800 text-white shadow-md' : 'text-zinc-500 hover:text-zinc-300'}`}
             >
               Saved{' '}
-              {(userSaves.length > 0 || analyzeIdeaHook.latestIdea) && (
+              {userSaves.length > 0 && (
                 <span className="ml-1 text-xs bg-zinc-700 text-zinc-300 px-1.5 py-0.5 rounded-full">
-                  {userSaves.length + (analyzeIdeaHook.latestIdea ? 1 : 0)}
+                  {userSaves.length}
                   {tier === 'free' ? `/${TIER_LIMITS.free.monthlySaves}` : ''}
                 </span>
               )}
@@ -417,8 +414,6 @@ export default function App() {
               <SavedIdeasTab
                 feedSaves={feedSaves}
                 customSaves={customSaves}
-                latestIdea={analyzeIdeaHook.latestIdea}
-                loadingLatest={analyzeIdeaHook.loadingLatest}
                 toggleSave={onToggleSaveLocal}
                 toggleCustomSave={onSaveCustomIdeaLocal}
                 updateIdea={updateIdea}

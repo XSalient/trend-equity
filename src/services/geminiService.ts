@@ -45,11 +45,11 @@ function authHeaders(): Record<string, string> {
   return headers;
 }
 
-export async function generateDailyIdeas(country?: string, countryCount?: number) {
+export async function generateDailyIdeas(country?: string, countryCount?: number, refresh?: boolean) {
   const response = await fetch(`${API_BASE}/api/generate/daily`, {
     method: 'POST',
     headers: authHeaders(),
-    body: JSON.stringify({ country, countryCount }),
+    body: JSON.stringify({ country, countryCount, refresh }),
   });
   if (!response.ok) {
     const err = await response.json().catch(() => ({}));
@@ -58,11 +58,11 @@ export async function generateDailyIdeas(country?: string, countryCount?: number
   return response.json();
 }
 
-export async function generateFullActionPlan(idea: Idea) {
+export async function generateFullActionPlan(idea: Idea, refresh?: boolean) {
   const response = await fetch(`${API_BASE}/api/generate/action-plan`, {
     method: 'POST',
     headers: authHeaders(),
-    body: JSON.stringify({ idea }),
+    body: JSON.stringify({ idea, refresh }),
   });
   if (!response.ok) {
     const err = await response.json().catch(() => ({}));
@@ -88,11 +88,11 @@ export async function explainPlanSection(idea: Idea, section: string, context: s
   return data.text;
 }
 
-export async function generateBuildWithMe(idea: Idea) {
+export async function generateBuildWithMe(idea: Idea, refresh?: boolean) {
   const response = await fetch(`${API_BASE}/api/generate/build-me`, {
     method: 'POST',
     headers: authHeaders(),
-    body: JSON.stringify({ idea }),
+    body: JSON.stringify({ idea, refresh }),
   });
   if (!response.ok) {
     const err = await response.json().catch(() => ({}));
@@ -104,11 +104,11 @@ export async function generateBuildWithMe(idea: Idea) {
   return data;
 }
 
-export async function generateValidationToolkit(idea: Idea) {
+export async function generateValidationToolkit(idea: Idea, refresh?: boolean) {
   const response = await fetch(`${API_BASE}/api/generate/validation`, {
     method: 'POST',
     headers: authHeaders(),
-    body: JSON.stringify({ idea }),
+    body: JSON.stringify({ idea, refresh }),
   });
   if (!response.ok) {
     const err = await response.json().catch(() => ({}));
@@ -133,11 +133,11 @@ export async function generateAlerts() {
   return response.json();
 }
 
-export async function generateExpertVetting(idea: Idea) {
+export async function generateExpertVetting(idea: Idea, refresh?: boolean) {
   const response = await fetch(`${API_BASE}/api/generate/vetting`, {
     method: 'POST',
     headers: authHeaders(),
-    body: JSON.stringify({ idea }),
+    body: JSON.stringify({ idea, refresh }),
   });
   if (!response.ok) {
     const err = await response.json().catch(() => ({}));

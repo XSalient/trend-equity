@@ -149,12 +149,14 @@ export async function fetchLiveSignals(): Promise<LiveSignals> {
     return { ..._cache.data, sourcesCached: true };
   }
 
+  console.log('[DEBUG] Starting Promise.allSettled for signals...');
+  debugger;
   const [trends, ph, reddit, hn, tc] = await Promise.allSettled([
-    fetchGoogleTrends(),
-    fetchProductHunt(),
-    fetchReddit(),
-    fetchHackerNews(),
-    fetchTechCrunch(),
+    (async () => { console.log('[DEBUG] Fetching Google Trends...'); const r = await fetchGoogleTrends(); console.log('[DEBUG] Google Trends done'); return r; })(),
+    (async () => { console.log('[DEBUG] Fetching Product Hunt...'); const r = await fetchProductHunt(); console.log('[DEBUG] Product Hunt done'); return r; })(),
+    (async () => { console.log('[DEBUG] Fetching Reddit...'); const r = await fetchReddit(); console.log('[DEBUG] Reddit done'); return r; })(),
+    (async () => { console.log('[DEBUG] Fetching HN...'); const r = await fetchHackerNews(); console.log('[DEBUG] HN done'); return r; })(),
+    (async () => { console.log('[DEBUG] Fetching TechCrunch...'); const r = await fetchTechCrunch(); console.log('[DEBUG] TechCrunch done'); return r; })(),
   ]);
 
   const signals: LiveSignals = {

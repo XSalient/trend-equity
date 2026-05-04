@@ -21,14 +21,14 @@ import { MOCK_IDEA, MOCK_ACTION_PLAN_RESPONSE, MOCK_USAGE_RESPONSE } from '../he
 // ── Module mocks ──────────────────────────────────────────────────────────────
 
 const {
-  mockGenerateWithGemini,
+  mockGenerateWithAI,
   mockGetCached,
   mockSetCached,
   mockCheckAndIncrementUsage,
   mockBuildUsageResponse,
   mockGetAuthContext,
 } = vi.hoisted(() => ({
-  mockGenerateWithGemini: vi.fn(),
+  mockGenerateWithAI: vi.fn(),
   mockGetCached: vi.fn(),
   mockSetCached: vi.fn(),
   mockCheckAndIncrementUsage: vi.fn(),
@@ -36,10 +36,14 @@ const {
   mockGetAuthContext: vi.fn(),
 }));
 
-vi.mock('../../../api/_lib/gemini', () => ({
-  generateWithGemini: mockGenerateWithGemini,
-  Type: { OBJECT: 'OBJECT', ARRAY: 'ARRAY', STRING: 'STRING' },
-}));
+vi.mock('../../../api/_lib/ai-provider', () => {
+  const mockAI = {
+    generateWithAI: mockGenerateWithAI,
+    normalizeAIResponse: vi.fn((data) => data),
+    Type: { OBJECT: 'OBJECT', ARRAY: 'ARRAY', STRING: 'STRING' },
+  };
+  return { ...mockAI, default: mockAI };
+});
 
 vi.mock('../../../api/_lib/cache', () => ({
   getCached: mockGetCached,
@@ -64,7 +68,7 @@ describe('POST /api/generate/action-plan', () => {
     mockSetCached.mockResolvedValue(undefined);
     mockCheckAndIncrementUsage.mockResolvedValue({ allowed: true, remaining: 2, limit: 3 });
     mockBuildUsageResponse.mockResolvedValue(MOCK_USAGE_RESPONSE);
-    mockGenerateWithGemini.mockResolvedValue(MOCK_ACTION_PLAN_RESPONSE);
+    mockGenerateWithAI.mockResolvedValue(MOCK_ACTION_PLAN_RESPONSE);
     // Auth: authenticated user by default (most action tests use a uid)
     mockGetAuthContext.mockResolvedValue({ uid: 'user-1', tier: 'free' });
   });
@@ -95,7 +99,7 @@ describe('POST /api/generate/action-plan', () => {
     await handler(req, res);
 
     expect(res._body._cached).toBe(true);
-    expect(mockGenerateWithGemini).not.toHaveBeenCalled();
+    expect(mockGenerateWithAI).not.toHaveBeenCalled();
     expect(mockCheckAndIncrementUsage).not.toHaveBeenCalled();
   });
 
@@ -136,7 +140,7 @@ describe('POST /api/generate/action-plan', () => {
 
     await handler(req, res);
 
-    const promptArg: string = mockGenerateWithGemini.mock.calls[0][0];
+    const promptArg: string = mockGenerateWithAI.mock.calls[0][0];
     expect(promptArg).toContain(MOCK_IDEA.headline);
   });
 
@@ -173,11 +177,11 @@ describe('POST /api/generate/action-plan', () => {
 
     expect(res._status).toBe(429);
     expect(res._body.error).toContain('limit reached');
-    expect(mockGenerateWithGemini).not.toHaveBeenCalled();
+    expect(mockGenerateWithAI).not.toHaveBeenCalled();
   });
 
   it('returns 500 when Gemini throws', async () => {
-    mockGenerateWithGemini.mockRejectedValue(new Error('Generation failed'));
+    mockGenerateWithAI.mockRejectedValue(new Error('Generation failed'));
 
     const req = createMockRequest({ body: { idea: MOCK_IDEA } });
     const res = createMockResponse();
@@ -189,7 +193,7 @@ describe('POST /api/generate/action-plan', () => {
   });
 
   it('does NOT write to cache when Gemini throws', async () => {
-    mockGenerateWithGemini.mockRejectedValue(new Error('Error'));
+    mockGenerateWithAI.mockRejectedValue(new Error('Error'));
 
     const req = createMockRequest({ body: { idea: MOCK_IDEA } });
     const res = createMockResponse();

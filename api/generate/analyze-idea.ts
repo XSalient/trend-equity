@@ -1,6 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import AI from '../_lib/ai-provider';
-const { generateWithAI, ideaSchema, DEFAULT_SYSTEM_PROMPT } = AI;
+import { generateWithAI, ideaSchema, DEFAULT_SYSTEM_PROMPT, normalizeAIResponse } from '../_lib/ai-provider';
 import { getAuthContext } from '../_lib/auth';
 import { checkAndIncrementMonthlyUsage, buildMonthlyUsageResponse } from '../_lib/usage';
 import { getTierConfig, getAnalyzeIdeaLimit } from '../_lib/tier-config';
@@ -32,7 +31,10 @@ REQUIREMENTS:
 - heatBadge must reflect the CURRENT market moment for this specific category
 - nextSteps must be concretely tailored to this specific idea, not generic startup advice
 - revenuePotentialScore must be a genuine assessment (1–10), not inflated
-- If the idea has fundamental problems, surface them honestly in competitorLandscape and regulatoryFlags`;
+- competitorLandscape: identify 2-3 existing players or direct categories this idea competes with
+- regulatoryFlags: Identify any legal, compliance, or regulatory hurdles this idea might face
+- marketSize: Provide a specific estimate (e.g. $XB by 2030) or a description of the TAM based on current trends
+- If the idea has fundamental problems, surface them honestly.`;
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -81,9 +83,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const prompt = buildPrompt(ideaDescription);
     const rawIdea = await generateWithAI(prompt, ideaSchema, ANALYZE_IDEA_SYSTEM_PROMPT);
 
-    const { normalizeAIResponse } = require('../_lib/ai-provider');
     const idea = normalizeAIResponse(rawIdea, ['categoryTags', 'nextSteps', 'trendSources'], {
-      id: `custom-${uid}-${Date.now()}`,
+      id: `custom-${uid}`,
       headline: 'Idea Analysis',
       pitch: 'Analysis in progress...',
       vcJustification: '',
@@ -97,6 +98,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       saturationLabel: 'Unknown',
       heatBadge: 'Stable',
       nextSteps: [],
+      competitorLandscape: '',
+      regulatoryFlags: '',
+      marketSize: '',
     });
 
     const usage = await buildMonthlyUsageResponse(uid, limit, 'analyze-idea');

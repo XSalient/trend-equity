@@ -19,7 +19,7 @@ export const IdeaCardStats: React.FC<IdeaCardStatsProps> = ({ idea }) => {
         <div className="h-1.5 w-full bg-zinc-800 rounded-full overflow-hidden">
           <div
             className="h-full bg-gradient-to-r from-emerald-600 to-emerald-400 rounded-full transition-all duration-500"
-            style={{ width: `${idea.revenuePotentialScore * 10}%` }}
+            style={{ width: `${Number(idea.revenuePotentialScore || 0) * 10}%` }}
           />
         </div>
       </div>

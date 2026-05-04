@@ -1,12 +1,20 @@
 import React from 'react';
-import { Shield } from 'lucide-react';
+import { Shield, RefreshCw } from 'lucide-react';
 import { ExpertVetting } from '../../types';
 
 interface IdeaCardVettingProps {
   vettingResult: ExpertVetting;
+  isAdmin?: boolean;
+  onRefresh?: () => void;
+  isRefreshing?: boolean;
 }
 
-export const IdeaCardVetting: React.FC<IdeaCardVettingProps> = ({ vettingResult }) => {
+export const IdeaCardVetting: React.FC<IdeaCardVettingProps> = ({
+  vettingResult,
+  isAdmin,
+  onRefresh,
+  isRefreshing,
+}) => {
   return (
     <div className="p-5 bg-amber-500/5 border border-amber-500/20 rounded-2xl space-y-4 mb-6">
       <div className="flex items-center justify-between">
@@ -26,7 +34,19 @@ export const IdeaCardVetting: React.FC<IdeaCardVettingProps> = ({ vettingResult 
           >
             {vettingResult.verdict}
           </span>
-          <span className="text-xl font-black text-white">{vettingResult.score}/100</span>
+          <div className="flex items-center gap-2">
+            <span className="text-xl font-black text-white">{vettingResult.score}/100</span>
+            {isAdmin && (
+              <button
+                onClick={onRefresh}
+                disabled={isRefreshing}
+                className="p-1.5 text-zinc-500 hover:text-emerald-400 hover:bg-emerald-500/10 rounded-md transition-all disabled:opacity-50"
+                title="Force refresh analysis"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -55,19 +75,33 @@ export const IdeaCardVetting: React.FC<IdeaCardVettingProps> = ({ vettingResult 
         </div>
       </div>
 
-      <div className="pt-2 space-y-2">
-        <p className="text-[10px] font-bold text-amber-500 uppercase tracking-widest">
-          Pivot Suggestions
-        </p>
-        <div className="flex flex-wrap gap-2">
-          {vettingResult.pivotSuggestions.map((p, i) => (
-            <span
-              key={i}
-              className="px-2 py-1 bg-zinc-800 border border-zinc-700 text-zinc-400 text-[10px] rounded-lg"
-            >
-              {p}
-            </span>
-          ))}
+      <div className="pt-2 grid md:grid-cols-2 gap-6">
+        <div className="space-y-2">
+          <p className="text-[10px] font-bold text-blue-500 uppercase tracking-widest">
+            Risk Mitigation
+          </p>
+          <ul className="space-y-1">
+            {vettingResult.riskMitigation.map((m, i) => (
+              <li key={i} className="text-[11px] text-zinc-300 flex gap-2">
+                <span className="text-blue-500">→</span> {m}
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div className="space-y-2">
+          <p className="text-[10px] font-bold text-amber-500 uppercase tracking-widest">
+            Pivot Suggestions
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {vettingResult.pivotSuggestions.map((p, i) => (
+              <span
+                key={i}
+                className="px-2 py-1 bg-zinc-800 border border-zinc-700 text-zinc-400 text-[10px] rounded-lg"
+              >
+                {p}
+              </span>
+            ))}
+          </div>
         </div>
       </div>
     </div>

@@ -40,8 +40,6 @@ export interface AIProvider {
 
 /**
  * Google AI Implementation using @google/genai SDK.
- * Note: Uses apiVersion: 'v1' and snake_case for payload properties to ensure
- * compatibility with the stable REST endpoint.
  */
 class GoogleProvider implements AIProvider {
   readonly name = 'google';
@@ -50,7 +48,6 @@ class GoogleProvider implements AIProvider {
   private getClient(): GoogleGenAI {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) throw new Error('GEMINI_API_KEY missing from environment.');
-    // Explicitly using 'v1' for stability as our probe showed v1beta was returning 404 for 1.5-flash
     return this.client || (this.client = new GoogleGenAI({ apiKey }));
   }
 
@@ -60,15 +57,13 @@ class GoogleProvider implements AIProvider {
 
     console.log(`[GoogleProvider] Calling ${modelId}...`);
 
-    // Using generic object for params to avoid TS strictness with snake_case vs camelCase
-    // in the preview SDK, while ensuring the underlying API gets what it expects.
     const params: any = {
       model: modelId,
       contents: [{ role: 'user', parts: [{ text: options.prompt }] }],
-      system_instruction: options.systemInstruction, // Snake case for v1
+      system_instruction: options.systemInstruction,
       config: {
         response_mime_type: options.schema ? 'application/json' : 'text/plain',
-        response_schema: options.schema, // Snake case for v1
+        response_schema: options.schema,
       },
     };
 
@@ -81,7 +76,8 @@ class GoogleProvider implements AIProvider {
     const result: AIResponse = { text: resp.text };
     if (options.schema) {
       try {
-        result.parsed = JSON.parse(resp.text);
+        const cleaned = cleanJSON(resp.text);
+        result.parsed = JSON.parse(cleaned);
       } catch (e) {
         console.error('[GoogleProvider] JSON Parse Error:', resp.text.slice(0, 100));
         throw new Error('AI returned invalid JSON structure.');
@@ -93,7 +89,6 @@ class GoogleProvider implements AIProvider {
 
 /**
  * Strip markdown code fences that some models wrap JSON responses in.
- * E.g. ```json\n{...}\n``` → {...}
  */
 function cleanJSON(raw: string): string {
   return raw
@@ -102,79 +97,13 @@ function cleanJSON(raw: string): string {
     .trim();
 }
 
-/**
- * OpenRouter Implementation via Fetch.
- */
-class OpenRouterProvider implements AIProvider {
-  readonly name = 'openrouter';
-
-  async generate(options: GenerationOptions): Promise<AIResponse> {
-    const apiKey = process.env.OPENROUTER_API_KEY;
-    if (!apiKey) throw new Error('OPENROUTER_API_KEY missing from environment.');
-
-    // Use a model that reliably honours json_object format. Override via AI_MODEL env var.
-    const modelId = options.model || process.env.AI_MODEL || 'google/gemini-2.5-flash';
-
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
-        'HTTP-Referer': process.env.APP_URL || 'http://localhost:3000',
-        'X-Title': 'Trend-Equity',
-      },
-      body: JSON.stringify({
-        model: modelId,
-        messages: [
-          { role: 'system', content: options.systemInstruction || 'VC Analyst' },
-          { role: 'user', content: options.prompt },
-        ],
-        response_format: options.schema ? { type: 'json_object' } : undefined,
-      }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(`OpenRouter Error: ${errorData?.error?.message || response.statusText}`);
-    }
-
-    const data = await response.json();
-    const rawText = data.choices?.[0]?.message?.content;
-
-    if (!rawText) {
-      throw new Error('OpenRouter returned an empty response.');
-    }
-
-    const text = cleanJSON(rawText);
-    const result: AIResponse = { text };
-    if (options.schema) {
-      try {
-        result.parsed = JSON.parse(text);
-      } catch (e) {
-        console.error(
-          '[OpenRouterProvider] JSON Parse Error. Raw (first 300 chars):',
-          rawText.slice(0, 300)
-        );
-        throw new Error('AI returned invalid JSON structure.');
-      }
-    }
-    return result;
-  }
-}
-
 // 3. FACTORY
 export function getAIProvider(): AIProvider {
-  // Priority: OpenRouter -> Google
-  if (process.env.OPENROUTER_API_KEY) {
-    return new OpenRouterProvider();
-  }
   return new GoogleProvider();
 }
 
 /**
  * Central AI generation entry point.
- * FIX: Injects a strict JSON-only instruction suffix to every schema-based prompt
- * to reduce the chance of markdown or conversational filler.
  */
 export async function generateWithAI(
   prompt: string,
@@ -206,15 +135,14 @@ export async function generateWithAI(
 
 /**
  * Normalizes an AI response to ensure it matches the expected object structure.
- * If the AI returns an array but an object was expected, it wraps the array
- * into the first provided 'wrapperKey'. If fields are missing, it merges with 'fallback'.
+ * Standardizes array fields and ensures string fields are actually strings.
  */
 export function normalizeAIResponse<T extends object>(
   data: any,
   wrapperKeys: (keyof T)[],
   fallback: T
 ): T {
-  if (!data) return fallback;
+  if (!data || typeof data !== 'object') return fallback;
 
   // Handle Case: AI ignored the schema and returned a plain array
   if (Array.isArray(data)) {
@@ -224,16 +152,57 @@ export function normalizeAIResponse<T extends object>(
     return wrapped as T;
   }
 
-  // Handle Case: AI returned an object but might be missing expected array fields
-  const result = { ...fallback, ...data };
-  for (const key of wrapperKeys) {
-    if (!Array.isArray(result[key])) {
-      console.warn(`[AI Normalizer] Field ${String(key)} missing or not an array. Recovering...`);
-      result[key] = (fallback as any)[key] || [];
+  // Handle Case: AI returned an object but might be missing expected array fields or have corrupted string fields
+  const result: any = { ...fallback };
+  
+  const findKey = (target: string, obj: any) => {
+    if (!obj || typeof obj !== 'object') return undefined;
+    if (obj[target] !== undefined) return obj[target];
+    const lowerTarget = target.toLowerCase();
+    const snakeTarget = target.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
+    
+    for (const k in obj) {
+      const lowerK = k.toLowerCase();
+      if (lowerK === lowerTarget) return obj[k];
+      if (lowerK === snakeTarget) return obj[k];
+      if (lowerK === target.toLowerCase().replace(/_/g, '')) return obj[k];
+    }
+    return undefined;
+  };
+
+  for (const key in fallback) {
+    const val = findKey(key, data);
+    const fallbackVal = (fallback as any)[key];
+
+    if (val === undefined || val === null) {
+      result[key] = fallbackVal;
+      continue;
+    }
+
+    if (Array.isArray(fallbackVal)) {
+      if (!Array.isArray(val)) {
+        result[key] = [];
+      } else {
+        // If the first item in fallback is a string, ensure all items in val are strings
+        if (typeof fallbackVal[0] === 'string') {
+          result[key] = val.map(item => typeof item === 'string' ? item : JSON.stringify(item));
+        } else {
+          result[key] = val;
+        }
+      }
+    } else if (typeof fallbackVal === 'object' && fallbackVal !== null) {
+      // Recursive call for nested objects
+      result[key] = normalizeAIResponse(val, Object.keys(fallbackVal), fallbackVal);
+    } else if (typeof fallbackVal === 'string') {
+      result[key] = typeof val === 'string' ? val : JSON.stringify(val);
+    } else if (typeof fallbackVal === 'number') {
+      result[key] = typeof val === 'number' ? val : Number(val) || fallbackVal;
+    } else {
+      result[key] = val;
     }
   }
 
-  return result;
+  return result as T;
 }
 
 // 5. SCHEMAS
@@ -256,6 +225,7 @@ export const ideaSchema = {
     nextSteps: { type: Type.ARRAY, items: { type: Type.STRING } },
     competitorLandscape: { type: Type.STRING },
     regulatoryFlags: { type: Type.STRING },
+    marketSize: { type: Type.STRING },
   },
   required: [
     'headline',
@@ -271,6 +241,9 @@ export const ideaSchema = {
     'saturationLabel',
     'heatBadge',
     'nextSteps',
+    'marketSize',
+    'competitorLandscape',
+    'regulatoryFlags',
   ],
 };
 
@@ -331,5 +304,6 @@ export default {
   dailyResponseSchema,
   getAIProvider,
   getToday,
+  normalizeAIResponse,
   DEFAULT_SYSTEM_PROMPT,
 };

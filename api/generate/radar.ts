@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import AI from '../_lib/ai-provider';
-const { generateWithAI, radarSchema, getToday } = AI;
+const { generateWithAI, radarSchema, getToday, normalizeAIResponse } = AI;
 import { getCached, setCached } from '../_lib/cache';
 import { getAuthContext } from '../_lib/auth';
 import { checkAndIncrementUsage, buildUsageResponse } from '../_lib/usage';
@@ -45,7 +45,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       radarSchema
     );
 
-    const { normalizeAIResponse } = require('../_lib/ai-provider');
     const data = normalizeAIResponse(rawData, ['topTrends', 'opportunityAreas'], {
       week: `Week of ${getToday()}`,
       topTrends: [],

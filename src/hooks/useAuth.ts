@@ -22,7 +22,11 @@ export function useAuth() {
       getRedirectResult(auth).catch(() => {});
     }
 
-    const unsubscribe = onAuthStateChanged(auth, (u) => {
+    const unsubscribe = onAuthStateChanged(auth, async (u) => {
+      if (u) {
+        // Force refresh token once to pick up any new custom claims (tier)
+        await u.getIdToken(true);
+      }
       setUser(u);
       setAuthReady(true);
     });

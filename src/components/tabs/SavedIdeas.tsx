@@ -1,6 +1,6 @@
 import React from 'react';
 import { Bookmark, Wand2, Lock } from 'lucide-react';
-import { Idea, UserSave, UserLatestIdea, Tier } from '../../types';
+import { Idea, UserSave, Tier } from '../../types';
 import { TIER_LIMITS } from '../../constants';
 import { useTierLimits } from '../../hooks/useTierLimits';
 import { IdeaCard } from '../IdeaCard';
@@ -9,10 +9,8 @@ import { IdeaFeedSkeleton } from '../layout/SkeletonLoaders';
 interface SavedIdeasTabProps {
   feedSaves: UserSave[];
   customSaves: UserSave[];
-  latestIdea: UserLatestIdea | null;
-  loadingLatest: boolean;
   toggleSave: (idea: Idea) => void;
-  toggleCustomSave: (idea: Idea) => void;
+  toggleCustomSave: (idea: Idea, userInput?: string) => void;
   updateIdea: (idea: Idea) => void;
   tier: Tier;
   exportToPDF: (idea: Idea, format: string) => void;
@@ -26,8 +24,6 @@ interface SavedIdeasTabProps {
 export const SavedIdeasTab: React.FC<SavedIdeasTabProps> = ({
   feedSaves,
   customSaves,
-  latestIdea,
-  loadingLatest,
   toggleSave,
   toggleCustomSave,
   updateIdea,
@@ -45,22 +41,26 @@ export const SavedIdeasTab: React.FC<SavedIdeasTabProps> = ({
   const customSavesLimit = getCustomSavesLimit(tier);
   const feedSavesLimit = TIER_LIMITS[tier]?.monthlySaves ?? Infinity;
 
-  const isLatestAlsoCustomSaved = latestIdea
-    ? customSaves.some((s) => s.idea.id === latestIdea.idea.id)
-    : false;
-
   return (
     <div className="space-y-10">
-      {/* ── SECTION 1: My Latest Idea ──────────────────────────────── */}
+      {/* ── SECTION 1: Custom Ideas ────────────────────────────────── */}
       <section>
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-500">
-            My Latest Idea
-          </h3>
+          <div className="flex items-center gap-4">
+            <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-500">
+              Custom Ideas
+            </h3>
+            {tier !== 'free' && (
+              <span className="text-[10px] text-zinc-600 font-mono bg-zinc-900/50 px-2 py-0.5 rounded-full border border-zinc-800/50">
+                {customSaves.length} / {customSavesLimit}
+              </span>
+            )}
+          </div>
+          
           {tier !== 'free' && (
             <button
               onClick={onOpenAnalyzeModal}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg transition-all"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg transition-all shadow-lg shadow-emerald-900/20"
             >
               <Wand2 className="w-3.5 h-3.5" />
               Analyze My Idea
@@ -84,69 +84,38 @@ export const SavedIdeasTab: React.FC<SavedIdeasTabProps> = ({
               Upgrade
             </button>
           </div>
-        ) : loadingLatest ? (
-          <IdeaFeedSkeleton />
-        ) : latestIdea ? (
-          <IdeaCard
-            idea={latestIdea.idea}
-            isSaved={isLatestAlsoCustomSaved}
-            onToggleSave={() => toggleCustomSave(latestIdea.idea)}
-            onUpdateIdea={updateIdea}
-            isSaving={false}
-            tier={tier}
-            onExport={(fmt) => exportToPDF(latestIdea.idea, fmt)}
-            user={user}
-            handleLogin={handleLogin}
-          />
+        ) : customSaves.length > 0 ? (
+          <div className="grid grid-cols-1 gap-6">
+            {customSaves.map((save) => (
+              <IdeaCard
+                key={save.id}
+                idea={save.idea}
+                isSaved={true}
+                onToggleSave={() => toggleCustomSave(save.idea, save.userInput)}
+                onUpdateIdea={updateIdea}
+                isSaving={false}
+                tier={tier}
+                onExport={(fmt) => exportToPDF(save.idea, fmt)}
+                user={user}
+                handleLogin={handleLogin}
+                userInput={save.userInput}
+              />
+            ))}
+          </div>
         ) : (
-          <div className="p-6 rounded-xl border border-dashed border-zinc-800 text-center space-y-2">
-            <Wand2 className="w-8 h-8 text-zinc-700 mx-auto" />
-            <p className="text-zinc-500 text-sm font-semibold">No analysis yet</p>
-            <p className="text-zinc-600 text-xs">
-              Click "Analyze My Idea" above to get a full VC-grade profile for your concept.
-            </p>
+          <div className="p-8 rounded-xl border border-dashed border-zinc-800 text-center space-y-3 bg-zinc-900/20">
+            <div className="w-10 h-10 bg-zinc-800/50 rounded-full flex items-center justify-center mx-auto text-zinc-600">
+               <Wand2 className="w-5 h-5" />
+            </div>
+            <div className="space-y-1">
+              <p className="text-zinc-500 text-sm font-semibold">No custom ideas saved</p>
+              <p className="text-zinc-600 text-[11px] max-w-[200px] mx-auto">
+                Analyze a business concept above to get a full VC-grade profile and save it here.
+              </p>
+            </div>
           </div>
         )}
       </section>
-
-      {/* ── SECTION 2: Custom Ideas ────────────────────────────────── */}
-      {tier !== 'free' && (
-        <section>
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-500">
-              Custom Ideas
-            </h3>
-            <span className="text-xs text-zinc-600 font-mono">
-              {customSaves.length} / {customSavesLimit}
-            </span>
-          </div>
-
-          {customSaves.length > 0 ? (
-            <div className="space-y-4">
-              {customSaves.map((save) => (
-                <IdeaCard
-                  key={save.id}
-                  idea={save.idea}
-                  isSaved={true}
-                  onToggleSave={() => toggleCustomSave(save.idea)}
-                  onUpdateIdea={updateIdea}
-                  isSaving={false}
-                  tier={tier}
-                  onExport={(fmt) => exportToPDF(save.idea, fmt)}
-                  user={user}
-                  handleLogin={handleLogin}
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="p-5 rounded-xl border border-dashed border-zinc-800 text-center space-y-1">
-              <p className="text-zinc-600 text-xs">
-                Analyze an idea and save it here for future reference.
-              </p>
-            </div>
-          )}
-        </section>
-      )}
 
       {/* ── SECTION 3: Saved from Daily Feed ──────────────────────── */}
       <section>

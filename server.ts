@@ -8,23 +8,27 @@ import { normalizeAIResponse } from './api/_lib/ai-provider';
 import AI from './api/_lib/ai-provider';
 const { generateWithAI, Type, getToday, dailyResponseSchema: responseSchema, ideaSchema } = AI;
 
+console.log('[DEBUG] Server starting, imports resolved.');
+debugger;
+
 // Load modules dynamically to bypass persistent tsx resolution issues
 async function getUsageModule() {
-  return await import('./api/_lib/usage.ts');
+  return await import('./api/_lib/usage');
 }
 async function getAdminAuthModule() {
-  return await import('./api/_lib/admin.ts');
+  return await import('./api/_lib/admin');
 }
 async function getAIModule() {
   return await import('./api/_lib/ai-provider');
 }
-let _signals: typeof import('./api/_lib/signals.ts') | null = null;
+let _signals: typeof import('./api/_lib/signals') | null = null;
 async function getSignalsModule() {
-  if (!_signals) _signals = await import('./api/_lib/signals.ts');
+  if (!_signals) _signals = await import('./api/_lib/signals');
   return _signals;
 }
 
 // --- Auth helper: extract uid + tier from Bearer token ---
+// --- Auth helper: extract uid + tier from Bearer token with Firestore fallback ---
 async function getAuthFromRequest(
   req: express.Request
 ): Promise<{ uid: string; tier: string } | null> {
@@ -32,11 +36,25 @@ async function getAuthFromRequest(
   if (!authHeader?.startsWith('Bearer ')) return null;
   const token = authHeader.slice(7);
   if (!token) return null;
+
   try {
     const { getAdminAuth } = await getAdminAuthModule();
     const decoded = await getAdminAuth().verifyIdToken(token);
-    return { uid: decoded.uid, tier: (decoded as any).tier || 'free' };
-  } catch {
+    const uid = decoded.uid;
+    let tier = (decoded as any).tier || 'free';
+
+    // FIX: If token claim is 'free', fallback to Firestore to check for recent upgrades
+    if (tier === 'free') {
+      const { getAdminDb } = await getAdminAuthModule();
+      const userDoc = await getAdminDb().collection('users').doc(uid).get();
+      if (userDoc.exists && userDoc.data()?.tier) {
+        tier = userDoc.data()?.tier;
+      }
+    }
+
+    return { uid, tier };
+  } catch (err) {
+    console.error('[getAuthFromRequest] Auth verification failed:', err);
     return null;
   }
 }
@@ -150,7 +168,10 @@ app.post('/api/generate/daily', async (req, res) => {
 
     console.log(`[SERVER] Initiating singleton generation for ${today}...`);
     const { fetchLiveSignals, formatSignalsForPrompt } = await getSignalsModule();
+    console.log('[DEBUG] Fetching live signals...');
+    debugger;
     const signals = await fetchLiveSignals();
+    console.log('[DEBUG] Live signals fetched:', !!signals);
     const signalContext = formatSignalsForPrompt(signals);
 
     const rawData = await generateWithAI(signalContext || 'Generate ideas', responseSchema);
@@ -195,9 +216,54 @@ app.post('/api/generate/analyze-idea', featureLimiter, async (req, res) => {
     const usageCheck = await checkAndIncrementMonthlyUsage(uid, limit, 'analyze-idea');
     if (!usageCheck.allowed) return res.status(429).json({ error: 'Limit reached' });
 
-    const prompt = `Analyze: ${ideaDescription}`;
-    const idea = await generateWithAI(prompt, ideaSchema);
-    idea.id = `custom-${uid}-${Date.now()}`;
+    const prompt = `
+      You are Trend-Equity's principal venture scout. A founder has submitted the following business concept for a deep VC-grade analysis:
+      
+      CONCEPT: "${ideaDescription}"
+      
+      TASK:
+      Perform a comprehensive analysis and return a single JSON object. You must fill out EVERY field in the schema with high-quality, professional insights. 
+      
+      SPECIFIC INSTRUCTIONS:
+      - headline: Create a punchy, 3-5 word headline for this idea.
+      - vcJustification: Provide a 2-3 sentence high-conviction bull case. Why invest now?
+      - pitch: A compelling, 1-sentence value proposition.
+      - revenueSkeleton: Describe 2-3 specific monetization levers (e.g. "SaaS Subscription", "API Usage Fee").
+      - unfairAdvantage: Identify a structural moat (data moat, network effects, etc.).
+      - costEffort: MVP complexity (e.g. "Medium - Full stack").
+      - trendSources: Cite 2-3 specific real-world signals or market shifts from 2024-2026.
+      - nextSteps: Provide 3 actionable items for the first 30 days.
+      - marketSize: Estimate the TAM (e.g. "$5B growing at 12% CAGR").
+      - competitorLandscape: Identify 2-3 direct or indirect competitors.
+      - regulatoryFlags: Identify any legal or compliance hurdles (e.g. "GDPR compliance required").
+      - categoryTags: Provide 3-4 relevant tags (e.g. ["SaaS", "AI", "HealthTech"]).
+      - revenuePotentialScore: A number from 1-10.
+      - potentialExit: Describe the likely exit path (e.g. "Acquisition by Big Tech").
+      - saturationLabel: Describe market density (e.g. "Blue Ocean" or "Competitive").
+      - heatBadge: A status badge (e.g. "Exploding", "Steady", "Niche").
+      
+      IMPORTANT: Do not leave any fields empty. If a field is missing or says "N/A", the analysis is considered a failure.
+    `;
+    const rawIdea = await generateWithAI(prompt, ideaSchema);
+    const idea = normalizeAIResponse(rawIdea, ['categoryTags', 'nextSteps', 'trendSources'], {
+      id: `custom-${uid}-${Date.now()}`,
+      headline: 'Idea Analysis',
+      pitch: 'Analysis in progress...',
+      vcJustification: '',
+      categoryTags: [],
+      costEffort: 'Unknown',
+      revenuePotentialScore: 5,
+      revenueSkeleton: '',
+      unfairAdvantage: '',
+      potentialExit: '',
+      trendSources: [],
+      saturationLabel: 'Unknown',
+      heatBadge: 'Stable',
+      nextSteps: [],
+      competitorLandscape: '',
+      regulatoryFlags: '',
+      marketSize: '',
+    });
 
     res.json({ idea, _usage: await buildDailyUsageResponse(uid, tier, 'analyze-idea') });
   } catch (err: any) {
@@ -209,8 +275,8 @@ app.get('/api/usage/analyze-idea', async (req, res) => {
   const auth = await getAuthFromRequest(req);
   if (!auth) return res.status(401).json({ error: 'Authentication required.' });
   const { uid, tier } = auth;
-  const { getMonthlyUsageCount } = await getUsageModule();
 
+  const { getMonthlyUsageCount } = await getUsageModule();
   const limit = tier === 'builder' ? 20 : tier === 'pro' ? 5 : 0;
   const used = await getMonthlyUsageCount(uid, 'analyze-idea');
   res.json({
@@ -263,7 +329,17 @@ async function mountVercelRoutes() {
 }
 
 mountVercelRoutes().then(() => {
-  app.listen(port, () => {
+  const server = app.listen(port, () => {
     console.log(`BFF Server running on port ${port}`);
+  });
+
+  server.on('error', (err: any) => {
+    if (err.code === 'EADDRINUSE') {
+      console.error(`\n[FATAL] Port ${port} is already in use.`);
+      console.error(`        Try running: npm run clean:ports\n`);
+      process.exit(1);
+    } else {
+      throw err;
+    }
   });
 });

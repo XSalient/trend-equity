@@ -75,7 +75,8 @@ export interface UserSave {
   userId: string;
   idea: Idea;
   savedAt: any;
-  saveType?: 'feed' | 'custom'; // omission treated as 'feed' (backwards compat)
+  saveType?: 'feed' | 'custom';
+  userInput?: string; // preserve original user description for custom ideas
 }
 
 export interface UserLatestIdea {
@@ -137,6 +138,7 @@ export interface ExpertVetting {
   verdict: 'High Conviction' | 'Moderate' | 'Pass';
   strengths: string[];
   weaknesses: string[];
+  riskMitigation: string[];
   pivotSuggestions: string[];
   comparableExits: string[];
   generatedAt: any;

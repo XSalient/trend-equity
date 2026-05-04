@@ -81,6 +81,29 @@ export function useAnalyzeIdea(user: User | null, tier: Tier, authReady: boolean
 
   const clearAnalyzedIdea = useCallback(() => setAnalyzedIdea(null), []);
 
+  const updateAnalyzedIdea = useCallback(
+    async (updatedIdea: Idea) => {
+      if (!user) return;
+      setAnalyzedIdea(updatedIdea);
+
+      try {
+        const latestRef = doc(db, 'user_latest_idea', user.uid);
+        await setDoc(
+          latestRef,
+          { idea: updatedIdea, updatedAt: serverTimestamp() },
+          { merge: true }
+        );
+        // Also update latestIdea state
+        if (latestIdea) {
+          setLatestIdea((prev) => (prev ? { ...prev, idea: updatedIdea } : null));
+        }
+      } catch (err) {
+        console.error('[useAnalyzeIdea] Failed to update latest idea:', err);
+      }
+    },
+    [user, latestIdea]
+  );
+
   return {
     isAnalyzing,
     analyzeError,
@@ -91,5 +114,6 @@ export function useAnalyzeIdea(user: User | null, tier: Tier, authReady: boolean
     latestIdea,
     loadingLatest,
     analyze,
+    updateAnalyzedIdea,
   };
 }

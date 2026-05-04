@@ -1,11 +1,10 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import AI from '../_lib/ai-provider';
-const { generateWithAI, dailyResponseSchema, getToday } = AI;
+const { generateWithAI, dailyResponseSchema, getToday, normalizeAIResponse } = AI;
 import { fetchLiveSignals, formatSignalsForPrompt } from '../_lib/signals';
 import { getRecentIdeaHeadlines } from '../_lib/cache';
 import { getAdminDb } from '../_lib/admin';
 import { getAuthContext } from '../_lib/auth';
-import { checkAndIncrementUsage } from '../_lib/usage';
 
 // Max requests per unique IP per day (unauthenticated protection) (S-4)
 const IP_DAILY_LIMIT = 5;
@@ -39,27 +38,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const uid = authCtx?.uid;
   const tier = authCtx?.tier || 'free';
 
-  // Rate limiting (S-4) omitted here because the Singleton pattern handles it via locking
-  // and tier restriction.
-
-  const today = getToday();
+  const { date, country, countryCount, refresh } = req.body;
+  const today = sanitiseInput(date, 10) || getToday();
 
   try {
     const db = getAdminDb();
     const docRef = db.collection('daily_generations').doc(today);
-    const existing = await docRef.get();
-
-    // 1. Singleton Check: If it exists, return it immediately
-    if (existing.exists) {
-      return res.json(existing.data());
+    
+    // 1. Singleton Check: If it exists, return it immediately UNLESS refresh is requested
+    if (!refresh) {
+      const existing = await docRef.get();
+      if (existing.exists) {
+        return res.json(existing.data());
+      }
     }
 
-    // 2. Authorization: Only allow 'builder' tier (Admin) to trigger the initial generation
+    // 2. Authorization: Only allow 'builder' tier (Admin) to trigger/refresh generation
     if (tier !== 'builder') {
       return res
         .status(403)
         .json({ error: 'Daily ideas are currently being curated. Please check back shortly.' });
     }
+
+    console.log(`[daily] Triggering generation for ${today} (refresh=${!!refresh})`);
 
     // 3. Locking: Prevent concurrent AI calls
     const lockRef = db.collection('locks').doc(`daily_gen_${today}`);
@@ -88,12 +89,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         ? `\n\nDO NOT REPEAT RECENT IDEAS — these headlines were already generated in the past 3 days. Generate completely different problem spaces, target markets, and business models:\n${recentHeadlines.map((h, i) => `  ${i + 1}. ${h}`).join('\n')}\n`
         : '';
 
+    const countryClause =
+      country && country !== 'Global'
+        ? `\n\nAdditionally, specifically include ${countryCount || 5} ideas tailored for the ${country} Local Market.`
+        : '';
+
     const promptStr = signalContext
-      ? `${signalContext}${dedupeBlock}\nUsing the live market signals above as your PRIMARY source, generate exactly 35 high-conviction business ideas for ${today}.`
-      : `Generate exactly 35 high-conviction business ideas for ${today}.${dedupeBlock}`;
+      ? `${signalContext}${dedupeBlock}${countryClause}\nUsing the live market signals above as your PRIMARY source, generate exactly 35 high-conviction business ideas for ${today}.`
+      : `Generate exactly 35 high-conviction business ideas for ${today}.${dedupeBlock}${countryClause}`;
 
     // 4. Generate & Normalize
-    const { normalizeAIResponse } = require('../_lib/ai-provider');
     const rawData = await generateWithAI(promptStr, dailyResponseSchema);
 
     const data = normalizeAIResponse(rawData, ['ideas'], {
@@ -115,6 +120,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.json(data);
   } catch (err: any) {
     console.error('[daily] Generation error:', err);
-    return res.status(503).json({ error: 'AI generation temporarily unavailable.' });
+    
+    // Attempt to unlock on failure
+    try {
+      const db = getAdminDb();
+      await db.collection('locks').doc(`daily_gen_${today}`).delete();
+    } catch (lockErr) {
+      // Ignore unlock errors
+    }
+
+    return res.status(503).json({ error: 'AI generation temporarily unavailable. ' + (err?.message || '') });
   }
 }

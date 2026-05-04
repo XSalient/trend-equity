@@ -10,6 +10,7 @@ import {
   Users,
   AlertCircle,
   X,
+  Trash2,
 } from 'lucide-react';
 import { Idea } from '../types';
 import { useIdeaActions } from '../hooks/useIdeaActions';
@@ -33,6 +34,7 @@ interface IdeaCardProps {
   onExport?: (format: 'pdf' | 'notion' | 'gdocs') => void;
   user: any;
   handleLogin: () => void;
+  userInput?: string;
 }
 
 export const IdeaCard: React.FC<IdeaCardProps> = ({
@@ -45,6 +47,7 @@ export const IdeaCard: React.FC<IdeaCardProps> = ({
   onExport,
   user,
   handleLogin,
+  userInput,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [activeToolkit, setActiveToolkit] = useState<
@@ -52,6 +55,7 @@ export const IdeaCard: React.FC<IdeaCardProps> = ({
   >(null);
   const [isAddingStep, setIsAddingStep] = useState(false);
   const [newStep, setNewStep] = useState({ step: '', details: '', milestone: '' });
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const {
     isGeneratingPlan,
@@ -83,6 +87,7 @@ export const IdeaCard: React.FC<IdeaCardProps> = ({
 
   const isFree = tier === 'free';
   const isBuilder = tier === 'builder';
+  const isAdmin = tier === 'builder'; // Admin proxy for now
 
   // BUG-4 FIX: auto-dismiss actionError after 6 seconds
   useEffect(() => {
@@ -130,23 +135,84 @@ export const IdeaCard: React.FC<IdeaCardProps> = ({
     setIsAddingStep(false);
   };
 
+  const handleToggleSaveLocal = () => {
+    if (isSaved) {
+      setShowDeleteConfirm(true);
+    } else {
+      onToggleSave();
+    }
+  };
+
+  const confirmDelete = () => {
+    onToggleSave();
+    setShowDeleteConfirm(false);
+  };
+
   return (
     <motion.div
       layout
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-zinc-900/60 border border-zinc-800/80 rounded-2xl overflow-hidden hover:border-zinc-600/80 hover:shadow-lg hover:shadow-black/20 transition-all duration-200 group"
+      className="bg-zinc-900/60 border border-zinc-800/80 rounded-2xl overflow-hidden hover:border-zinc-600/80 hover:shadow-lg hover:shadow-black/20 transition-all duration-200 group relative"
     >
+      <AnimatePresence>
+        {showDeleteConfirm && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 z-50 bg-zinc-950/90 backdrop-blur-sm flex items-center justify-center p-6 text-center"
+          >
+            <div className="space-y-4 max-w-xs">
+              <div className="w-12 h-12 bg-red-500/10 rounded-full flex items-center justify-center mx-auto">
+                <AlertCircle className="w-6 h-6 text-red-500" />
+              </div>
+              <div className="space-y-1">
+                <h4 className="text-sm font-bold text-white">Remove from saves?</h4>
+                <p className="text-xs text-zinc-500 leading-relaxed">
+                  This idea will be removed from your collection. Any custom analysis details may be
+                  lost.
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  className="flex-1 px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-bold rounded-lg transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmDelete}
+                  className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-500 text-white text-xs font-bold rounded-lg transition-all"
+                >
+                  Remove
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className="p-5 md:p-7 space-y-5">
         <IdeaCardHeader
           idea={idea}
           isSaved={isSaved}
-          onToggleSave={onToggleSave}
+          onToggleSave={handleToggleSaveLocal}
           isSaving={isSaving}
           onExport={onExport}
           isFree={isFree}
           user={user}
         />
+
+        {/* User Input — Only for Custom Ideas */}
+        {userInput && (
+          <div className="px-4 py-3 bg-zinc-800/20 border border-dashed border-zinc-700/50 rounded-xl space-y-1">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-600">
+              Your Input
+            </span>
+            <p className="text-xs text-zinc-400 italic">"{userInput}"</p>
+          </div>
+        )}
 
         {/* Pitch */}
         <div className="pl-3 border-l-2 border-emerald-500/40">
@@ -195,7 +261,7 @@ export const IdeaCard: React.FC<IdeaCardProps> = ({
                       ? 'bg-amber-500/10 border-amber-500/30 text-amber-400'
                       : 'bg-zinc-800/50 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 border-zinc-700/50'
                   }`}
-                  onClick={handleExpertVetting}
+                  onClick={() => handleExpertVetting(false)}
                   disabled={isVetting}
                 >
                   {isVetting ? (
@@ -219,7 +285,9 @@ export const IdeaCard: React.FC<IdeaCardProps> = ({
                 className="flex items-start gap-2 px-3 py-2.5 bg-red-500/10 border border-red-500/20 rounded-xl text-xs text-red-400"
               >
                 <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
-                <span className="flex-1 leading-relaxed">{actionError}</span>
+                <span className="flex-1 leading-relaxed">
+                  {typeof actionError === 'string' ? actionError : JSON.stringify(actionError)}
+                </span>
                 <button
                   onClick={clearActionError}
                   className="flex-shrink-0 text-red-400/60 hover:text-red-400 transition-colors"
@@ -239,7 +307,21 @@ export const IdeaCard: React.FC<IdeaCardProps> = ({
                 exit={{ height: 0, opacity: 0 }}
                 className="overflow-hidden space-y-6 pt-4"
               >
-                {vettingResult && <IdeaCardVetting vettingResult={vettingResult} />}
+                {isVetting ? (
+                  <div className="p-10 flex flex-col items-center justify-center gap-3 bg-zinc-900/40 rounded-2xl border border-zinc-800 border-dashed">
+                    <Loader2 className="w-8 h-8 text-emerald-500 animate-spin" />
+                    <p className="text-xs text-zinc-500 font-medium animate-pulse">
+                      Regenerating expert vetting...
+                    </p>
+                  </div>
+                ) : vettingResult ? (
+                  <IdeaCardVetting
+                    vettingResult={vettingResult}
+                    isAdmin={isAdmin}
+                    onRefresh={() => handleExpertVetting(true)}
+                    isRefreshing={isVetting}
+                  />
+                ) : null}
 
                 <IdeaCardActionSteps idea={idea} isFree={isFree} />
 
@@ -268,6 +350,7 @@ export const IdeaCard: React.FC<IdeaCardProps> = ({
                   newStep={newStep}
                   setNewStep={setNewStep}
                   handleAddCustomStep={handleAddCustomStepLocal}
+                  isAdmin={isAdmin}
                 />
               </motion.div>
             )}
