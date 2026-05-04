@@ -18,12 +18,38 @@ export function useAuth() {
 
   useEffect(() => {
     // Pick up the Google sign-in result after redirect completes (both web & native)
-    getRedirectResult(auth).catch(() => {});
+    const handleRedirect = async () => {
+      try {
+        const result = await getRedirectResult(auth);
+        if (result) {
+          console.info('[AUTH] Redirect sign-in success:', result.user.email);
+          setUser(result.user);
+        }
+      } catch (err: any) {
+        console.error('[AUTH] Redirect result error:', err.code, err.message);
+        if (err.code === 'auth/unauthorized-domain') {
+          setError(
+            `Sign-in failed: ${window.location.hostname} is not authorized. Please add it to Authorized Domains in the Firebase Console.`
+          );
+        } else {
+          setError(`Sign-in failed: ${err.message}`);
+        }
+      }
+    };
+
+    handleRedirect();
 
     const unsubscribe = onAuthStateChanged(auth, async (u) => {
       if (u) {
+        console.info('[AUTH] State changed: USER_IN', u.email);
         // Force refresh token once to pick up any new custom claims (tier)
-        await u.getIdToken(true);
+        try {
+          await u.getIdToken(true);
+        } catch (e) {
+          console.warn('[AUTH] Token refresh failed:', e);
+        }
+      } else {
+        console.info('[AUTH] State changed: USER_OUT');
       }
       setUser(u);
       setAuthReady(true);
