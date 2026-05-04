@@ -26,6 +26,10 @@
   ],
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/$1" },
+    {
+      "source": "/__/auth/(.*)",
+      "destination": "https://gen-lang-client-0099813375.firebaseapp.com/__/auth/$1"
+    },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

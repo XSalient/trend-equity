@@ -3,6 +3,7 @@ import {
   onAuthStateChanged,
   signInWithPopup,
   signInWithRedirect,
+  getRedirectResult,
   GoogleAuthProvider,
   signOut,
   User,
@@ -18,6 +19,18 @@ export function useAuth() {
   useEffect(() => {
     console.info('[AUTH] Initializing with Project:', import.meta.env.VITE_FIREBASE_PROJECT_ID);
     console.info('[AUTH] Auth Domain:', import.meta.env.VITE_FIREBASE_AUTH_DOMAIN);
+
+    // Catch errors from the redirect fallback path (e.g. auth/unauthorized-domain)
+    getRedirectResult(auth).catch((err: any) => {
+      console.error('[AUTH] Redirect result error:', err.code, err.message);
+      if (err.code === 'auth/unauthorized-domain') {
+        setError(
+          `Sign-in failed: ${window.location.hostname} is not authorized. Please add it to Authorized Domains in the Firebase Console.`
+        );
+      } else {
+        setError(`Sign-in failed: ${err.message}`);
+      }
+    });
 
     const unsubscribe = onAuthStateChanged(auth, async (u) => {
       if (u) {
@@ -46,9 +59,18 @@ export function useAuth() {
         // Native Capacitor: popups not available, must use redirect
         await signInWithRedirect(auth, provider);
       } else {
-        // Web (localhost + production): popup avoids cross-domain storage issues
-        // that break getRedirectResult when authDomain differs from the app domain
-        await signInWithPopup(auth, provider);
+        try {
+          await signInWithPopup(auth, provider);
+        } catch (popupErr: any) {
+          if (popupErr.code === 'auth/popup-blocked') {
+            // Fall back to redirect when browser blocks the popup.
+            // Works because vercel.json proxies /__/auth/* to Firebase Hosting,
+            // making authDomain (trend-equity.vercel.app) same-origin as the app.
+            await signInWithRedirect(auth, provider);
+          } else {
+            throw popupErr;
+          }
+        }
       }
     } catch (err: any) {
       if (err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request') {
