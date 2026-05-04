@@ -41,8 +41,15 @@ export function useAuth() {
         try {
           await signInWithPopup(auth, provider);
         } catch (err: any) {
-          // If popup is blocked, fallback to redirect
-          if (err.code === 'auth/popup-blocked') {
+          console.warn('Login popup issue:', err.code, err.message);
+          // If popup is blocked, cancelled, or has an internal error, fallback to redirect
+          const shouldRedirect =
+            err.code === 'auth/popup-blocked' ||
+            err.code === 'auth/internal-error' ||
+            err.message?.toLowerCase().includes('popup');
+
+          if (shouldRedirect) {
+            console.info('Falling back to redirect sign-in...');
             await signInWithRedirect(auth, provider);
             return;
           }
