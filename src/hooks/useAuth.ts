@@ -17,10 +17,8 @@ export function useAuth() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // On native, pick up the Google sign-in result after redirect completes
-    if (Capacitor.isNativePlatform()) {
-      getRedirectResult(auth).catch(() => {});
-    }
+    // Pick up the Google sign-in result after redirect completes (both web & native)
+    getRedirectResult(auth).catch(() => {});
 
     const unsubscribe = onAuthStateChanged(auth, async (u) => {
       if (u) {
