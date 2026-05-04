@@ -47,14 +47,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const data = normalizeAIResponse(rawData, ['topTrends', 'opportunityAreas'], {
       week: `Week of ${getToday()}`,
-      topTrends: [],
-      opportunityAreas: [],
+      topTrends: [] as any[],
+      opportunityAreas: [] as any[],
       marketShift: {
         title: 'Strategic Analysis Pending',
         description: 'Deep market signals are currently being processed.',
       },
       generatedAt: new Date().toISOString(),
-    });
+    } as any);
 
     // --- Defensive Sanitization (Self-Healing from AI Key Drift) ---
     const sanitize = (obj: any): any => {
