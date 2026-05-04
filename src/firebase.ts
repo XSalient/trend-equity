@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+import { getAuth, setPersistence, browserLocalPersistence } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
 const firebaseConfig = {
@@ -19,10 +19,6 @@ const missingKeys = Object.entries(firebaseConfig)
 if (missingKeys.length > 0) {
   const errorMsg = `[FIREBASE] Critical missing environment variables: ${missingKeys.join(', ')}. Ensure they are set in your Vercel/Doppler settings with the VITE_ prefix.`;
   console.error(errorMsg);
-  // Throwing here prevents the app from crashing later with "invalid-api-key"
-  if (import.meta.env.PROD) {
-    // In production, we might want to show a UI error instead of just throwing
-  }
 }
 
 if (import.meta.env.VITE_FIREBASE_API_KEY) {
@@ -35,3 +31,8 @@ if (import.meta.env.VITE_FIREBASE_API_KEY) {
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 export const auth = getAuth(app);
+
+// Force local persistence to survive redirects
+setPersistence(auth, browserLocalPersistence).catch((err) => {
+  console.error('[FIREBASE] Persistence error:', err);
+});

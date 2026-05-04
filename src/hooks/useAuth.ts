@@ -61,6 +61,7 @@ export function useAuth() {
   }, []);
 
   const handleLogin = async () => {
+    console.info('[AUTH] handleLogin triggered');
     try {
       const provider = new GoogleAuthProvider();
       const isLocalhost =
