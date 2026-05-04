@@ -17,6 +17,9 @@ export function useAuth() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    console.info('[AUTH] Initializing with Project:', import.meta.env.VITE_FIREBASE_PROJECT_ID);
+    console.info('[AUTH] Auth Domain:', import.meta.env.VITE_FIREBASE_AUTH_DOMAIN);
+
     // Pick up the Google sign-in result after redirect completes (both web & native)
     const handleRedirect = async () => {
       try {
