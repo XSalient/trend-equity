@@ -26,9 +26,10 @@ export const ApiAccessModal: React.FC<ApiAccessModalProps> = ({ user, isOpen, on
     setGenerateError(null);
     try {
       const token = await user.getIdToken();
-      const res = await fetch('/api/generate/api-key', {
+      const res = await fetch('/api/admin', {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'api-key' }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to generate key');
