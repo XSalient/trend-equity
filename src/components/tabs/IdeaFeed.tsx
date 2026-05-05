@@ -76,7 +76,7 @@ export const IdeaFeed: React.FC<IdeaFeedProps> = ({
         <IdeaFeedSkeleton />
       ) : !dailyGen ? (
         <div className="p-12 bg-zinc-900/40 border border-zinc-800/60 rounded-3xl text-center space-y-6 backdrop-blur-sm relative overflow-hidden group">
-          <div className="absolute inset-0 bg-gradient-to-b from-emerald-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+          <div className="absolute inset-0 bg-gradient-to-b from-emerald-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
 
           <div className="relative">
             <div className="w-16 h-16 bg-zinc-800/50 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-zinc-700/50">
@@ -95,7 +95,7 @@ export const IdeaFeed: React.FC<IdeaFeedProps> = ({
             </div>
           </div>
 
-          <div className="pt-2">
+          <div className="pt-2 relative z-10">
             {tier === 'builder' ? (
               <button
                 onClick={triggerGeneration}
