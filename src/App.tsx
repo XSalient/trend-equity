@@ -474,6 +474,9 @@ export default function App() {
             <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-[10px] text-zinc-600 font-bold uppercase tracking-widest">
               <p>© 2026 TREND EQUITY ENGINE</p>
               <div className="flex gap-6">
+                <a href="/enterprise" className="text-emerald-500/80 hover:text-emerald-400 transition-colors">
+                  Enterprise
+                </a>
                 <a href="#" className="hover:text-emerald-500 transition-colors">
                   Privacy
                 </a>

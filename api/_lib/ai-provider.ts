@@ -91,10 +91,24 @@ class GoogleProvider implements AIProvider {
  * Strip markdown code fences that some models wrap JSON responses in.
  */
 function cleanJSON(raw: string): string {
-  return raw
-    .replace(/^```(?:json)?\s*/i, '')
-    .replace(/\s*```\s*$/i, '')
-    .trim();
+  let cleaned = raw.trim();
+
+  // 1. Handle markdown code blocks
+  const codeBlockMatch = cleaned.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+  if (codeBlockMatch) {
+    cleaned = codeBlockMatch[1];
+  }
+
+  // 2. If it still doesn't look like JSON, try to find the first { and last }
+  if (!cleaned.startsWith('{') && !cleaned.startsWith('[')) {
+    const start = cleaned.indexOf('{');
+    const end = cleaned.lastIndexOf('}');
+    if (start !== -1 && end !== -1 && end > start) {
+      cleaned = cleaned.slice(start, end + 1);
+    }
+  }
+
+  return cleaned.trim();
 }
 
 // 3. FACTORY
