@@ -388,6 +388,8 @@ export default function App() {
                 setActiveTab={setActiveTab}
                 triggerGeneration={triggerGeneration}
                 loading={loading}
+                generating={generating}
+                error={ideasError}
                 user={user}
                 handleLogin={handleLogin}
               />

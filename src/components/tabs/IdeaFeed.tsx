@@ -21,6 +21,8 @@ interface IdeaFeedProps {
   setActiveTab: (tab: any) => void;
   triggerGeneration: () => void;
   loading?: boolean;
+  generating?: boolean;
+  error?: string | null;
   user: any;
   handleLogin: () => void;
 }
@@ -40,6 +42,8 @@ export const IdeaFeed: React.FC<IdeaFeedProps> = ({
   setActiveTab,
   triggerGeneration,
   loading,
+  generating,
+  error,
   user,
   handleLogin,
 }) => {
@@ -95,15 +99,27 @@ export const IdeaFeed: React.FC<IdeaFeedProps> = ({
             {tier === 'builder' ? (
               <button
                 onClick={triggerGeneration}
-                className="inline-flex items-center gap-2 px-8 py-3 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold rounded-full transition-all shadow-lg shadow-emerald-900/20 active:scale-95"
+                disabled={generating || loading}
+                className={`inline-flex items-center gap-2 px-8 py-3 rounded-full text-sm font-bold transition-all shadow-lg active:scale-95 ${
+                  generating || loading
+                    ? 'bg-zinc-800 text-zinc-500 cursor-wait'
+                    : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-900/20'
+                }`}
               >
-                <RefreshCw className="w-4 h-4" />
-                TRIGGER GENERATION
+                <RefreshCw className={`w-4 h-4 ${generating ? 'animate-spin' : ''}`} />
+                {generating ? 'GENERATING...' : 'TRIGGER GENERATION'}
               </button>
             ) : (
               <div className="inline-flex items-center gap-2 px-4 py-2 bg-zinc-800/30 text-zinc-500 text-xs font-bold uppercase tracking-widest rounded-full border border-zinc-800/50">
                 <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping" />
                 SCANNING LIVE SIGNALS
+              </div>
+            )}
+
+            {error && (
+              <div className="mt-4 p-3 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center gap-2 text-red-400 text-xs justify-center max-w-sm mx-auto">
+                <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                <span>{error}</span>
               </div>
             )}
           </div>

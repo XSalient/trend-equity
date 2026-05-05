@@ -115,8 +115,8 @@ function setCached(key: string, result: any): void {
 }
 
 app.post('/api/generate/daily', async (req, res) => {
-  console.log('[SERVER] Received POST /api/generate/daily');
   const auth = await getAuthFromRequest(req);
+  console.log('[SERVER] Daily Generation Triggered. Auth success:', !!auth, 'Tier:', auth?.tier);
   if (!auth) return res.status(401).json({ error: 'Authentication required.' });
 
   const { uid, tier } = auth;
@@ -140,6 +140,7 @@ app.post('/api/generate/daily', async (req, res) => {
     // 2. Authorization: Only allow specific users or 'builder/admin' to trigger the FIRST generation
     // FIX: User requested "once for all users", so we restrict the trigger.
     if (tier !== 'builder') {
+      console.warn(`[SERVER] Unauthorized generation attempt by user ${uid} with tier ${tier}`);
       return res
         .status(403)
         .json({ error: 'Daily ideas are currently being curated. Please check back shortly.' });
@@ -193,8 +194,11 @@ app.post('/api/generate/daily', async (req, res) => {
 
     res.json({ ...data, _usage: await buildDailyUsageResponse(uid, tier, 'daily') });
   } catch (err: any) {
-    console.error('[SERVER] Daily generation failed:', err);
-    res.status(500).json({ error: err.message });
+    console.error('[SERVER] Daily generation CRITICAL FAILURE:', err);
+    res.status(500).json({
+      error: err.message,
+      stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
+    });
   }
 });
 
