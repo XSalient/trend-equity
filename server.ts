@@ -3,10 +3,10 @@ import dotenv from 'dotenv';
 dotenv.config();
 import rateLimit from 'express-rate-limit';
 import { getMockResponse } from './server.mocks.js';
-import { getAdminDb } from './api/_lib/admin';
-import { normalizeAIResponse } from './api/_lib/ai-provider';
-import AI from './api/_lib/ai-provider';
-const { generateWithAI, Type, getToday, dailyResponseSchema: responseSchema, ideaSchema } = AI;
+import * as AdminNamespace from './api/_lib/admin.js';
+const { getAdminDb, getAdminAuth } = AdminNamespace;
+import * as AI from './api/_lib/ai-provider.js';
+const { generateWithAI, Type, getToday, dailyResponseSchema: responseSchema, ideaSchema, normalizeAIResponse } = AI;
 
 console.log('[DEBUG] Server starting, imports resolved.');
 // Load modules dynamically to bypass persistent tsx resolution issues

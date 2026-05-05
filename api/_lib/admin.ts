@@ -1,8 +1,3 @@
-/**
- * Shared Firebase Admin SDK initialisation — single source of truth.
- * Imported by cache.ts, usage.ts, auth.ts, and any route that needs Admin access.
- * Safe to call multiple times; initialises at most once per warm function invocation.
- */
 import { cert, getApps, initializeApp } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
