@@ -167,12 +167,28 @@ app.post('/api/generate/daily', async (req, res) => {
 
     console.log(`[SERVER] Initiating singleton generation for ${today}...`);
     const { fetchLiveSignals, formatSignalsForPrompt } = await getSignalsModule();
-    console.log('[DEBUG] Fetching live signals...');
-    const signals = await fetchLiveSignals();
-    console.log('[DEBUG] Live signals fetched:', !!signals);
+    const { getRecentIdeaHeadlines } = await import('./api/_lib/cache.js');
+
+    console.log('[DEBUG] Fetching live signals and recent headlines...');
+    const [signals, recentHeadlines] = await Promise.all([
+      fetchLiveSignals(),
+      getRecentIdeaHeadlines(today),
+    ]);
+    console.log('[DEBUG] Live signals fetched:', !!signals, '| Recent headlines for dedup:', recentHeadlines.length);
     const signalContext = formatSignalsForPrompt(signals);
 
-    const rawData = await generateWithAI(signalContext || 'Generate ideas', responseSchema);
+    const dedupeBlock =
+      recentHeadlines.length > 0
+        ? `\n\nDO NOT REPEAT RECENT IDEAS — these headlines were already generated in the past 3 days. Generate completely different problem spaces, target markets, and business models:\n${recentHeadlines.map((h: string, i: number) => `  ${i + 1}. ${h}`).join('\n')}\n`
+        : '';
+
+    const qualityBlock = `\n\nREQUIREMENTS FOR EVERY IDEA:\n- Cite ≥1 specific signal in trendSources — include the actual data point, not just the source name\n- Find SECOND-ORDER opportunities: what problem does the signal CREATE downstream that is currently undersolved?\n- Enforce sector diversity: no more than 3 ideas from any single sector (AI/ML, FinTech, HealthTech, EdTech, CleanTech, Consumer, B2B SaaS, Marketplace, PropTech, AgriTech, LegalTech, GovTech, etc.)\n- unfairAdvantage must describe a STRUCTURAL edge (proprietary data, regulatory moat, distribution lock-in, network effects) — never "better UX" or "first mover"\n- Spread effort levels: at least 8 solo-buildable (<6 weeks), at least 8 small-team, the rest for well-funded teams\n- At least 20% of ideas should address markets outside the US\n- AVOID: generic AI assistants without proprietary data, basic CRUD SaaS, copycat marketplaces without structural differentiation`;
+
+    const promptStr = signalContext
+      ? `${signalContext}${dedupeBlock}${qualityBlock}\n\nNow generate exactly 35 high-conviction business ideas for ${today}.`
+      : `Generate exactly 35 high-conviction business ideas for ${today}.${dedupeBlock}${qualityBlock}`;
+
+    const rawData = await generateWithAI(promptStr, responseSchema);
 
     // Recovery & Normalization
     const data = normalizeAIResponse(rawData, ['ideas'], {

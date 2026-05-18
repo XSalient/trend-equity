@@ -94,9 +94,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         ? `\n\nAdditionally, specifically include ${countryCount || 5} ideas tailored for the ${country} Local Market.`
         : '';
 
+    const qualityBlock = `\n\nREQUIREMENTS FOR EVERY IDEA:\n- Cite ≥1 specific signal in trendSources — include the actual data point, not just the source name\n- Find SECOND-ORDER opportunities: what problem does the signal CREATE downstream that is currently undersolved?\n- Enforce sector diversity: no more than 3 ideas from any single sector (AI/ML, FinTech, HealthTech, EdTech, CleanTech, Consumer, B2B SaaS, Marketplace, PropTech, AgriTech, LegalTech, GovTech, etc.)\n- unfairAdvantage must describe a STRUCTURAL edge (proprietary data, regulatory moat, distribution lock-in, network effects) — never "better UX" or "first mover"\n- Spread effort levels: at least 8 solo-buildable (<6 weeks), at least 8 small-team, the rest for well-funded teams\n- At least 20% of ideas should address markets outside the US\n- AVOID: generic AI assistants without proprietary data, basic CRUD SaaS, copycat marketplaces without structural differentiation`;
+
     const promptStr = signalContext
-      ? `${signalContext}${dedupeBlock}${countryClause}\nUsing the live market signals above as your PRIMARY source, generate exactly 35 high-conviction business ideas for ${today}.`
-      : `Generate exactly 35 high-conviction business ideas for ${today}.${dedupeBlock}${countryClause}`;
+      ? `${signalContext}${dedupeBlock}${countryClause}${qualityBlock}\n\nNow generate exactly 35 high-conviction business ideas for ${today}.`
+      : `Generate exactly 35 high-conviction business ideas for ${today}.${dedupeBlock}${countryClause}${qualityBlock}`;
 
     // 4. Generate & Normalize
     const rawData = await generateWithAI(promptStr, dailyResponseSchema);

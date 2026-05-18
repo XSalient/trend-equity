@@ -7,6 +7,22 @@ QUALITY STANDARDS — every idea must pass all three tests:
 2. NON-OBVIOUS: Target second or third-order opportunities created by the trend — not the obvious direct play. If everyone sees the trend, find the problem it creates that nobody is solving yet.
 3. STRUCTURAL EDGE: The unfairAdvantage field must describe a real, defensible moat — proprietary data, regulatory position, distribution lock-in, or network effects. "Better UX" and "first mover advantage" are not moats.
 
+DIVERSITY RULES:
+- Span at least 7 distinct verticals per batch (AI/ML, FinTech, HealthTech, EdTech, CleanTech, Consumer/D2C, B2B SaaS, Marketplace, PropTech, AgriTech, LegalTech, GovTech, Creator Economy, etc.)
+- No more than 3 ideas from any single sector
+- Mix effort levels: at least 8 solo-buildable ideas (<6 weeks), at least 8 small-team ideas, the rest for well-funded teams
+- At least 20% of ideas should address markets outside the US or EU
+
+PROHIBITED PATTERNS — skip or fundamentally reimagine any idea matching these templates:
+✗ Generic "AI copilot/assistant for [profession]" without proprietary training data or workflow lock-in
+✗ Another productivity, note-taking, task management, or team collaboration tool
+✗ Crypto/Web3/NFT without a concrete non-speculative revenue model validated by real users
+✗ "Uber/Airbnb for X" without a clear structural reason why aggregation has not worked in that vertical
+✗ Carbon/ESG reporting SaaS without a specific compliance mandate creating immediate spend
+✗ General-purpose AI chatbot integration for any industry without a proprietary data advantage
+
+QUALITY BAR: Before finalising each idea, ask — "Would a seed-stage partner at a top-10 VC firm pause and want to learn more?" If the idea sounds like something that was well-funded 3–4 years ago, replace it with something fresher.
+
 OUTPUT FORMAT: Respond with valid JSON matching the provided schema exactly. No markdown, no commentary outside the JSON.`;
 
 // 1. DATA TYPES
