@@ -53,8 +53,7 @@ export async function getAuthContext(req: VercelRequest): Promise<AuthContext | 
         ? (rawTier as AuthContext['tier'])
         : 'free';
       const role = userDoc.exists ? userDoc.data()?.role : null;
-      const isAdminFlag = userDoc.exists ? !!userDoc.data()?.isAdmin : false;
-      const isAdmin = role === 'admin' || isAdminFlag;
+      const isAdmin = role === 'admin';
       return { uid: decoded.uid, tier, isAdmin };
     } catch {
       // Firestore lookup failed — default to free tier (fail-open on tier, not auth)

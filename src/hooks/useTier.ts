@@ -36,7 +36,7 @@ export function useTier(user: User | null) {
           if (docSnap.exists()) {
             const data = docSnap.data();
             setTier((data.tier as Tier) || 'free');
-            setIsAdmin(data.role === 'admin' || data.isAdmin === true);
+            setIsAdmin(data.role === 'admin');
           } else {
             setTier('free');
             setIsAdmin(false);
