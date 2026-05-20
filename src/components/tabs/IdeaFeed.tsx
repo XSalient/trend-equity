@@ -12,6 +12,7 @@ interface IdeaFeedProps {
   filters: FilterState;
   setFilters: (filters: FilterState) => void;
   tier: Tier;
+  isAdmin: boolean;
   onExportCSV: () => void;
   onExportPDF: () => void;
   toggleSave: (idea: Idea) => void;
@@ -33,6 +34,7 @@ export const IdeaFeed: React.FC<IdeaFeedProps> = ({
   filters,
   setFilters,
   tier,
+  isAdmin,
   onExportCSV,
   onExportPDF,
   toggleSave,
@@ -41,9 +43,9 @@ export const IdeaFeed: React.FC<IdeaFeedProps> = ({
   exportToPDF,
   setActiveTab,
   triggerGeneration,
-  loading,
-  generating,
-  error,
+  loading = false,
+  generating = false,
+  error = null,
   user,
   handleLogin,
 }) => {
@@ -96,7 +98,7 @@ export const IdeaFeed: React.FC<IdeaFeedProps> = ({
           </div>
 
           <div className="pt-2 relative z-10">
-            {tier === 'builder' ? (
+            {isAdmin ? (
               <button
                 onClick={triggerGeneration}
                 disabled={generating || loading}

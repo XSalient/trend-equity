@@ -38,6 +38,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const authCtx = await getAuthContext(req);
   const uid = authCtx?.uid;
   const tier = authCtx?.tier || 'free';
+  const isAdmin = authCtx?.isAdmin || false;
 
   const { date, country, countryCount, refresh } = req.body;
   const today = sanitiseInput(date, 10) || getToday();
@@ -54,9 +55,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    // 2. Authorization: Only allow 'builder' tier (Admin) to refresh (regenerate) existing generation.
+    // 2. Authorization: Only allow Admin users to refresh (regenerate) existing generation.
     // However, any tier (including free/pro/anonymous) can trigger the initial daily generation.
-    if (refresh && tier !== 'builder') {
+    if (refresh && !isAdmin) {
       return res
         .status(403)
         .json({ error: 'Only administrators can refresh the daily generation.' });

@@ -12,6 +12,7 @@ import { getAdminDb, getAdminAuth } from './admin';
 export interface AuthContext {
   uid: string;
   tier: 'free' | 'pro' | 'builder';
+  isAdmin: boolean;
 }
 
 /**
@@ -34,7 +35,7 @@ export async function getAuthContext(req: VercelRequest): Promise<AuthContext | 
       if (!snap.exists || !snap.data()?.active) return null;
       const d = snap.data()!;
       snap.ref.update({ lastUsed: new Date() }).catch(() => {});
-      return { uid: d.uid, tier: d.tier as AuthContext['tier'] };
+      return { uid: d.uid, tier: d.tier as AuthContext['tier'], isAdmin: false };
     } catch {
       return null;
     }
@@ -51,10 +52,13 @@ export async function getAuthContext(req: VercelRequest): Promise<AuthContext | 
       const tier = (['free', 'pro', 'builder'] as const).includes(rawTier as any)
         ? (rawTier as AuthContext['tier'])
         : 'free';
-      return { uid: decoded.uid, tier };
+      const role = userDoc.exists ? userDoc.data()?.role : null;
+      const isAdminFlag = userDoc.exists ? !!userDoc.data()?.isAdmin : false;
+      const isAdmin = role === 'admin' || isAdminFlag;
+      return { uid: decoded.uid, tier, isAdmin };
     } catch {
       // Firestore lookup failed — default to free tier (fail-open on tier, not auth)
-      return { uid: decoded.uid, tier: 'free' };
+      return { uid: decoded.uid, tier: 'free', isAdmin: false };
     }
   } catch {
     // Invalid or expired token

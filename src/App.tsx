@@ -47,7 +47,7 @@ export default function App() {
   }
 
   const { user, authReady, handleLogin, handleLogout, error: authError } = useAuth();
-  const { tier, handleUpgrade, handleDowngrade, upgradeToBuilder, tierNotification } =
+  const { tier, isAdmin, handleUpgrade, handleDowngrade, upgradeToBuilder, tierNotification } =
     useTier(user);
   const {
     alerts,
@@ -379,6 +379,7 @@ export default function App() {
                 filters={filters}
                 setFilters={setFilters}
                 tier={tier}
+                isAdmin={isAdmin}
                 onExportCSV={() => exportListToCSV(dailyGen?.ideas || [], activeTab, today)}
                 onExportPDF={() => exportListToPDF(dailyGen?.ideas || [], activeTab, today)}
                 toggleSave={onToggleSaveLocal}

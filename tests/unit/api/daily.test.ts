@@ -104,7 +104,7 @@ describe('POST /api/generate/daily', () => {
       return MOCK_DAILY_GENERATION;
     });
     // Auth: builder tier required to trigger daily generation
-    mockGetAuthContext.mockResolvedValue({ uid: 'user-1', tier: 'builder' });
+    mockGetAuthContext.mockResolvedValue({ uid: 'user-1', tier: 'builder', isAdmin: true });
     mockCheckAndIncrementUsage.mockResolvedValue({ allowed: true, remaining: 10, limit: null });
     // Admin Firestore: idempotent persist stub
     const mockDocRef = {

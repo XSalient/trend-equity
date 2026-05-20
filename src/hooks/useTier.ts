@@ -7,6 +7,7 @@ import { handleFirestoreError, OperationType } from '../utils/errorUtils';
 
 export function useTier(user: User | null) {
   const [tier, setTier] = useState<Tier>('free');
+  const [isAdmin, setIsAdmin] = useState(false);
   const [tierNotification, setTierNotification] = useState<string | null>(null);
 
   const notify = (msg: string) => {
@@ -15,13 +16,15 @@ export function useTier(user: User | null) {
   };
 
   useEffect(() => {
-    // FIX (S-3): mockTier URL param is ONLY active in development/test mode.
+    // FIX (S-3): mockTier & mockAdmin URL param is ONLY active in development/test mode.
     // In production builds this block is removed by the bundler (dead code elimination).
     if (import.meta.env.DEV || import.meta.env.VITE_ENABLE_TEST_MODE === 'true') {
       const searchParams = new URLSearchParams(window.location.search);
       const mockTier = searchParams.get('mockTier') as Tier;
+      const mockAdmin = searchParams.get('mockAdmin') === 'true';
       if (mockTier && (['free', 'pro', 'builder'] as Tier[]).includes(mockTier)) {
         setTier(mockTier);
+        setIsAdmin(mockAdmin || mockTier === 'builder'); // default mock builder to admin for dev simplicity unless specified
         return;
       }
     }
@@ -30,15 +33,19 @@ export function useTier(user: User | null) {
       const userRef = doc(db, 'users', user.uid);
       getDoc(userRef)
         .then((docSnap) => {
-          if (docSnap.exists() && docSnap.data().tier) {
-            setTier(docSnap.data().tier as Tier);
+          if (docSnap.exists()) {
+            const data = docSnap.data();
+            setTier((data.tier as Tier) || 'free');
+            setIsAdmin(data.role === 'admin' || data.isAdmin === true);
           } else {
             setTier('free');
+            setIsAdmin(false);
           }
         })
         .catch((err) => handleFirestoreError(err, OperationType.GET, `users/${user.uid}`));
     } else {
       setTier('free');
+      setIsAdmin(false);
     }
   }, [user]);
 
@@ -77,5 +84,13 @@ export function useTier(user: User | null) {
     notify('Builder tier unlocked for this session.');
   };
 
-  return { tier, setTier, handleUpgrade, handleDowngrade, upgradeToBuilder, tierNotification };
+  return {
+    tier,
+    isAdmin,
+    setTier,
+    handleUpgrade,
+    handleDowngrade,
+    upgradeToBuilder,
+    tierNotification,
+  };
 }
