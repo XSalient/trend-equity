@@ -33,11 +33,12 @@ npm run format
 ## Table of Contents
 
 1. [Quick Start](#quick-start)
-2. [Environment Variables](#environment-variables)
-3. [Dev Mode Switches](#dev-mode-switches)
-4. [Commands Reference](#commands-reference)
-5. [Production Deployment (Vercel)](#production-deployment-vercel)
-6. [Security Checklist](#security-checklist)
+2. [Daily Feed Generation & Self-Learning Pipeline](#daily-feed-generation--self-learning-pipeline)
+3. [Environment Variables](#environment-variables)
+4. [Dev Mode Switches](#dev-mode-switches)
+5. [Commands Reference](#commands-reference)
+6. [Production Deployment (Vercel)](#production-deployment-vercel)
+7. [Security Checklist](#security-checklist)
 
 ---
 
@@ -78,6 +79,42 @@ npm run dev:live
 ```
 
 The frontend runs at **http://localhost:3000** and the BFF server at **http://localhost:3001**.
+
+---
+
+## Daily Feed Generation & Self-Learning Pipeline
+
+The daily feed generation architecture is designed for maximum speed, strict VC-grade quality, and continuous unsupervised and supervised learning.
+
+### 1. Parallelized Batch Generation
+
+To generate 35 high-conviction startup ideas without hitting output token limits or causing JSON truncation, the generation is divided into three concurrent, category-focused prompts:
+
+- **Batch 1 (12 ideas):** Focuses on _Digital / SaaS / AI-SaaS_.
+- **Batch 2 (12 ideas):** Focuses on _Service / Local / On-Demand_ and _Wildcard_.
+- **Batch 3 (11 ideas):** Focuses on _Physical / Sustainable / Hardware_ and _Deep-Tech / Moonshot_.
+
+This batching reduces the cold generation time from 2+ minutes to ~25 seconds.
+
+### 2. Multi-Tier Access Logic
+
+- **Initial Generation:** Users of any tier (including Free and Pro) can trigger the initial daily feed generation of the day if it hasn't been created yet.
+- **Feed Regeneration:** Only users in the `builder` tier (Admin) are authorized to trigger a feed regeneration (`refresh: true`).
+
+### 3. Dynamic Prompt Refiner (Self-Improving Loop)
+
+Each daily generation run automatically triggers the self-learning pipeline:
+
+- **Feedback Collection:** Gathers user reactions (`up`, `down`, `building`) and text comments on generated ideas from the past 7 days.
+- **AI VC Self-Critique:** Runs an LLM-based Venture Capital Critic to critique the past 3 days of generated ideas, identifying cliché/repetitive patterns (like basic AI wrappers or unviable regulatory models) and weak moats.
+- **Meta-Prompt Refinement:** Combines current prompts, user reactions, comments, and the AI critique to auto-generate a refined system prompt and quality block instruction set, saving it as the next active version in Firestore (`config/generation_prompt`).
+
+### 4. Lineage & Version Logging
+
+For logging, analysis, and auditing:
+
+- **Prompt Snapshotting:** Writes every new optimized prompt to `prompt_history/v[version]` along with the critique reasons and feedback metadata.
+- **Feed Run Archiving:** Saves each feed generation run snapshot in `daily_generations_history/[date]_[timestamp]` alongside the exact `promptVersion` used to generate it.
 
 ---
 
