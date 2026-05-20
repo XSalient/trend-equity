@@ -4,7 +4,12 @@ dotenv.config();
 import rateLimit from 'express-rate-limit';
 import { getMockResponse } from './server.mocks.js';
 import { getAdminDb, getAdminAuth } from './api/_lib/admin.js';
-import { generateWithAI, normalizeAIResponse, ideaSchema, dailyResponseSchema as responseSchema } from './api/_lib/ai-provider.js';
+import {
+  generateWithAI,
+  normalizeAIResponse,
+  ideaSchema,
+  dailyResponseSchema as responseSchema,
+} from './api/_lib/ai-provider.js';
 import AI from './api/_lib/ai-provider.js';
 const { getToday, Type } = AI;
 
@@ -174,7 +179,12 @@ app.post('/api/generate/daily', async (req, res) => {
       fetchLiveSignals(),
       getRecentIdeaHeadlines(today),
     ]);
-    console.log('[DEBUG] Live signals fetched:', !!signals, '| Recent headlines for dedup:', recentHeadlines.length);
+    console.log(
+      '[DEBUG] Live signals fetched:',
+      !!signals,
+      '| Recent headlines for dedup:',
+      recentHeadlines.length
+    );
     const signalContext = formatSignalsForPrompt(signals);
 
     const dedupeBlock =

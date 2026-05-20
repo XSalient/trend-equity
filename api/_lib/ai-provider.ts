@@ -94,9 +94,20 @@ class GoogleProvider implements AIProvider {
       try {
         const cleaned = cleanJSON(resp.text);
         result.parsed = JSON.parse(cleaned);
-      } catch (e) {
-        console.error('[GoogleProvider] JSON Parse Error:', resp.text.slice(0, 100));
-        throw new Error('AI returned invalid JSON structure.');
+      } catch (e: any) {
+        console.error(
+          '[GoogleProvider] JSON Parse Error:',
+          e.message,
+          '\nFirst 200 chars:',
+          resp.text.slice(0, 200),
+          '\nLast 200 chars:',
+          resp.text.slice(-200)
+        );
+        const err = new Error(
+          `AI returned invalid JSON structure: ${e.message}. Text length: ${resp.text.length}. End of text: ${resp.text.slice(-100)}`
+        );
+        (err as any).rawText = resp.text;
+        throw err;
       }
     }
     return result;

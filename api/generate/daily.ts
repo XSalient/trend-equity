@@ -53,11 +53,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    // 2. Authorization: Only allow 'builder' tier (Admin) to trigger/refresh generation
-    if (tier !== 'builder') {
+    // 2. Authorization: Only allow 'builder' tier (Admin) to refresh (regenerate) existing generation.
+    // However, any tier (including free/pro/anonymous) can trigger the initial daily generation.
+    if (refresh && tier !== 'builder') {
       return res
         .status(403)
-        .json({ error: 'Daily ideas are currently being curated. Please check back shortly.' });
+        .json({ error: 'Only administrators can refresh the daily generation.' });
     }
 
     console.log(`[daily] Triggering generation for ${today} (refresh=${!!refresh})`);
@@ -96,20 +97,66 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const qualityBlock = `\n\nREQUIREMENTS FOR EVERY IDEA:\n- Cite ≥1 specific signal in trendSources — include the actual data point, not just the source name\n- Find SECOND-ORDER opportunities: what problem does the signal CREATE downstream that is currently undersolved?\n- Enforce sector diversity: no more than 3 ideas from any single sector (AI/ML, FinTech, HealthTech, EdTech, CleanTech, Consumer, B2B SaaS, Marketplace, PropTech, AgriTech, LegalTech, GovTech, etc.)\n- unfairAdvantage must describe a STRUCTURAL edge (proprietary data, regulatory moat, distribution lock-in, network effects) — never "better UX" or "first mover"\n- Spread effort levels: at least 8 solo-buildable (<6 weeks), at least 8 small-team, the rest for well-funded teams\n- At least 20% of ideas should address markets outside the US\n- AVOID: generic AI assistants without proprietary data, basic CRUD SaaS, copycat marketplaces without structural differentiation`;
 
-    const promptStr = signalContext
-      ? `${signalContext}${dedupeBlock}${countryClause}${qualityBlock}\n\nNow generate exactly 35 high-conviction business ideas for ${today}.`
-      : `Generate exactly 35 high-conviction business ideas for ${today}.${dedupeBlock}${countryClause}${qualityBlock}`;
+    // We split the generation of 35 ideas into three concurrent batches (12, 12, and 11 ideas)
+    // with disjoint category focuses. This allows us to run them in parallel (Promise.all),
+    // speeding up generation from 2+ minutes to ~25s, while avoiding duplicates and truncation.
+    const promptStr1 = signalContext
+      ? `${signalContext}${dedupeBlock}${countryClause}${qualityBlock}\n\nUsing the live market signals above as your PRIMARY source, generate exactly 12 high-conviction business ideas for ${today}. Focus specifically on the following categories: 'Digital / SaaS / AI-SaaS'.`
+      : `Generate exactly 12 high-conviction business ideas for ${today}.${dedupeBlock}${countryClause}${qualityBlock} Focus specifically on the following categories: 'Digital / SaaS / AI-SaaS'.`;
 
-    // 4. Generate & Normalize
-    const rawData = await generateWithAI(promptStr, dailyResponseSchema);
+    const promptStr2 = signalContext
+      ? `${signalContext}${dedupeBlock}${countryClause}${qualityBlock}\n\nUsing the live market signals above as your PRIMARY source, generate exactly 12 high-conviction business ideas for ${today}. Focus specifically on the following categories: 'Service / Local / On-Demand', 'Wildcard (creative/misc)'.`
+      : `Generate exactly 12 high-conviction business ideas for ${today}.${dedupeBlock}${countryClause}${qualityBlock} Focus specifically on the following categories: 'Service / Local / On-Demand', 'Wildcard (creative/misc)'.`;
 
-    const data = normalizeAIResponse(rawData, ['ideas'], {
-      intro: "Today's high-signal ideas, curated from live market trends.",
-      ideas: [],
-      disclaimer: 'All ideas are AI-generated from real market signals.',
+    const promptStr3 = signalContext
+      ? `${signalContext}${dedupeBlock}${countryClause}${qualityBlock}\n\nUsing the live market signals above as your PRIMARY source, generate exactly 11 high-conviction business ideas for ${today}. Focus specifically on the following categories: 'Physical / Sustainable / Hardware', 'Deep-Tech / Moonshot'.`
+      : `Generate exactly 11 high-conviction business ideas for ${today}.${dedupeBlock}${countryClause}${qualityBlock} Focus specifically on the following categories: 'Physical / Sustainable / Hardware', 'Deep-Tech / Moonshot'.`;
+
+    async function generateBatch(promptStr: string, count: number): Promise<any> {
+      let attempts = 0;
+      while (attempts < 2) {
+        try {
+          const rawData = await generateWithAI(promptStr, dailyResponseSchema);
+          return normalizeAIResponse(rawData, ['ideas'], {
+            intro: "Today's high-signal ideas, curated from live market trends.",
+            ideas: [],
+            disclaimer: 'All ideas are AI-generated from real market signals.',
+          });
+        } catch (err) {
+          attempts++;
+          if (attempts >= 2) throw err;
+          console.warn(
+            `[daily] Batch generation attempt ${attempts} failed, retrying... Error:`,
+            err
+          );
+          await new Promise((resolve) => setTimeout(resolve, 1500));
+        }
+      }
+    }
+
+    console.log('[daily] Running 3 batch generation calls concurrently...');
+    const [data1, data2, data3] = await Promise.all([
+      generateBatch(promptStr1, 12),
+      generateBatch(promptStr2, 12),
+      generateBatch(promptStr3, 11),
+    ]);
+
+    const mergedIdeas = [...(data1.ideas || []), ...(data2.ideas || []), ...(data3.ideas || [])];
+    const data = {
+      intro:
+        data1.intro ||
+        data2.intro ||
+        data3.intro ||
+        "Today's high-signal ideas, curated from live market trends.",
+      ideas: mergedIdeas,
+      disclaimer:
+        data1.disclaimer ||
+        data2.disclaimer ||
+        data3.disclaimer ||
+        'All ideas are AI-generated from real market signals.',
       date: today,
       generatedAt: new Date().toISOString(),
-    });
+    };
 
     // 5. Persist and Unlock
     await docRef.set({

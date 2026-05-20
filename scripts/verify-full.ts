@@ -5,7 +5,7 @@ dotenv.config();
 async function verifyAI() {
   console.log('\n--- Verifying AI (OpenRouter) ---');
   const apiKey = process.env.OPENROUTER_API_KEY;
-  const model = process.env.AI_MODEL || 'google/gemini-2.0-flash-001';
+  const model = process.env.AI_MODEL || 'google/gemini-2.5-flash';
 
   if (!apiKey) {
     console.error('❌ OPENROUTER_API_KEY is missing from .env');

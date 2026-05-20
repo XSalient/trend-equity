@@ -37,6 +37,10 @@ vi.mock('react', () => {
     },
     // useCallback just returns the wrapped function
     useCallback: (fn: unknown) => fn,
+    // useRef returns a mutable object
+    useRef: (initial: unknown) => ({ current: initial }),
+    // useEffect runs synchronously for testing simple logic
+    useEffect: (cb: () => void) => cb(),
     __resetState: () => {
       stateMap.clear();
       callIndex = 0;

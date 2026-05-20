@@ -87,7 +87,22 @@ describe('POST /api/generate/daily', () => {
     mockFetchLiveSignals.mockResolvedValue(EMPTY_SIGNALS);
     mockFormatSignalsForPrompt.mockReturnValue('');
     mockGetRecentIdeaHeadlines.mockResolvedValue([]);
-    mockGenerateWithAI.mockResolvedValue(MOCK_DAILY_GENERATION);
+    mockGenerateWithAI.mockImplementation(async (prompt: string) => {
+      const lower = prompt.toLowerCase();
+      if (lower.includes('generate exactly 12')) {
+        return {
+          ...MOCK_DAILY_GENERATION,
+          ideas: generateMockIdeas(12),
+        };
+      }
+      if (lower.includes('generate exactly 11')) {
+        return {
+          ...MOCK_DAILY_GENERATION,
+          ideas: generateMockIdeas(11),
+        };
+      }
+      return MOCK_DAILY_GENERATION;
+    });
     // Auth: builder tier required to trigger daily generation
     mockGetAuthContext.mockResolvedValue({ uid: 'user-1', tier: 'builder' });
     mockCheckAndIncrementUsage.mockResolvedValue({ allowed: true, remaining: 10, limit: null });
@@ -176,7 +191,7 @@ describe('POST /api/generate/daily', () => {
     await handler(req, res);
 
     const promptArg: string = mockGenerateWithAI.mock.calls[0][0];
-    expect(promptArg).toContain('Generate exactly 35');
+    expect(promptArg).toContain('Generate exactly 12');
     expect(promptArg).not.toContain('LIVE MARKET SIGNALS');
   });
 
@@ -261,5 +276,29 @@ describe('POST /api/generate/daily', () => {
     await handler(req, res);
 
     expect(res._status).toBe(503);
+  });
+
+  it('allows non-builder tier to trigger initial generation for the day', async () => {
+    mockGetAuthContext.mockResolvedValue({ uid: 'user-2', tier: 'free' });
+
+    const req = createMockRequest({ body: { date: '2026-04-11' } });
+    const res = createMockResponse();
+
+    await handler(req, res);
+
+    expect(res.json).toHaveBeenCalledOnce();
+    expect(res._body.ideas).toHaveLength(35);
+  });
+
+  it('blocks non-builder tier from refreshing the daily generation', async () => {
+    mockGetAuthContext.mockResolvedValue({ uid: 'user-2', tier: 'free' });
+
+    const req = createMockRequest({ body: { date: '2026-04-11', refresh: true } });
+    const res = createMockResponse();
+
+    await handler(req, res);
+
+    expect(res._status).toBe(403);
+    expect(res._body.error).toContain('Only administrators');
   });
 });

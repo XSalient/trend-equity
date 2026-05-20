@@ -11,5 +11,5 @@ vi.spyOn(console, 'warn').mockImplementation(() => {});
 
 // Provide a minimal process.env for all tests
 process.env.GEMINI_API_KEY = 'test-gemini-key';
-process.env.GEMINI_MODEL = 'gemini-2.0-flash';
+process.env.GEMINI_MODEL = 'gemini-2.5-flash';
 process.env.FIREBASE_PROJECT_ID = 'trend-equity-test';
