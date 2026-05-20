@@ -6,6 +6,7 @@ import { Tier } from '../../types';
 interface HeaderProps {
   user: User | null;
   tier: Tier;
+  isAdmin: boolean;
   activeTab: string;
   setActiveTab: (tab: any) => void;
   unreadAlertsCount: number;
@@ -20,6 +21,7 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({
   user,
   tier,
+  isAdmin,
   setActiveTab,
   unreadAlertsCount,
   showAlerts,
@@ -57,16 +59,18 @@ export const Header: React.FC<HeaderProps> = ({
           {user && (
             <>
               <div className="flex items-center gap-1">
-                {tier === 'builder' && (
+                {/* Refresh icon: admin-only operator control */}
+                {isAdmin && (
                   <button
                     onClick={triggerGeneration}
                     disabled={generating}
                     className="p-2 text-zinc-500 hover:text-emerald-500 transition-colors disabled:opacity-50"
-                    title="Generate/Refresh Today's Feed (Admin Only)"
+                    title="Regenerate Today's Feed (Admin only)"
                   >
                     <RefreshCw className={`w-4 h-4 ${generating ? 'animate-spin' : ''}`} />
                   </button>
                 )}
+                {/* Alerts bell: builder-tier subscriber feature */}
                 {tier === 'builder' && (
                   <button
                     onClick={() => setShowAlerts(!showAlerts)}

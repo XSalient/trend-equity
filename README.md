@@ -97,10 +97,23 @@ To generate 35 high-conviction startup ideas without hitting output token limits
 
 This batching reduces the cold generation time from 2+ minutes to ~25 seconds.
 
-### 2. Multi-Tier Access Logic
+### 2. Tier Feature Access
 
-- **Initial Generation:** Users of any tier (including Free and Pro) can trigger the initial daily feed generation of the day if it hasn't been created yet.
-- **Feed Regeneration:** Only users in the `builder` tier (Admin) are authorized to trigger a feed regeneration (`refresh: true`).
+All features are gated by either **subscription tier** or **admin role** — never both simultaneously.
+
+| Feature                             | Free  |  Pro  | Builder |  Admin  |
+| ----------------------------------- | :---: | :---: | :-----: | :-----: |
+| Daily Feed (read, up to tier limit) | ✅ 10 | ✅ 25 |  ✅ 35  |  ✅ 35  |
+| Save ideas                          |  ✅   |  ✅   |   ✅    |   ✅    |
+| Validation Toolkit, Email Digest    |  ❌   |  ✅   |   ✅    |   ✅    |
+| Build with Me, Expert Vetting       |  ❌   |  ❌   |   ✅    |   ✅    |
+| Weekly Trend Radar                  |  ❌   |  ❌   |   ✅    |   ✅    |
+| Futurecasting Engine                |  ❌   |  ❌   |   ✅    |   ✅    |
+| Alerts Bell                         |  ❌   |  ❌   |   ✅    |   ✅    |
+| API Access, TE-100 Submission       |  ❌   |  ❌   |   ✅    |   ✅    |
+| **Feed Regeneration (Refresh)**     |  ❌   |  ❌   |   ❌    | ✅ only |
+| **Prompt Config Management**        |  ❌   |  ❌   |   ❌    | ✅ only |
+| **User Role Management**            |  ❌   |  ❌   |   ❌    | ✅ only |
 
 ### 3. Dynamic Prompt Refiner (Self-Improving Loop)
 

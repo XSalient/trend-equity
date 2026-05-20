@@ -87,12 +87,12 @@ export const IdeaFeed: React.FC<IdeaFeedProps> = ({
 
             <div className="space-y-2">
               <h3 className="text-xl font-bold text-white tracking-tight">
-                {tier === 'builder' ? "Generate Today's Insights" : 'Curation in Progress'}
+                {isAdmin ? "Generate Today's Insights" : 'Curation in Progress'}
               </h3>
               <p className="text-zinc-500 text-sm max-w-sm mx-auto leading-relaxed">
-                {tier === 'builder'
-                  ? "As a Builder, you have the first move. Trigger the VC engine to scan today's high-signal trends and populate the global feed."
-                  : "Our VC squad is currently scanning real-time signals from the last 24 hours to identify today's highest conviction opportunities. Check back shortly."}
+                {isAdmin
+                  ? "Trigger the VC engine to scan today's high-signal trends and populate the global feed for all users."
+                  : "Our VC engine is scanning real-time signals from the last 24 hours to identify today's highest conviction opportunities. Check back shortly."}
               </p>
             </div>
           </div>

@@ -246,6 +246,7 @@ export default function App() {
         <Header
           user={user}
           tier={tier}
+          isAdmin={isAdmin}
           activeTab={activeTab}
           setActiveTab={setActiveTab}
           unreadAlertsCount={unreadAlertsCount}

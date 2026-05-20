@@ -97,7 +97,8 @@ export const IdeaCard: React.FC<IdeaCardProps> = ({
 
   const isFree = tier === 'free';
   const isBuilder = tier === 'builder';
-  const isAdmin = tier === 'builder'; // Admin proxy for now
+  // isBuilder gates Builder subscription features (Build with Me, Expert Vetting)
+  // Admin features (feed regeneration) are gated separately via the isAdmin prop passed to IdeaFeed/Header
 
   // BUG-4 FIX: auto-dismiss actionError after 6 seconds
   useEffect(() => {
