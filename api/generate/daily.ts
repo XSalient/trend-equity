@@ -5,6 +5,7 @@ import { fetchLiveSignals, formatSignalsForPrompt } from '../_lib/signals';
 import { getRecentIdeaHeadlines } from '../_lib/cache';
 import { getAdminDb } from '../_lib/admin';
 import { getAuthContext } from '../_lib/auth';
+import { getDynamicPrompt, runSelfImprovement } from '../_lib/prompt-optimizer';
 
 // Max requests per unique IP per day (unauthenticated protection) (S-4)
 const IP_DAILY_LIMIT = 5;
@@ -79,6 +80,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(429).json({ error: 'Generation already in progress.' });
     }
 
+    // 4. Self-Learning Optimization Loop: Evaluates comments, reactions and self-critiques to refine prompt
+    await runSelfImprovement(db, !!refresh);
+    const { systemPrompt, qualityBlock } = await getDynamicPrompt(db);
+
     const [signals, recentHeadlines] = await Promise.all([
       fetchLiveSignals(),
       getRecentIdeaHeadlines(today),
@@ -94,8 +99,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       country && country !== 'Global'
         ? `\n\nAdditionally, specifically include ${countryCount || 5} ideas tailored for the ${country} Local Market.`
         : '';
-
-    const qualityBlock = `\n\nREQUIREMENTS FOR EVERY IDEA:\n- Cite ≥1 specific signal in trendSources — include the actual data point, not just the source name\n- Find SECOND-ORDER opportunities: what problem does the signal CREATE downstream that is currently undersolved?\n- Enforce sector diversity: no more than 3 ideas from any single sector (AI/ML, FinTech, HealthTech, EdTech, CleanTech, Consumer, B2B SaaS, Marketplace, PropTech, AgriTech, LegalTech, GovTech, etc.)\n- unfairAdvantage must describe a STRUCTURAL edge (proprietary data, regulatory moat, distribution lock-in, network effects) — never "better UX" or "first mover"\n- Spread effort levels: at least 8 solo-buildable (<6 weeks), at least 8 small-team, the rest for well-funded teams\n- At least 20% of ideas should address markets outside the US\n- AVOID: generic AI assistants without proprietary data, basic CRUD SaaS, copycat marketplaces without structural differentiation`;
 
     // We split the generation of 35 ideas into three concurrent batches (12, 12, and 11 ideas)
     // with disjoint category focuses. This allows us to run them in parallel (Promise.all),
@@ -116,7 +119,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       let attempts = 0;
       while (attempts < 2) {
         try {
-          const rawData = await generateWithAI(promptStr, dailyResponseSchema);
+          const rawData = await generateWithAI(promptStr, dailyResponseSchema, systemPrompt);
           return normalizeAIResponse(rawData, ['ideas'], {
             intro: "Today's high-signal ideas, curated from live market trends.",
             ideas: [],
