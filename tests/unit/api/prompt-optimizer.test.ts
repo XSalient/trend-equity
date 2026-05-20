@@ -169,11 +169,16 @@ describe('prompt-optimizer', () => {
       const mockDb = { collection: mockCollection };
 
       // Mock AI calls
+      const MOCK_SYSTEM_PROMPT =
+        'You are a senior VC analyst generating high-conviction startup ideas from real market signals. Focus on defensible moats and second-order opportunities.';
+      const MOCK_QUALITY_BLOCK =
+        'REQUIREMENTS FOR EVERY IDEA: Cite at least one specific signal. Find second-order opportunities. Enforce sector diversity. Avoid generic AI wrappers.';
+
       mockGenerateWithAI
         .mockResolvedValueOnce('Critique: The legal AI idea is too cliché.') // VC Critique
         .mockResolvedValueOnce({
-          systemPrompt: 'Optimized System Prompt',
-          qualityBlock: 'Optimized Quality Block',
+          systemPrompt: MOCK_SYSTEM_PROMPT,
+          qualityBlock: MOCK_QUALITY_BLOCK,
         }); // Refinement
 
       await runSelfImprovement(mockDb, true); // force=true to bypass today check
@@ -181,8 +186,8 @@ describe('prompt-optimizer', () => {
       expect(mockGenerateWithAI).toHaveBeenCalledTimes(2);
       expect(mockConfigDoc.set).toHaveBeenCalledWith(
         expect.objectContaining({
-          systemPrompt: 'Optimized System Prompt',
-          qualityBlock: 'Optimized Quality Block',
+          systemPrompt: MOCK_SYSTEM_PROMPT,
+          qualityBlock: MOCK_QUALITY_BLOCK,
           version: 1,
         })
       );

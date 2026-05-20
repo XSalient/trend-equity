@@ -193,29 +193,54 @@ INSTRUCTIONS:
       optimizationSchema,
       META_OPTIMIZER_SYSTEM_PROMPT
     );
+
+    // Guard: AI must return non-empty strings for both fields.
+    // Fall back to current values if the model returns undefined/null/empty.
+    const newSystemPrompt =
+      typeof result?.systemPrompt === 'string' && result.systemPrompt.trim().length > 50
+        ? result.systemPrompt.trim()
+        : currentPromptData.systemPrompt;
+
+    const newQualityBlock =
+      typeof result?.qualityBlock === 'string' && result.qualityBlock.trim().length > 50
+        ? result.qualityBlock.trim()
+        : currentPromptData.qualityBlock;
+
+    const usedFallback =
+      newSystemPrompt === currentPromptData.systemPrompt ||
+      newQualityBlock === currentPromptData.qualityBlock;
+
+    if (usedFallback) {
+      console.warn(
+        '[prompt-optimizer] AI returned incomplete result — one or both fields fell back to current values.'
+      );
+    }
+
     const newVersion = currentPromptData.version + 1;
 
     console.log(
       `[prompt-optimizer] Refinement complete. Saving version ${newVersion} to Firestore...`
     );
     await configRef.set({
-      systemPrompt: result.systemPrompt,
-      qualityBlock: result.qualityBlock,
+      systemPrompt: newSystemPrompt,
+      qualityBlock: newQualityBlock,
       version: newVersion,
       lastOptimized: today,
       optimizedAt: new Date().toISOString(),
+      usedFallback,
     });
 
     // Write a permanent history snapshot for auditing/analysis
     const historyRef = db.collection('prompt_history').doc(`v${newVersion}`);
     await historyRef.set({
-      systemPrompt: result.systemPrompt,
-      qualityBlock: result.qualityBlock,
+      systemPrompt: newSystemPrompt,
+      qualityBlock: newQualityBlock,
       version: newVersion,
       optimizedAt: new Date().toISOString(),
-      reasoningCritique: aiCritique,
+      reasoningCritique: aiCritique || '',
       likedIdeasCount: likedIdeas.length,
       dislikedIdeasCount: dislikedIdeas.length,
+      usedFallback,
     });
   } catch (err) {
     console.error('[prompt-optimizer] Prompt optimization failed:', err);
