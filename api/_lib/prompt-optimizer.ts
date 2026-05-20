@@ -205,6 +205,18 @@ INSTRUCTIONS:
       lastOptimized: today,
       optimizedAt: new Date().toISOString(),
     });
+
+    // Write a permanent history snapshot for auditing/analysis
+    const historyRef = db.collection('prompt_history').doc(`v${newVersion}`);
+    await historyRef.set({
+      systemPrompt: result.systemPrompt,
+      qualityBlock: result.qualityBlock,
+      version: newVersion,
+      optimizedAt: new Date().toISOString(),
+      reasoningCritique: aiCritique,
+      likedIdeasCount: likedIdeas.length,
+      dislikedIdeasCount: dislikedIdeas.length,
+    });
   } catch (err) {
     console.error('[prompt-optimizer] Prompt optimization failed:', err);
   }

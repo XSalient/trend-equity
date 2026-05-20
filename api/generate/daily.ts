@@ -82,7 +82,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // 4. Self-Learning Optimization Loop: Evaluates comments, reactions and self-critiques to refine prompt
     await runSelfImprovement(db, !!refresh);
-    const { systemPrompt, qualityBlock } = await getDynamicPrompt(db);
+    const { systemPrompt, qualityBlock, version } = await getDynamicPrompt(db);
 
     const [signals, recentHeadlines] = await Promise.all([
       fetchLiveSignals(),
@@ -162,14 +162,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     };
 
     // 5. Persist and Unlock
-    await docRef.set({
+    const finalData = {
       ...data,
+      promptVersion: version,
       date: today,
       generatedAt: new Date().toISOString(),
-    });
+    };
+    await docRef.set(finalData);
+
+    // Save run snapshot in history for audits and logs
+    const runTimestamp = new Date().toISOString();
+    const runId = `${today}_${runTimestamp.replace(/[:.]/g, '-')}`;
+    await db
+      .collection('daily_generations_history')
+      .doc(runId)
+      .set({
+        ...finalData,
+        generatedAt: runTimestamp,
+      });
+
     await lockRef.delete();
 
-    return res.json(data);
+    return res.json(finalData);
   } catch (err: any) {
     console.error('[daily] Generation error:', err);
 
