@@ -34,11 +34,12 @@ npm run format
 
 1. [Quick Start](#quick-start)
 2. [Daily Feed Generation & Self-Learning Pipeline](#daily-feed-generation--self-learning-pipeline)
-3. [Environment Variables](#environment-variables)
-4. [Dev Mode Switches](#dev-mode-switches)
-5. [Commands Reference](#commands-reference)
-6. [Production Deployment (Vercel)](#production-deployment-vercel)
-7. [Security Checklist](#security-checklist)
+3. [Admin Role Management](#admin-role-management)
+4. [Environment Variables](#environment-variables)
+5. [Dev Mode Switches](#dev-mode-switches)
+6. [Commands Reference](#commands-reference)
+7. [Production Deployment (Vercel)](#production-deployment-vercel)
+8. [Security Checklist](#security-checklist)
 
 ---
 
@@ -237,6 +238,46 @@ doppler secrets download --format env --no-backup > .env
 ```powershell
 ./scripts/doppler_sync.ps1
 ```
+
+---
+
+## Admin Role Management
+
+Admin access is completely separate from the Builder subscription tier. Any number of users can be on the Builder tier, but only users with `role: "admin"` in their Firestore document can perform administrative actions (e.g., regenerating the daily feed).
+
+**Single source of truth:** the `role` field in Firestore `users/{uid}`. No other field is used. No inconsistency is possible.
+
+### CLI Commands
+
+Make sure your `.env` has `FIREBASE_SERVICE_ACCOUNT_KEY` set, then:
+
+```bash
+# List all current admin users
+npm run admin:list
+
+# Grant admin role to a user (by their Google sign-in email)
+npm run admin:grant -- your@email.com
+
+# Revoke admin role from a user
+npm run admin:revoke -- someone@email.com
+
+# Show a user's current tier and role
+npm run admin:info -- your@email.com
+```
+
+> The script uses the Firebase Admin SDK and requires `FIREBASE_SERVICE_ACCOUNT_KEY` in your `.env`. It **never** runs in the browser — it is a local operator tool only.
+
+### What Admins Can Do
+
+| Feature                    | How to access                                                |
+| -------------------------- | ------------------------------------------------------------ |
+| Regenerate daily feed      | Green `TRIGGER GENERATION` button in the Daily Feed tab      |
+| View/edit active prompt    | Firestore → `config/generation_prompt`                       |
+| View prompt history        | Firestore → `prompt_history/vN`                              |
+| View feed run archive      | Firestore → `daily_generations_history`                      |
+| Approve TE-100 submissions | `POST /api/admin` with `action: "te100-approve"`             |
+| Send email digest manually | `POST /api/admin` with `Authorization: Bearer <CRON_SECRET>` |
+| Manage user tiers/roles    | `npm run admin:grant / revoke` or Firestore Console          |
 
 ---
 
