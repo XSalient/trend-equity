@@ -15,7 +15,6 @@ import { ToolkitSkeleton } from '../../layout/SkeletonLoaders';
 interface RoadmapSectionProps {
   idea: Idea;
   setActiveToolkit: (toolkit: any) => void;
-  isFree: boolean;
   isGeneratingPlan: boolean;
   handleGenerateFullPlan: () => void;
   handleToggleStep: (id: string) => void;
@@ -43,7 +42,6 @@ const safeString = (val: any) => {
 export const RoadmapSection: React.FC<RoadmapSectionProps> = ({
   idea,
   setActiveToolkit,
-  isFree,
   isGeneratingPlan,
   handleGenerateFullPlan,
   handleToggleStep,
