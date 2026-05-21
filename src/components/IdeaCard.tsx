@@ -39,6 +39,7 @@ interface IdeaCardProps {
   user: any;
   handleLogin: () => void;
   userInput?: string;
+  isAdmin?: boolean;
 }
 
 export const IdeaCard: React.FC<IdeaCardProps> = ({
@@ -52,6 +53,7 @@ export const IdeaCard: React.FC<IdeaCardProps> = ({
   user,
   handleLogin,
   userInput,
+  isAdmin,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [activeToolkit, setActiveToolkit] = useState<

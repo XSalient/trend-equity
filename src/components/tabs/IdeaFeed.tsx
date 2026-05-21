@@ -150,6 +150,7 @@ export const IdeaFeed: React.FC<IdeaFeedProps> = ({
                 onExport={(fmt) => exportToPDF(idea, fmt)}
                 user={user}
                 handleLogin={handleLogin}
+                isAdmin={isAdmin}
               />
             ))
           )}
