@@ -19,5 +19,6 @@
     },
     "allowImportingTsExtensions": true,
     "noEmit": true
-  }
+  },
+  "exclude": ["api/**", "scripts/**", "debug-data.ts", "capacitor.config.ts", "playwright.config.ts", "node_modules/**"]
 }

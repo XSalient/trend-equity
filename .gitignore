@@ -47,7 +47,7 @@ __pycache__
 *.pyc
 .env.local
 .next
-.github
+# .github is tracked so CI workflows are committed
 # User-specific assets and secrets
 firebase-service-account.json
 sample-ideas.json
