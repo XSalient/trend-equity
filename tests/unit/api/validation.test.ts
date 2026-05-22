@@ -67,7 +67,7 @@ describe('validation handler', () => {
     const req = createMockRequest({ method: 'POST', body: { idea: mockIdea } });
     const res = createMockResponse();
 
-    vi.mocked(getAuthContext).mockResolvedValue({ uid: 'user1', tier: 'builder' });
+    vi.mocked(getAuthContext).mockResolvedValue({ uid: 'user1', tier: 'builder', isAdmin: false });
     vi.mocked(getCached).mockResolvedValue(null);
     vi.mocked(checkAndIncrementUsage).mockResolvedValue({ allowed: true, limit: 10 } as any);
     vi.mocked(generateWithAI).mockResolvedValue({
