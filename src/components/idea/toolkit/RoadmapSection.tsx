@@ -15,7 +15,6 @@ import { ToolkitSkeleton } from '../../layout/SkeletonLoaders';
 interface RoadmapSectionProps {
   idea: Idea;
   setActiveToolkit: (toolkit: any) => void;
-  isFree: boolean;
   isGeneratingPlan: boolean;
   handleGenerateFullPlan: () => void;
   handleToggleStep: (id: string) => void;
@@ -43,7 +42,6 @@ const safeString = (val: any) => {
 export const RoadmapSection: React.FC<RoadmapSectionProps> = ({
   idea,
   setActiveToolkit,
-  isFree,
   isGeneratingPlan,
   handleGenerateFullPlan,
   handleToggleStep,
@@ -119,12 +117,18 @@ export const RoadmapSection: React.FC<RoadmapSectionProps> = ({
         </div>
       </div>
 
-      {isGeneratingPlan || isRefreshing || !fullPlan ? (
+      {!fullPlan ? (
         <div className="py-10">
           <ToolkitSkeleton />
         </div>
       ) : (
         <div className="space-y-4 relative">
+          {(isGeneratingPlan || isRefreshing) && (
+            <div className="flex items-center gap-2 text-xs text-emerald-400 pb-1">
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              <span>Refreshing plan…</span>
+            </div>
+          )}
           {(fullPlan.roadmap || []).map((item: any, i: number) => (
             <div
               key={item.id || i}
