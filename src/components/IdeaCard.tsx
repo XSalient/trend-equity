@@ -274,7 +274,13 @@ export const IdeaCard: React.FC<IdeaCardProps> = ({
                       ? 'bg-amber-500/10 border-amber-500/30 text-amber-400'
                       : 'bg-zinc-800/50 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 border-zinc-700/50'
                   }`}
-                  onClick={() => handleExpertVetting(false)}
+                  onClick={() => {
+                    if (vettingResult) {
+                      setIsExpanded(true);
+                    } else {
+                      handleExpertVetting(false);
+                    }
+                  }}
                   disabled={isVetting}
                 >
                   {isVetting ? (
