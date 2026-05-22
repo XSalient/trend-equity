@@ -68,7 +68,14 @@ export const ValidationSection: React.FC<ValidationSectionProps> = ({
         </div>
       </div>
 
-      {isRefreshing || !toolkit ? (
+      {isRefreshing && toolkit && (
+        <div className="flex items-center gap-2 text-xs text-emerald-400 pb-1">
+          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+          <span>Refreshing toolkit…</span>
+        </div>
+      )}
+
+      {!toolkit ? (
         <div className="py-10">
           <ToolkitSkeleton />
         </div>

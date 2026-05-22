@@ -51,9 +51,11 @@ export const IdeaCardActionSteps: React.FC<IdeaCardActionStepsProps> = ({ idea, 
               </div>
             );
           })}
-        {isFree && (
+        {isFree && (idea.nextSteps?.length || 0) > 3 && (
           <div className="p-3 bg-zinc-900/50 rounded-xl border border-dashed border-zinc-800 text-center">
-            <p className="text-xs text-zinc-500">Upgrade to Pro to unlock all 7 steps</p>
+            <p className="text-xs text-zinc-500">
+              Upgrade to Pro to unlock all {idea.nextSteps?.length} steps
+            </p>
           </div>
         )}
       </div>

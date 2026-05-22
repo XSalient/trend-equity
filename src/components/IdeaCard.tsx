@@ -326,20 +326,20 @@ export const IdeaCard: React.FC<IdeaCardProps> = ({
                 exit={{ height: 0, opacity: 0 }}
                 className="overflow-hidden space-y-6 pt-4"
               >
-                {isVetting ? (
-                  <div className="p-10 flex flex-col items-center justify-center gap-3 bg-zinc-900/40 rounded-2xl border border-zinc-800 border-dashed">
-                    <Loader2 className="w-8 h-8 text-emerald-500 animate-spin" />
-                    <p className="text-xs text-zinc-500 font-medium animate-pulse">
-                      Regenerating expert vetting...
-                    </p>
-                  </div>
-                ) : vettingResult ? (
+                {vettingResult ? (
                   <IdeaCardVetting
                     vettingResult={vettingResult}
                     isAdmin={isAdmin}
                     onRefresh={() => handleExpertVetting(true)}
                     isRefreshing={isVetting}
                   />
+                ) : isVetting ? (
+                  <div className="p-10 flex flex-col items-center justify-center gap-3 bg-zinc-900/40 rounded-2xl border border-zinc-800 border-dashed">
+                    <Loader2 className="w-8 h-8 text-emerald-500 animate-spin" />
+                    <p className="text-xs text-zinc-500 font-medium animate-pulse">
+                      Generating expert vetting…
+                    </p>
+                  </div>
                 ) : null}
 
                 <IdeaCardActionSteps idea={idea} isFree={isFree} />
