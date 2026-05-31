@@ -32,6 +32,18 @@ function SectionLabel({
   );
 }
 
+type TrendSourceItem = string | { source?: string; dataPoint?: string };
+
+function formatTrendSource(item: TrendSourceItem): string {
+  if (typeof item === 'string') return item;
+  if (item && typeof item === 'object') {
+    const src = (item as any).source ?? '';
+    const dp = (item as any).dataPoint ?? '';
+    return dp ? `${src} — ${dp}` : src || JSON.stringify(item);
+  }
+  return String(item);
+}
+
 export const IdeaCardAnalysis: React.FC<IdeaCardAnalysisProps> = ({ idea }) => {
   const regFlags = String(idea.regulatoryFlags || '');
   const regulatoryColor = regFlags.startsWith('High')
@@ -86,7 +98,7 @@ export const IdeaCardAnalysis: React.FC<IdeaCardAnalysisProps> = ({ idea }) => {
           {(idea.trendSources || []).map((source, i) => (
             <li key={i} className="text-xs text-zinc-500 flex gap-2 items-start leading-relaxed">
               <span className="text-emerald-500 mt-0.5 flex-shrink-0">•</span>
-              <span>{source}</span>
+              <span>{formatTrendSource(source as TrendSourceItem)}</span>
             </li>
           ))}
         </ul>
