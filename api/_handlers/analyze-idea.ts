@@ -88,6 +88,32 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const prompt = buildPrompt(ideaDescription);
     const rawIdea = await generateWithAI(prompt, ideaSchema, ANALYZE_IDEA_SYSTEM_PROMPT);
 
+    // Gemini occasionally returns objects (e.g. {source, dataPoint}) in string-array fields
+    // despite the schema. Pre-coerce before normalizeAIResponse, whose fallback-based type
+    // inference breaks for empty-array fallbacks.
+    const STRING_ARRAY_FIELDS = ['trendSources', 'categoryTags', 'nextSteps'] as const;
+    if (rawIdea && typeof rawIdea === 'object' && !Array.isArray(rawIdea)) {
+      const record = rawIdea as Record<string, unknown>;
+      for (const field of STRING_ARRAY_FIELDS) {
+        const value = record[field];
+        if (Array.isArray(value)) {
+          record[field] = (value as unknown[]).map((item) => {
+            if (typeof item === 'string') return item;
+            if (item && typeof item === 'object') {
+              const obj = item as Record<string, unknown>;
+              if ('source' in obj) {
+                const src = String(obj.source ?? '');
+                const dp = obj.dataPoint ? String(obj.dataPoint) : '';
+                return dp ? `${src} — ${dp}` : src;
+              }
+              return JSON.stringify(item);
+            }
+            return String(item);
+          });
+        }
+      }
+    }
+
     const idea = normalizeAIResponse(rawIdea, ['categoryTags', 'nextSteps', 'trendSources'], {
       id: `custom-${uid}`,
       headline: 'Idea Analysis',
