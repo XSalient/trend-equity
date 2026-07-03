@@ -34,6 +34,7 @@ const TIER_FEATURES: Record<string, { label: string; tiers: string[] }[]> = {
     { label: 'Up to 25 ideas / day (vs 10 on Free)', tiers: ['pro', 'builder'] },
     { label: 'Unlimited Daily Feed Saves', tiers: ['pro', 'builder'] },
     { label: 'Analyze 5 Custom Ideas / mo', tiers: ['pro', 'builder'] },
+    { label: '1-keyword custom feed: 5 ideas / 24h', tiers: ['pro', 'builder'] },
     { label: 'Save 3 Custom Ideas to Library', tiers: ['pro', 'builder'] },
     { label: 'Notion / GDocs Templates', tiers: ['pro', 'builder'] },
     { label: 'Priority Email Digest', tiers: ['pro', 'builder'] },
@@ -43,6 +44,7 @@ const TIER_FEATURES: Record<string, { label: string; tiers: string[] }[]> = {
     { label: 'Up to 35 ideas / day', tiers: ['builder'] },
     { label: 'Analyze 20 Custom Ideas / mo', tiers: ['builder'] },
     { label: 'Save 10 Custom Ideas to Library', tiers: ['builder'] },
+    { label: 'Natural-language custom requirement feed', tiers: ['builder'] },
     { label: 'Build with Me Suite', tiers: ['builder'] },
     { label: 'Advanced Alerts', tiers: ['builder'] },
     { label: 'Weekly Trend Radar', tiers: ['builder'] },
@@ -75,12 +77,20 @@ const TIER_SHOWCASE: Record<PlanKey, { icon: React.ReactNode; label: string; onC
       { icon: <FileText className="w-5 h-5 text-emerald-500 mx-auto" />, label: 'Notion / GDocs' },
       { icon: <Mail className="w-5 h-5 text-emerald-500 mx-auto" />, label: 'Email Digest' },
       {
+        icon: <Sparkles className="w-5 h-5 text-emerald-500 mx-auto" />,
+        label: 'Keyword Custom Feed',
+      },
+      {
         icon: <Wrench className="w-5 h-5 text-emerald-500 mx-auto" />,
         label: 'Validation Toolkit',
       },
     ],
     builder: [
       { icon: <Wand2 className="w-5 h-5 text-amber-500 mx-auto" />, label: '20 Analyses / mo' },
+      {
+        icon: <Sparkles className="w-5 h-5 text-amber-500 mx-auto" />,
+        label: 'Custom Requirement Feed',
+      },
       { icon: <Bookmark className="w-5 h-5 text-amber-500 mx-auto" />, label: '10 Custom Saves' },
       { icon: <Bell className="w-5 h-5 text-amber-500 mx-auto" />, label: 'Real-time Alerts' },
       { icon: <Users className="w-5 h-5 text-amber-500 mx-auto" />, label: 'Team-up Access' },
@@ -224,6 +234,9 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
             <li className="flex items-center gap-2 text-xs text-zinc-300">
               <CheckCircle2 className="w-4 h-4 text-emerald-500" /> Validation Toolkit
             </li>
+            <li className="flex items-center gap-2 text-xs text-zinc-300">
+              <CheckCircle2 className="w-4 h-4 text-emerald-500" /> 1-keyword custom feed
+            </li>
           </ul>
           <button
             onClick={(e) => {
@@ -268,6 +281,9 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
           <ul className="space-y-3 flex-1">
             <li className="flex items-center gap-2 text-xs text-zinc-300">
               <Sparkles className="w-4 h-4 text-amber-500" /> 35 ideas / day
+            </li>
+            <li className="flex items-center gap-2 text-xs text-zinc-300">
+              <Sparkles className="w-4 h-4 text-amber-500" /> Natural-language custom feed
             </li>
             <li className="flex items-center gap-2 text-xs text-zinc-300">
               <Sparkles className="w-4 h-4 text-amber-500" /> Build with Me Suite

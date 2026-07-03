@@ -13,7 +13,7 @@ import {
   ArrowUpDown,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { FilterState, Tier } from '../types';
+import { DailyGeneration, FilterState, Tier } from '../types';
 
 interface FilterBarProps {
   filters: FilterState;
@@ -24,6 +24,11 @@ interface FilterBarProps {
   resultCount?: number;
   totalCount?: number;
   onUpgrade?: () => void;
+  onGenerateCustomFeed?: () => void;
+  customFeedLoading?: boolean;
+  customFeedError?: string | null;
+  customFeed?: DailyGeneration | null;
+  onClearCustomFeed?: () => void;
 }
 
 const INDUSTRIES = [
@@ -210,6 +215,11 @@ export function FilterBar({
   resultCount,
   totalCount,
   onUpgrade,
+  onGenerateCustomFeed,
+  customFeedLoading = false,
+  customFeedError = null,
+  customFeed = null,
+  onClearCustomFeed,
 }: FilterBarProps) {
   const [isOpen, setIsOpen] = useState(false);
   const isFree = tier === 'free';
@@ -240,6 +250,19 @@ export function FilterBar({
     setFilters({ ...filters, [key]: next });
   };
 
+  const handleCustomRequirementChange = (value: string) => {
+    if (isFree) return;
+    const nextValue = isPro ? value.split(/[\s,]+/).filter(Boolean)[0] || '' : value;
+    setFilters({ ...filters, customKeywords: nextValue });
+  };
+
+  const submitCustomRequirement = () => {
+    if (isFree) {
+      onUpgrade?.();
+      return;
+    }
+    onGenerateCustomFeed?.();
+  };
   const activeCount =
     (filters.industries?.length || 0) +
     (filters.productTypes?.length || 0) +
@@ -476,33 +499,71 @@ export function FilterBar({
                   </div>
                 </div>
 
-                {/* Builder Advanced */}
-                {isBuilder && (
-                  <div className="lg:col-span-3 pt-6 border-t border-white/5 space-y-4">
+                {/* Custom Requirement Feed */}
+                <div className="lg:col-span-3 pt-6 border-t border-white/5 space-y-4">
+                  <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2 text-emerald-500">
                       <Sparkles className="w-4 h-4" />
-                      <h4 className="text-xs font-semibold">Builder Personalization</h4>
+                      <h4 className="text-xs font-semibold">Custom Requirement Feed</h4>
                     </div>
-                    <div className="flex flex-col md:flex-row gap-4">
-                      <div className="flex-1 relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
-                        <input
-                          type="text"
-                          placeholder="Custom keywords (e.g. 'agent governance', 'solar')"
-                          value={filters.customKeywords}
-                          onChange={(e) =>
-                            setFilters({ ...filters, customKeywords: e.target.value })
-                          }
-                          className="w-full bg-zinc-800 border-none rounded-lg pl-10 pr-4 py-2 text-sm text-white placeholder:text-zinc-600 focus:ring-1 focus:ring-emerald-500"
-                        />
-                      </div>
-                      <div className="flex items-center gap-2 text-xs text-zinc-500 italic">
-                        <Sparkles className="w-3 h-3" />
-                        Feed will prioritize ideas matching your keywords and saved library.
-                      </div>
+                    {isFree && <Lock className="w-3 h-3 text-zinc-600" />}
+                  </div>
+                  <p className="text-xs text-zinc-500 max-w-3xl">
+                    Generate a focused 5-idea feed from current market signals. Pro users can use
+                    one keyword; Builder users can describe full requirements in natural language.
+                  </p>
+                  <div className="flex flex-col md:flex-row gap-3">
+                    <div className="flex-1 relative">
+                      <Search className="absolute left-3 top-3 w-4 h-4 text-zinc-500" />
+                      <textarea
+                        rows={isBuilder ? 3 : 1}
+                        disabled={isFree || customFeedLoading}
+                        placeholder={
+                          isBuilder
+                            ? "Describe requirements, e.g. 'solo-friendly B2B ideas with low regulatory risk based on live pain signals'"
+                            : isPro
+                              ? "One keyword, e.g. 'solar'"
+                              : 'Upgrade to generate a custom requirement feed'
+                        }
+                        value={filters.customKeywords}
+                        onChange={(e) => handleCustomRequirementChange(e.target.value)}
+                        className={`w-full resize-none bg-zinc-800 border-none rounded-lg pl-10 pr-4 py-2 text-sm text-white placeholder:text-zinc-600 focus:ring-1 focus:ring-emerald-500 ${
+                          isFree ? 'opacity-50 cursor-not-allowed' : ''
+                        }`}
+                      />
+                    </div>
+                    <div className="flex md:flex-col gap-2 md:w-44">
+                      <button
+                        onClick={submitCustomRequirement}
+                        disabled={customFeedLoading || (!isFree && !filters.customKeywords.trim())}
+                        className={`flex-1 px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-widest transition-colors ${
+                          customFeedLoading || (!isFree && !filters.customKeywords.trim())
+                            ? 'bg-zinc-800 text-zinc-600 cursor-not-allowed'
+                            : isFree
+                              ? 'bg-zinc-800 text-zinc-400 hover:text-white'
+                              : 'bg-emerald-500 text-black hover:bg-emerald-400'
+                        }`}
+                      >
+                        {customFeedLoading ? 'Generating...' : isFree ? 'Upgrade' : 'Generate'}
+                      </button>
+                      {customFeed && (
+                        <button
+                          onClick={onClearCustomFeed}
+                          className="flex-1 px-4 py-2 rounded-lg bg-zinc-800 text-xs font-bold uppercase tracking-widest text-zinc-400 hover:text-white transition-colors"
+                        >
+                          Daily Feed
+                        </button>
+                      )}
                     </div>
                   </div>
-                )}
+                  {customFeed && (
+                    <p className="text-xs text-emerald-400">
+                      Showing {customFeed.ideas.length} / {customFeed.limit || 5} cached custom feed
+                      ideas for: "{customFeed.customRequirement || filters.customKeywords}"
+                    </p>
+                  )}
+                  {customFeedError && <p className="text-xs text-red-400">{customFeedError}</p>}
+                </div>
 
                 {/* Free Teaser */}
                 {isFree && (
@@ -514,7 +575,8 @@ export function FilterBar({
                       <div>
                         <p className="text-sm font-bold text-white">Unlock Advanced Filters</p>
                         <p className="text-xs text-zinc-400">
-                          Pro & Builder users can filter by industry, risk, effort, and more.
+                          Pro users can generate a one-keyword custom feed. Builder users can
+                          describe full custom requirements.
                         </p>
                       </div>
                     </div>

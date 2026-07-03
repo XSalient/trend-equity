@@ -1,4 +1,5 @@
 export const DAILY_FEATURED_IDEAS = 10;
+export const CUSTOM_FEED_DAILY_LIMIT = 5;
 
 export const TIER_LIMITS = {
   free: {

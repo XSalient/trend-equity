@@ -29,6 +29,7 @@ Trend Equity uses a tiered subscription model:
 | **Daily Ideas**            | 10 ideas / day    | 25 ideas / day             | 35 ideas / day                    | Custom / Full Access             |
 | **Saves**                  | 5 saves / month   | Unlimited                  | Unlimited                         | Unlimited                        |
 | **Custom Idea Analysis**   | —                 | 5 / month                  | 20 / month                        | Unlimited                        |
+| **Custom Requirement Feed** | Locked            | 1 keyword, 5 ideas / 24h   | Natural language, 5 ideas / 24h   | Custom thesis feeds             |
 | **Exporting**              | PDF Pitch Deck    | PDF, Notion/GDocs (clipboard) | PDF, Notion/GDocs (clipboard)  | Custom Data Integration (API)    |
 | **Analysis**               | Basic VC Analysis | Full VC Analysis           | Full VC Analysis + Expert Vetting | Proprietary Thesis Alignment     |
 | **Execution**              | 3 Next Steps      | 7 Next Steps               | Full 10+ Step Roadmap             | Full 10+ Step Roadmap            |
@@ -67,6 +68,16 @@ Trend Equity uses a tiered subscription model:
 - **Monthly Quota:** Pro users receive 5 analyses/month; Builder users receive 20 analyses/month.
 - **Output:** Same VC analysis depth as feed ideas — justification, revenue model, unfair advantage, market size, competitor landscape, and regulatory flags.
 - **Persistence:** Most recent analysis is stored per-user in `user_latest_idea/{uid}` and surfaced in the Saved tab.
+
+
+### 4.3c. Custom Requirement Feed (Pro/Builder)
+
+- **Purpose:** Generate a focused feed from current market signals based on user-defined requirements rather than browsing only the global daily feed.
+- **Free:** Control is visible but locked/disabled as an upgrade path.
+- **Pro:** One keyword can be submitted per 24-hour window; returns up to 5 matching ideas.
+- **Builder:** Natural-language requirements can be submitted per 24-hour window; returns up to 5 matching ideas.
+- **Caching:** The first custom feed generated in a 24-hour window is cached per user and returned on repeat requests until the window expires.
+- **Result States:** The API must distinguish complete results (5 ideas), partial results (1-4 ideas), and empty results (0 ideas) so the UI can explain whether strong signal-backed matches were found.
 
 ### 4.4. VC Analysis & Vetting
 

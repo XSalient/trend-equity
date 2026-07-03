@@ -1,4 +1,4 @@
-import { Idea, AnalyzeIdeaUsage } from '../types';
+import { Idea, AnalyzeIdeaUsage, DailyGeneration } from '../types';
 
 // Base URL for API calls. Empty string on web (relative URLs work via same origin).
 // Set VITE_API_BASE=https://trend-equity.vercel.app when building for native (Capacitor).
@@ -62,6 +62,28 @@ export async function generateDailyIdeas(
   return response.json();
 }
 
+export async function generateCustomFeed(requirement: string): Promise<DailyGeneration> {
+  const response = await fetch(`${API_BASE}/api/generate/custom-feed`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({ requirement }),
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    if (response.status === 403) {
+      throw Object.assign(new Error(err.error || 'Pro or Builder plan required.'), {
+        upgradeRequired: true,
+      });
+    }
+    if (response.status === 429) {
+      throw Object.assign(new Error(err.error || 'Custom feed limit reached.'), {
+        limitReached: true,
+      });
+    }
+    throw new Error(err.error || 'Failed to generate custom feed');
+  }
+  return response.json();
+}
 export async function generateFullActionPlan(idea: Idea, refresh?: boolean) {
   const response = await fetch(`${API_BASE}/api/generate/action-plan`, {
     method: 'POST',

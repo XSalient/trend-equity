@@ -16,10 +16,24 @@ import { TIER_LIMITS } from '../constants';
 import { useTierLimits } from './useTierLimits';
 import { db } from '../firebase';
 import { Idea, DailyGeneration, UserSave, FilterState, Tier } from '../types';
-import { generateDailyIdeas } from '../services/geminiService';
+import { generateCustomFeed, generateDailyIdeas } from '../services/geminiService';
 import { handleFirestoreError, OperationType } from '../utils/errorUtils';
 
 /** Deterministic djb2 hash of a string — used to give ideas stable IDs from their headline. */
+
+function stripUndefined<T>(value: T): T {
+  if (Array.isArray(value)) {
+    return value.map((item) => stripUndefined(item)) as T;
+  }
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>)
+        .filter(([, entry]) => entry !== undefined)
+        .map(([key, entry]) => [key, stripUndefined(entry)])
+    ) as T;
+  }
+  return value;
+}
 function stableId(str: string): string {
   let h = 5381;
   for (let i = 0; i < str.length; i++) h = ((h << 5) + h) ^ str.charCodeAt(i);
@@ -33,6 +47,9 @@ export function useIdeas(user: User | null, tier: Tier, authReady: boolean, isAd
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [customFeed, setCustomFeed] = useState<DailyGeneration | null>(null);
+  const [customFeedLoading, setCustomFeedLoading] = useState(false);
+  const [customFeedError, setCustomFeedError] = useState<string | null>(null);
   const [filters, setFilters] = useState<FilterState>({
     industries: [],
     productTypes: [],
@@ -284,13 +301,16 @@ export function useIdeas(user: User | null, tier: Tier, authReady: boolean, isAd
       if (existing) {
         await deleteDoc(doc(db, 'user_saves', existing.id!));
       } else {
-        await addDoc(collection(db, 'user_saves'), {
-          userId: user.uid,
-          idea,
-          savedAt: serverTimestamp(),
-          saveType,
-          userInput,
-        });
+        await addDoc(
+          collection(db, 'user_saves'),
+          stripUndefined({
+            userId: user.uid,
+            idea,
+            savedAt: serverTimestamp(),
+            saveType,
+            userInput,
+          })
+        );
       }
     } catch (err: any) {
       console.error('Save Error:', err);
@@ -484,6 +504,33 @@ export function useIdeas(user: User | null, tier: Tier, authReady: boolean, isAd
     [filters, tier]
   );
 
+  const generateCustomRequirementFeed = useCallback(async () => {
+    const requirement = filters.customKeywords.trim();
+    if (!requirement) {
+      setCustomFeedError(
+        tier === 'builder'
+          ? 'Describe the custom feed you want to generate.'
+          : 'Enter one keyword to generate a custom feed.'
+      );
+      return;
+    }
+
+    setCustomFeedLoading(true);
+    setCustomFeedError(null);
+    try {
+      const result = await generateCustomFeed(requirement);
+      setCustomFeed(result);
+    } catch (err: any) {
+      setCustomFeedError(err?.message || 'Custom feed generation failed. Please try again.');
+    } finally {
+      setCustomFeedLoading(false);
+    }
+  }, [filters.customKeywords, tier]);
+
+  const clearCustomFeed = useCallback(() => {
+    setCustomFeed(null);
+    setCustomFeedError(null);
+  }, []);
   const feedSaves = userSaves.filter((s) => !s.saveType || s.saveType === 'feed');
   const customSaves = userSaves.filter((s) => s.saveType === 'custom');
 
@@ -495,11 +542,16 @@ export function useIdeas(user: User | null, tier: Tier, authReady: boolean, isAd
     loading,
     generating,
     error,
+    customFeed,
+    customFeedLoading,
+    customFeedError,
     filters,
     setFilters,
     toggleSave,
     updateIdea,
     getFilteredIdeas,
+    generateCustomRequirementFeed,
+    clearCustomFeed,
     triggerGeneration,
     fetchDaily,
   };

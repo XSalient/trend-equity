@@ -101,19 +101,20 @@ This batching reduces the cold generation time from 2+ minutes to ~25 seconds.
 
 All features are gated by either **subscription tier** or **admin role** — never both simultaneously.
 
-| Feature                             | Free  |  Pro  | Builder |  Admin  |
-| ----------------------------------- | :---: | :---: | :-----: | :-----: |
-| Daily Feed (read, up to tier limit) | ✅ 10 | ✅ 25 |  ✅ 35  |  ✅ 35  |
-| Save ideas                          |  ✅   |  ✅   |   ✅    |   ✅    |
-| Validation Toolkit, Email Digest    |  ❌   |  ✅   |   ✅    |   ✅    |
-| Build with Me, Expert Vetting       |  ❌   |  ❌   |   ✅    |   ✅    |
-| Weekly Trend Radar                  |  ❌   |  ❌   |   ✅    |   ✅    |
-| Futurecasting Engine                |  ❌   |  ❌   |   ✅    |   ✅    |
-| Alerts Bell                         |  ❌   |  ❌   |   ✅    |   ✅    |
-| API Access, TE-100 Submission       |  ❌   |  ❌   |   ✅    |   ✅    |
-| **Feed Regeneration (Refresh)**     |  ❌   |  ❌   |   ❌    | ✅ only |
-| **Prompt Config Management**        |  ❌   |  ❌   |   ❌    | ✅ only |
-| **User Role Management**            |  ❌   |  ❌   |   ❌    | ✅ only |
+| Feature                             | Free  |           Pro            |             Builder             |        Admin        |
+| ----------------------------------- | :---: | :----------------------: | :-----------------------------: | :-----------------: |
+| Daily Feed (read, up to tier limit) | ✅ 10 |          ✅ 25           |              ✅ 35              |        ✅ 35        |
+| Custom Requirement Feed             |  ❌   | 1 keyword / 24h, up to 5 | Natural language / 24h, up to 5 | Custom thesis feeds |
+| Save ideas                          |  ✅   |            ✅            |               ✅                |         ✅          |
+| Validation Toolkit, Email Digest    |  ❌   |            ✅            |               ✅                |         ✅          |
+| Build with Me, Expert Vetting       |  ❌   |            ❌            |               ✅                |         ✅          |
+| Weekly Trend Radar                  |  ❌   |            ❌            |               ✅                |         ✅          |
+| Futurecasting Engine                |  ❌   |            ❌            |               ✅                |         ✅          |
+| Alerts Bell                         |  ❌   |            ❌            |               ✅                |         ✅          |
+| API Access, TE-100 Submission       |  ❌   |            ❌            |               ✅                |         ✅          |
+| **Feed Regeneration (Refresh)**     |  ❌   |            ❌            |               ❌                |       ✅ only       |
+| **Prompt Config Management**        |  ❌   |            ❌            |               ❌                |       ✅ only       |
+| **User Role Management**            |  ❌   |            ❌            |               ❌                |       ✅ only       |
 
 ### 3. Dynamic Prompt Refiner (Self-Improving Loop)
 

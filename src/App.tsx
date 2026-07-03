@@ -70,11 +70,16 @@ function MainApp() {
     loading,
     generating,
     error: ideasError,
+    customFeed,
+    customFeedLoading,
+    customFeedError,
     filters,
     setFilters,
     toggleSave,
     updateIdea,
     getFilteredIdeas,
+    generateCustomRequirementFeed,
+    clearCustomFeed,
     triggerGeneration,
     fetchDaily,
   } = useIdeas(user, tier, authReady, isAdmin);
@@ -381,6 +386,11 @@ function MainApp() {
             {activeTab === 'feed' ? (
               <IdeaFeed
                 dailyGen={dailyGen}
+                customFeed={customFeed}
+                customFeedLoading={customFeedLoading}
+                customFeedError={customFeedError}
+                onGenerateCustomFeed={generateCustomRequirementFeed}
+                onClearCustomFeed={clearCustomFeed}
                 userSaves={userSaves}
                 filters={filters}
                 setFilters={setFilters}

@@ -3,11 +3,16 @@ import { Lock, RefreshCw, AlertCircle } from 'lucide-react';
 import { Idea, DailyGeneration, FilterState, UserSave, Tier } from '../../types';
 import { IdeaCard } from '../IdeaCard';
 import { FilterBar } from '../FilterBar';
-import { DAILY_FEATURED_IDEAS, TIER_LIMITS } from '../../constants';
+import { CUSTOM_FEED_DAILY_LIMIT, DAILY_FEATURED_IDEAS, TIER_LIMITS } from '../../constants';
 import { IdeaFeedSkeleton } from '../layout/SkeletonLoaders';
 
 interface IdeaFeedProps {
   dailyGen: DailyGeneration | null;
+  customFeed: DailyGeneration | null;
+  customFeedLoading: boolean;
+  customFeedError: string | null;
+  onGenerateCustomFeed: () => void;
+  onClearCustomFeed: () => void;
   userSaves: UserSave[];
   filters: FilterState;
   setFilters: (filters: FilterState) => void;
@@ -30,6 +35,11 @@ interface IdeaFeedProps {
 
 export const IdeaFeed: React.FC<IdeaFeedProps> = ({
   dailyGen,
+  customFeed,
+  customFeedLoading,
+  customFeedError,
+  onGenerateCustomFeed,
+  onClearCustomFeed,
   userSaves,
   filters,
   setFilters,
@@ -50,9 +60,12 @@ export const IdeaFeed: React.FC<IdeaFeedProps> = ({
   handleLogin,
 }) => {
   const [showExtras, setShowExtras] = React.useState(false);
-  const allIdeas = dailyGen?.ideas || [];
-  const tierIdeas = allIdeas.slice(0, TIER_LIMITS[tier].dailyIdeas);
-  const filteredIdeas = getFilteredIdeas(tierIdeas);
+  const isCustomFeed = !!customFeed;
+  const allIdeas = isCustomFeed ? customFeed.ideas || [] : dailyGen?.ideas || [];
+  const tierIdeas = isCustomFeed
+    ? allIdeas.slice(0, CUSTOM_FEED_DAILY_LIMIT)
+    : allIdeas.slice(0, TIER_LIMITS[tier].dailyIdeas);
+  const filteredIdeas = isCustomFeed ? tierIdeas : getFilteredIdeas(tierIdeas);
   const hasActiveFilters =
     filters.industries.length > 0 ||
     filters.productTypes.length > 0 ||
@@ -60,7 +73,7 @@ export const IdeaFeed: React.FC<IdeaFeedProps> = ({
     filters.effortLevels.length > 0 ||
     filters.marketFocus.length > 0 ||
     filters.teamSize.length > 0 ||
-    filters.customKeywords.length > 0;
+    (!isCustomFeed && filters.customKeywords.length > 0);
   const shouldGroupExtras = !hasActiveFilters && filteredIdeas.length > DAILY_FEATURED_IDEAS;
   const visibleIdeas =
     shouldGroupExtras && !showExtras ? filteredIdeas.slice(0, DAILY_FEATURED_IDEAS) : filteredIdeas;
@@ -77,11 +90,16 @@ export const IdeaFeed: React.FC<IdeaFeedProps> = ({
         resultCount={hasActiveFilters ? filteredIdeas.length : undefined}
         totalCount={hasActiveFilters ? tierIdeas.length : undefined}
         onUpgrade={() => setActiveTab('pro')}
+        onGenerateCustomFeed={onGenerateCustomFeed}
+        customFeedLoading={customFeedLoading}
+        customFeedError={customFeedError}
+        customFeed={customFeed}
+        onClearCustomFeed={onClearCustomFeed}
       />
 
       {loading ? (
         <IdeaFeedSkeleton />
-      ) : !dailyGen ? (
+      ) : !dailyGen && !isCustomFeed ? (
         <div className="p-12 bg-zinc-900/40 border border-zinc-800/60 rounded-3xl text-center space-y-6 backdrop-blur-sm relative overflow-hidden group">
           <div className="absolute inset-0 bg-gradient-to-b from-emerald-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
 
@@ -133,13 +151,24 @@ export const IdeaFeed: React.FC<IdeaFeedProps> = ({
         </div>
       ) : (
         <>
-          {filteredIdeas.length === 0 && hasActiveFilters ? (
+          {isCustomFeed && customFeed.customFeedStatus !== 'complete' && (
+            <div className="p-4 bg-zinc-900/60 border border-amber-500/20 rounded-2xl text-sm text-amber-200">
+              {customFeed.customFeedMessage ||
+                `Found ${filteredIdeas.length} of ${CUSTOM_FEED_DAILY_LIMIT} possible custom feed ideas.`}
+            </div>
+          )}
+
+          {filteredIdeas.length === 0 && (hasActiveFilters || isCustomFeed) ? (
             <div className="p-8 bg-zinc-900/50 border border-zinc-800 rounded-2xl text-center space-y-3">
               <p className="text-zinc-400 text-sm font-medium">
-                No ideas match your current filters.
+                {isCustomFeed
+                  ? 'No custom feed ideas found.'
+                  : 'No ideas match your current filters.'}
               </p>
               <p className="text-zinc-600 text-xs">
-                Try adjusting or resetting your filters to see results.
+                {isCustomFeed
+                  ? 'Your cached custom feed is empty because no strong signal-backed matches were found today.'
+                  : 'Try adjusting or resetting your filters to see results.'}
               </p>
             </div>
           ) : (

@@ -326,6 +326,7 @@ async function mountVercelRoutes() {
     { method: 'post', path: '/api/generate/action-plan', file: './api/generate/action-plan.ts' },
     { method: 'post', path: '/api/generate/alerts', file: './api/generate/alerts.ts' },
     { method: 'post', path: '/api/generate/build-me', file: './api/generate/build-me.ts' },
+    { method: 'post', path: '/api/generate/custom-feed', file: './api/generate/custom-feed.ts' },
     { method: 'post', path: '/api/generate/evidence', file: './api/generate/evidence.ts' },
     { method: 'post', path: '/api/generate/explain', file: './api/generate/explain.ts' },
     {

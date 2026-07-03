@@ -1,4 +1,5 @@
 export type Tier = 'free' | 'pro' | 'builder';
+export type CustomFeedStatus = 'complete' | 'partial' | 'empty';
 
 export interface FilterState {
   industries: string[];
@@ -114,6 +115,11 @@ export interface DailyGeneration {
       issueCounts: Record<string, number>;
     };
   };
+  customRequirement?: string;
+  customFeedStatus?: CustomFeedStatus;
+  customFeedMessage?: string;
+  limit?: number;
+  _cached?: boolean;
   _isMock?: boolean; // legacy flag — stale docs from before mock removal
 }
 
