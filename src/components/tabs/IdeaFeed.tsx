@@ -9,10 +9,11 @@ import { IdeaFeedSkeleton } from '../layout/SkeletonLoaders';
 interface IdeaFeedProps {
   dailyGen: DailyGeneration | null;
   customFeed: DailyGeneration | null;
+  customFeedVisible: boolean;
   customFeedLoading: boolean;
   customFeedError: string | null;
   onGenerateCustomFeed: () => void;
-  onClearCustomFeed: () => void;
+  onToggleCustomFeedView: () => void;
   userSaves: UserSave[];
   filters: FilterState;
   setFilters: (filters: FilterState) => void;
@@ -36,10 +37,11 @@ interface IdeaFeedProps {
 export const IdeaFeed: React.FC<IdeaFeedProps> = ({
   dailyGen,
   customFeed,
+  customFeedVisible,
   customFeedLoading,
   customFeedError,
   onGenerateCustomFeed,
-  onClearCustomFeed,
+  onToggleCustomFeedView,
   userSaves,
   filters,
   setFilters,
@@ -60,7 +62,7 @@ export const IdeaFeed: React.FC<IdeaFeedProps> = ({
   handleLogin,
 }) => {
   const [showExtras, setShowExtras] = React.useState(false);
-  const isCustomFeed = !!customFeed;
+  const isCustomFeed = !!customFeed && customFeedVisible;
   const allIdeas = isCustomFeed ? customFeed.ideas || [] : dailyGen?.ideas || [];
   const tierIdeas = isCustomFeed
     ? allIdeas.slice(0, CUSTOM_FEED_DAILY_LIMIT)
@@ -94,7 +96,8 @@ export const IdeaFeed: React.FC<IdeaFeedProps> = ({
         customFeedLoading={customFeedLoading}
         customFeedError={customFeedError}
         customFeed={customFeed}
-        onClearCustomFeed={onClearCustomFeed}
+        customFeedVisible={customFeedVisible}
+        onToggleCustomFeedView={onToggleCustomFeedView}
       />
 
       {loading ? (

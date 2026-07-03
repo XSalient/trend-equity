@@ -16,7 +16,12 @@ import { TIER_LIMITS } from '../constants';
 import { useTierLimits } from './useTierLimits';
 import { db } from '../firebase';
 import { Idea, DailyGeneration, UserSave, FilterState, Tier } from '../types';
-import { generateCustomFeed, generateDailyIdeas } from '../services/geminiService';
+import {
+  fetchCachedCustomFeed,
+  generateCustomFeed,
+  generateDailyIdeas,
+  setCurrentIdToken,
+} from '../services/geminiService';
 import { handleFirestoreError, OperationType } from '../utils/errorUtils';
 
 /** Deterministic djb2 hash of a string — used to give ideas stable IDs from their headline. */
@@ -48,6 +53,7 @@ export function useIdeas(user: User | null, tier: Tier, authReady: boolean, isAd
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [customFeed, setCustomFeed] = useState<DailyGeneration | null>(null);
+  const [customFeedVisible, setCustomFeedVisible] = useState(false);
   const [customFeedLoading, setCustomFeedLoading] = useState(false);
   const [customFeedError, setCustomFeedError] = useState<string | null>(null);
   const [filters, setFilters] = useState<FilterState>({
@@ -335,6 +341,14 @@ export function useIdeas(user: User | null, tier: Tier, authReady: boolean, isAd
       }
     }
 
+    // Custom feed ideas live only in customFeed state — without this, toolkit
+    // results (roadmap, validation, build pack) generated on them are dropped.
+    setCustomFeed((prev) =>
+      prev && prev.ideas.some((i) => i.id === updatedIdea.id)
+        ? { ...prev, ideas: prev.ideas.map((i) => (i.id === updatedIdea.id ? updatedIdea : i)) }
+        : prev
+    );
+
     if (dailyGen && dailyGen.ideas.some((i) => i.id === updatedIdea.id)) {
       const updatedFeed = {
         ...dailyGen,
@@ -504,6 +518,33 @@ export function useIdeas(user: User | null, tier: Tier, authReady: boolean, isAd
     [filters, tier]
   );
 
+  // Restore a fresh (< 24h) cached custom feed on load. The server enforces one
+  // generation per 24h per user; without this, the cached feed is invisible until
+  // the user presses Generate again.
+  useEffect(() => {
+    if (!authReady || !user || tier === 'free') return;
+    let cancelled = false;
+    // Ensure the ID token is set before calling the authenticated endpoint —
+    // App syncs it too, but that effect races with this one on first load.
+    user
+      .getIdToken()
+      .then((token) => {
+        setCurrentIdToken(token);
+        return fetchCachedCustomFeed();
+      })
+      .then((cached) => {
+        if (cancelled || !cached?.ideas) return;
+        setCustomFeed(cached);
+        setCustomFeedVisible(true);
+      })
+      .catch(() => {
+        // Fail soft — user can still generate manually
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [authReady, user, tier]);
+
   const generateCustomRequirementFeed = useCallback(async () => {
     const requirement = filters.customKeywords.trim();
     if (!requirement) {
@@ -520,6 +561,11 @@ export function useIdeas(user: User | null, tier: Tier, authReady: boolean, isAd
     try {
       const result = await generateCustomFeed(requirement);
       setCustomFeed(result);
+      setCustomFeedVisible(true);
+      // The requirement is preserved on the feed itself (customRequirement).
+      // Clear it from filters so a long natural-language requirement doesn't
+      // keyword-filter the daily feed down to zero results.
+      setFilters((prev) => ({ ...prev, customKeywords: '' }));
     } catch (err: any) {
       setCustomFeedError(err?.message || 'Custom feed generation failed. Please try again.');
     } finally {
@@ -527,8 +573,8 @@ export function useIdeas(user: User | null, tier: Tier, authReady: boolean, isAd
     }
   }, [filters.customKeywords, tier]);
 
-  const clearCustomFeed = useCallback(() => {
-    setCustomFeed(null);
+  const toggleCustomFeedView = useCallback(() => {
+    setCustomFeedVisible((visible) => !visible);
     setCustomFeedError(null);
   }, []);
   const feedSaves = userSaves.filter((s) => !s.saveType || s.saveType === 'feed');
@@ -543,6 +589,7 @@ export function useIdeas(user: User | null, tier: Tier, authReady: boolean, isAd
     generating,
     error,
     customFeed,
+    customFeedVisible,
     customFeedLoading,
     customFeedError,
     filters,
@@ -551,7 +598,7 @@ export function useIdeas(user: User | null, tier: Tier, authReady: boolean, isAd
     updateIdea,
     getFilteredIdeas,
     generateCustomRequirementFeed,
-    clearCustomFeed,
+    toggleCustomFeedView,
     triggerGeneration,
     fetchDaily,
   };

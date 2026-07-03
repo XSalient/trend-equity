@@ -28,7 +28,17 @@ interface FilterBarProps {
   customFeedLoading?: boolean;
   customFeedError?: string | null;
   customFeed?: DailyGeneration | null;
-  onClearCustomFeed?: () => void;
+  customFeedVisible?: boolean;
+  onToggleCustomFeedView?: () => void;
+}
+
+const CUSTOM_FEED_TTL_MS = 24 * 60 * 60 * 1000;
+
+/** Whole hours until a cached custom feed expires and a new generation unlocks. */
+function hoursUntilNextGeneration(generatedAt?: string): number {
+  const time = generatedAt ? Date.parse(generatedAt) : NaN;
+  if (!Number.isFinite(time)) return 0;
+  return Math.max(0, Math.ceil((time + CUSTOM_FEED_TTL_MS - Date.now()) / (60 * 60 * 1000)));
 }
 
 const INDUSTRIES = [
@@ -219,12 +229,16 @@ export function FilterBar({
   customFeedLoading = false,
   customFeedError = null,
   customFeed = null,
-  onClearCustomFeed,
+  customFeedVisible = false,
+  onToggleCustomFeedView,
 }: FilterBarProps) {
   const [isOpen, setIsOpen] = useState(false);
   const isFree = tier === 'free';
   const isPro = tier === 'pro';
   const isBuilder = tier === 'builder';
+  // A cached custom feed exists — only one generation is allowed per 24h, so
+  // the requirement input and generate button stay locked until it expires.
+  const customFeedLocked = !!customFeed;
 
   const resetFilters = () => {
     setFilters({
@@ -517,7 +531,7 @@ export function FilterBar({
                       <Search className="absolute left-3 top-3 w-4 h-4 text-zinc-500" />
                       <textarea
                         rows={isBuilder ? 3 : 1}
-                        disabled={isFree || customFeedLoading}
+                        disabled={isFree || customFeedLoading || customFeedLocked}
                         placeholder={
                           isBuilder
                             ? "Describe requirements, e.g. 'solo-friendly B2B ideas with low regulatory risk based on live pain signals'"
@@ -525,33 +539,54 @@ export function FilterBar({
                               ? "One keyword, e.g. 'solar'"
                               : 'Upgrade to generate a custom requirement feed'
                         }
-                        value={filters.customKeywords}
+                        value={
+                          customFeedLocked
+                            ? customFeed?.customRequirement || ''
+                            : filters.customKeywords
+                        }
                         onChange={(e) => handleCustomRequirementChange(e.target.value)}
                         className={`w-full resize-none bg-zinc-800 border-none rounded-lg pl-10 pr-4 py-2 text-sm text-white placeholder:text-zinc-600 focus:ring-1 focus:ring-emerald-500 ${
-                          isFree ? 'opacity-50 cursor-not-allowed' : ''
+                          isFree || customFeedLocked ? 'opacity-50 cursor-not-allowed' : ''
                         }`}
                       />
                     </div>
                     <div className="flex md:flex-col gap-2 md:w-44">
                       <button
                         onClick={submitCustomRequirement}
-                        disabled={customFeedLoading || (!isFree && !filters.customKeywords.trim())}
+                        disabled={
+                          customFeedLoading ||
+                          customFeedLocked ||
+                          (!isFree && !filters.customKeywords.trim())
+                        }
+                        title={
+                          customFeedLocked
+                            ? `One custom feed per 24h — next generation in ~${hoursUntilNextGeneration(customFeed?.generatedAt)}h`
+                            : undefined
+                        }
                         className={`flex-1 px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-widest transition-colors ${
-                          customFeedLoading || (!isFree && !filters.customKeywords.trim())
+                          customFeedLoading ||
+                          customFeedLocked ||
+                          (!isFree && !filters.customKeywords.trim())
                             ? 'bg-zinc-800 text-zinc-600 cursor-not-allowed'
                             : isFree
                               ? 'bg-zinc-800 text-zinc-400 hover:text-white'
                               : 'bg-emerald-500 text-black hover:bg-emerald-400'
                         }`}
                       >
-                        {customFeedLoading ? 'Generating...' : isFree ? 'Upgrade' : 'Generate'}
+                        {customFeedLoading
+                          ? 'Generating...'
+                          : isFree
+                            ? 'Upgrade'
+                            : customFeedLocked
+                              ? 'Generated'
+                              : 'Generate'}
                       </button>
                       {customFeed && (
                         <button
-                          onClick={onClearCustomFeed}
+                          onClick={onToggleCustomFeedView}
                           className="flex-1 px-4 py-2 rounded-lg bg-zinc-800 text-xs font-bold uppercase tracking-widest text-zinc-400 hover:text-white transition-colors"
                         >
-                          Daily Feed
+                          {customFeedVisible ? 'Daily Feed' : 'Custom Feed'}
                         </button>
                       )}
                     </div>
@@ -559,7 +594,9 @@ export function FilterBar({
                   {customFeed && (
                     <p className="text-xs text-emerald-400">
                       Showing {customFeed.ideas.length} / {customFeed.limit || 5} cached custom feed
-                      ideas for: "{customFeed.customRequirement || filters.customKeywords}"
+                      ideas for: "{customFeed.customRequirement || filters.customKeywords}" — one
+                      generation per 24h, next available in ~
+                      {hoursUntilNextGeneration(customFeed.generatedAt)}h.
                     </p>
                   )}
                   {customFeedError && <p className="text-xs text-red-400">{customFeedError}</p>}

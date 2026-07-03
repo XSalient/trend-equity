@@ -68,9 +68,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .json({ error: 'Custom requirement feeds require a Pro or Builder plan.' });
   }
 
+  // Peek mode: return the cached feed if a fresh one exists, never generate.
+  // Lets the client restore the feed (and lock the inputs) after a reload.
+  const isPeek = req.body?.peek === true;
+
   const rawRequirement = sanitiseRequirement(req.body?.requirement);
   const requirement = authCtx.tier === 'pro' ? normaliseProKeyword(rawRequirement) : rawRequirement;
-  if (!requirement) {
+  if (!requirement && !isPeek) {
     return res.status(400).json({
       error:
         authCtx.tier === 'pro'
@@ -86,6 +90,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (existing.exists && isFresh(existing.data()?.generatedAt)) {
       return res.json({ ...existing.data(), _cached: true });
+    }
+    if (isPeek) {
+      return res.status(404).json({ error: 'No cached custom feed available.' });
     }
 
     const today = getToday();

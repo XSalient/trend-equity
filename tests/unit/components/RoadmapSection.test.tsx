@@ -90,6 +90,10 @@ describe('RoadmapSection', () => {
     );
     await userEvent.click(screen.getByText('Generate Full Roadmap'));
     expect(handleGenerateFullPlan).toHaveBeenCalledOnce();
+    // Must be called with NO arguments — passing the click event through as the
+    // `refresh` param gets JSON.stringified into the API body and throws
+    // "Converting circular structure to JSON".
+    expect(handleGenerateFullPlan).toHaveBeenCalledWith();
   });
 
   it('shows skeleton loader while generating plan', () => {

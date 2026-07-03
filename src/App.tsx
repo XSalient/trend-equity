@@ -71,6 +71,7 @@ function MainApp() {
     generating,
     error: ideasError,
     customFeed,
+    customFeedVisible,
     customFeedLoading,
     customFeedError,
     filters,
@@ -79,7 +80,7 @@ function MainApp() {
     updateIdea,
     getFilteredIdeas,
     generateCustomRequirementFeed,
-    clearCustomFeed,
+    toggleCustomFeedView,
     triggerGeneration,
     fetchDaily,
   } = useIdeas(user, tier, authReady, isAdmin);
@@ -387,10 +388,11 @@ function MainApp() {
               <IdeaFeed
                 dailyGen={dailyGen}
                 customFeed={customFeed}
+                customFeedVisible={customFeedVisible}
                 customFeedLoading={customFeedLoading}
                 customFeedError={customFeedError}
                 onGenerateCustomFeed={generateCustomRequirementFeed}
-                onClearCustomFeed={clearCustomFeed}
+                onToggleCustomFeedView={toggleCustomFeedView}
                 userSaves={userSaves}
                 filters={filters}
                 setFilters={setFilters}

@@ -84,6 +84,24 @@ export async function generateCustomFeed(requirement: string): Promise<DailyGene
   }
   return response.json();
 }
+/**
+ * Fetch the user's cached custom feed (if a fresh one exists) without
+ * triggering a new generation. Returns null when there is no fresh cache.
+ */
+export async function fetchCachedCustomFeed(): Promise<DailyGeneration | null> {
+  try {
+    const response = await fetch(`${API_BASE}/api/generate/custom-feed`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({ peek: true }),
+    });
+    if (!response.ok) return null;
+    return await response.json();
+  } catch {
+    return null;
+  }
+}
+
 export async function generateFullActionPlan(idea: Idea, refresh?: boolean) {
   const response = await fetch(`${API_BASE}/api/generate/action-plan`, {
     method: 'POST',
