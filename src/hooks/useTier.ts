@@ -38,11 +38,21 @@ export function useTier(user: User | null) {
             setTier((data.tier as Tier) || 'free');
             setIsAdmin(data.role === 'admin');
           } else {
+            // User doc doesn't exist yet (new user) — default to free tier
             setTier('free');
             setIsAdmin(false);
           }
         })
-        .catch((err) => handleFirestoreError(err, OperationType.GET, `users/${user.uid}`));
+        .catch((err: any) => {
+          // Permission denied (common for new users before server setup) — gracefully default to free
+          if (err?.code === 'permission-denied') {
+            console.warn('[TIER] User doc not accessible, defaulting to free tier');
+            setTier('free');
+            setIsAdmin(false);
+          } else {
+            handleFirestoreError(err, OperationType.GET, `users/${user.uid}`);
+          }
+        });
     } else {
       setTier('free');
       setIsAdmin(false);

@@ -28,6 +28,7 @@ const {
   mockGetAuthContext,
   mockGetAdminDb,
   mockCheckAndIncrementUsage,
+  mockCritiqueAndRank,
 } = vi.hoisted(() => ({
   mockGenerateWithAI: vi.fn(),
   mockFetchLiveSignals: vi.fn(),
@@ -36,6 +37,7 @@ const {
   mockGetAuthContext: vi.fn(),
   mockGetAdminDb: vi.fn(),
   mockCheckAndIncrementUsage: vi.fn(),
+  mockCritiqueAndRank: vi.fn(),
 }));
 
 vi.mock('../../../api/_lib/ai-provider', () => {
@@ -69,6 +71,23 @@ vi.mock('../../../api/_lib/usage', () => ({
   checkAndIncrementUsage: mockCheckAndIncrementUsage,
 }));
 
+vi.mock('../../../api/_lib/quality-engine', () => ({
+  critiqueAndRank: mockCritiqueAndRank,
+}));
+
+vi.mock('../../../api/_lib/prediction-tracker', () => ({
+  savePredictions: vi.fn(async () => undefined),
+}));
+
+vi.mock('../../../api/_lib/embeddings', () => ({
+  semanticDedupeCandidates: vi.fn(async (candidates: any[]) => ({
+    kept: candidates,
+    droppedHeadlines: [],
+    vectorsByHeadline: new Map(),
+  })),
+  saveIdeaEmbeddings: vi.fn(async () => undefined),
+}));
+
 import handler from '../../../api/generate/daily';
 
 const EMPTY_SIGNALS = {
@@ -89,20 +108,29 @@ describe('POST /api/generate/daily', () => {
     mockGetRecentIdeaHeadlines.mockResolvedValue([]);
     mockGenerateWithAI.mockImplementation(async (prompt: string) => {
       const lower = prompt.toLowerCase();
-      if (lower.includes('generate exactly 12')) {
+      if (lower.includes('generate exactly 20')) {
         return {
           ...MOCK_DAILY_GENERATION,
-          ideas: generateMockIdeas(12),
-        };
-      }
-      if (lower.includes('generate exactly 11')) {
-        return {
-          ...MOCK_DAILY_GENERATION,
-          ideas: generateMockIdeas(11),
+          ideas: generateMockIdeas(20),
         };
       }
       return MOCK_DAILY_GENERATION;
     });
+    // Quality engine: pass-through publishing the top 35 candidates
+    mockCritiqueAndRank.mockImplementation(async (candidates: any[], publishCount: number) => ({
+      published: candidates.slice(0, publishCount),
+      rejected: [],
+      stats: {
+        candidates: candidates.length,
+        scored: candidates.length,
+        publishedCount: Math.min(candidates.length, publishCount),
+        rejectedCount: Math.max(0, candidates.length - publishCount),
+        avgPublishedScore: 7.5,
+        threshold: 6.5,
+        criticModel: 'test-critic',
+        failOpen: false,
+      },
+    }));
     // Auth: builder tier required to trigger daily generation
     mockGetAuthContext.mockResolvedValue({ uid: 'user-1', tier: 'builder', isAdmin: true });
     mockCheckAndIncrementUsage.mockResolvedValue({ allowed: true, remaining: 10, limit: null });
@@ -191,8 +219,22 @@ describe('POST /api/generate/daily', () => {
     await handler(req, res);
 
     const promptArg: string = mockGenerateWithAI.mock.calls[0][0];
-    expect(promptArg).toContain('Generate exactly 12');
+    expect(promptArg).toContain('Generate exactly 20');
     expect(promptArg).not.toContain('LIVE MARKET SIGNALS');
+  });
+
+  it('overgenerates 60 candidates and publishes the quality-engine top 35', async () => {
+    const req = createMockRequest({ body: { date: '2026-04-11' } });
+    const res = createMockResponse();
+
+    await handler(req, res);
+
+    expect(mockCritiqueAndRank).toHaveBeenCalledOnce();
+    const [candidates, publishCount] = mockCritiqueAndRank.mock.calls[0];
+    expect(candidates).toHaveLength(60);
+    expect(publishCount).toBe(35);
+    expect(res._body.ideas).toHaveLength(35);
+    expect(res._body.qualityStats).toMatchObject({ criticModel: 'test-critic' });
   });
 
   it('appends country localisation clause when country is not Global', async () => {

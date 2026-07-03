@@ -6,7 +6,9 @@ import {
   generateBuildWithMe,
   generateValidationToolkit,
   generateExpertVetting,
+  generateEvidence,
 } from '../services/geminiService';
+import { trackEvent } from '../services/trackingService';
 
 export function useIdeaActions(idea: Idea, onUpdateIdea?: (idea: Idea) => void) {
   const ideaRef = useRef(idea);
@@ -22,6 +24,10 @@ export function useIdeaActions(idea: Idea, onUpdateIdea?: (idea: Idea) => void) 
   const [isVetting, setIsVetting] = useState(false);
   const [vettingResult, setVettingResult] = useState<ExpertVetting | null>(
     idea.expertVetting || null
+  );
+  const [isGatheringEvidence, setIsGatheringEvidence] = useState(false);
+  const [evidenceResult, setEvidenceResult] = useState<Idea['evidence'] | null>(
+    idea.evidence || null
   );
   const [explainingSection, setExplainingSection] = useState<string | null>(null);
   const [explanation, setExplanation] = useState<{ section: string; text: string } | null>(null);
@@ -117,6 +123,7 @@ export function useIdeaActions(idea: Idea, onUpdateIdea?: (idea: Idea) => void) 
   const handleExpertVetting = async (refresh?: boolean) => {
     setIsVetting(true);
     setActionError(null);
+    trackEvent('vet', idea.id);
     try {
       const result = await generateExpertVetting(idea, refresh);
       setVettingResult(result);
@@ -130,12 +137,34 @@ export function useIdeaActions(idea: Idea, onUpdateIdea?: (idea: Idea) => void) 
     }
   };
 
+  const handleGatherEvidence = async (refresh?: boolean) => {
+    setIsGatheringEvidence(true);
+    setActionError(null);
+    try {
+      // Feed idea ids are `${yyyy-mm-dd}-${hash}` — pass the date so the server
+      // can persist evidence onto the shared daily feed document.
+      const dateFromId = /^\d{4}-\d{2}-\d{2}/.test(idea.id) ? idea.id.slice(0, 10) : undefined;
+      const result = await generateEvidence(idea, dateFromId, refresh);
+      setEvidenceResult(result);
+      onUpdateIdea?.({ ...ideaRef.current, evidence: result });
+      return true;
+    } catch (error: any) {
+      handleError(error, 'Evidence gathering failed. Please try again.');
+      return false;
+    } finally {
+      setIsGatheringEvidence(false);
+    }
+  };
+
   return {
     isGeneratingPlan,
     isGeneratingBuild,
     isGeneratingValidation,
     isVetting,
     vettingResult,
+    isGatheringEvidence,
+    evidenceResult,
+    handleGatherEvidence,
     explainingSection,
     explanation,
     setExplanation,

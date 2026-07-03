@@ -46,6 +46,10 @@ export default function App() {
     return <EnterpriseLanding />;
   }
 
+  return <MainApp />;
+}
+
+function MainApp() {
   const { user, authReady, handleLogin, handleLogout, error: authError } = useAuth();
   const { tier, isAdmin, handleUpgrade, handleDowngrade, upgradeToBuilder, tierNotification } =
     useTier(user);
@@ -73,7 +77,7 @@ export default function App() {
     getFilteredIdeas,
     triggerGeneration,
     fetchDaily,
-  } = useIdeas(user, tier, authReady);
+  } = useIdeas(user, tier, authReady, isAdmin);
 
   const analyzeIdeaHook = useAnalyzeIdea(user, tier, authReady);
 
@@ -214,7 +218,7 @@ export default function App() {
       day: 'numeric',
       year: 'numeric',
     });
-    return `Welcome to the ${dateStr} edition of Trend-Equity. Today we navigate the convergence of emerging market signals and high-velocity AI-native shifts. The following ${count} ideas have been filtered through our strict VC engine for maximum investability and timing relevance.`;
+    return `Welcome to the ${dateStr} edition of Trend-Equity. Each of the following ${count} opportunities was detected in live market signals, scored across five investability dimensions by our VC engine, and published only if the evidence held up. Decision support, not inspiration.`;
   };
 
   // Full-page loader only for INITIAL Daily AI Generation
@@ -270,7 +274,8 @@ export default function App() {
           {/* Intro Section */}
           <h2 className="text-4xl md:text-5xl font-black tracking-tight leading-[0.9] uppercase italic">
             Today's <br />
-            <span className="text-emerald-500">Top {TIER_LIMITS[tier].dailyIdeas}</span> Ideas
+            <span className="text-emerald-500">Top {TIER_LIMITS[tier].dailyIdeas}</span>{' '}
+            Opportunities
           </h2>
 
           {/* FIX (U-2): Tier notification toast — replaces alert() */}

@@ -21,6 +21,8 @@ export const IdeaCardHeader: React.FC<IdeaCardHeaderProps> = ({
   isFree,
   user,
 }) => {
+  const heatBadge = idea.heatBadge?.includes('�') ? 'Early Bird' : idea.heatBadge || 'Early Bird';
+
   return (
     <div className="flex justify-between items-start gap-4">
       <div className="space-y-1">
@@ -35,7 +37,7 @@ export const IdeaCardHeader: React.FC<IdeaCardHeaderProps> = ({
           ))}
           <span className="text-xs font-medium text-amber-400 bg-amber-500/10 px-2.5 py-0.5 rounded-full border border-amber-500/20 flex items-center gap-1">
             <Zap className="w-3 h-3" />
-            {idea.heatBadge || 'Early Bird'}
+            {heatBadge}
           </span>
         </div>
         <h3 className="text-lg font-semibold text-white leading-snug group-hover:text-emerald-400 transition-colors">

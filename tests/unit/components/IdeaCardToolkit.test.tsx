@@ -22,8 +22,12 @@ vi.mock('../../../src/components/idea/toolkit/ProgressSection', () => ({
 
 vi.mock('motion/react', () => ({
   motion: {
-    div: ({ children, ...props }: React.HTMLAttributes<HTMLDivElement> & { children?: React.ReactNode }) =>
-      <div {...props}>{children}</div>,
+    div: ({
+      children,
+      ...props
+    }: React.HTMLAttributes<HTMLDivElement> & { children?: React.ReactNode }) => (
+      <div {...props}>{children}</div>
+    ),
   },
   AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
@@ -138,7 +142,12 @@ describe('IdeaCardToolkit', () => {
     };
     render(
       <IdeaCardToolkit
-        {...makeProps({ idea: ideaWithToolkit, isFree: false, handleGenerateValidation, setActiveToolkit })}
+        {...makeProps({
+          idea: ideaWithToolkit,
+          isFree: false,
+          handleGenerateValidation,
+          setActiveToolkit,
+        })}
       />
     );
     await userEvent.click(screen.getByText('Validation Toolkit'));

@@ -70,8 +70,14 @@ export function useAlerts(user: FirebaseUser | null) {
         }
       },
       (err) => {
-        console.error('Alerts Sync Error:', err);
-        setLoading(false); // prevent stuck loading spinner on Firestore error
+        // Silently handle permission errors for new users
+        if (err?.code === 'permission-denied') {
+          console.debug('[ALERTS] No permission to read alerts (new user?), skipping');
+          setLoading(false);
+        } else {
+          console.error('Alerts Sync Error:', err);
+          setLoading(false);
+        }
       }
     );
 

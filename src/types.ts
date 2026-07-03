@@ -9,7 +9,7 @@ export interface FilterState {
   teamSize: string[];
   excludeCategories: string[];
   customKeywords: string;
-  sortBy: 'revenue' | 'newest' | 'effort';
+  sortBy: 'quality' | 'revenue' | 'newest' | 'effort';
 }
 
 export interface Idea {
@@ -59,6 +59,34 @@ export interface Idea {
   marketSize?: string;
   competitorLandscape?: string;
   regulatoryFlags?: string;
+  /** Grounded market research with real citation URLs (on-demand, Google Search grounding) */
+  evidence?: {
+    competitors: { name: string; oneLiner: string }[];
+    marketSizeCited: string;
+    whyNowEvidence: string;
+    sources: { title: string; url: string }[];
+    evidenceScore: number;
+    generatedAt?: string;
+  };
+  /** Composite score (1-10) assigned by the independent critic model; null if critique failed */
+  qualityScore?: number | null;
+  qualityScorePrecheck?: number;
+  founderFit?: 'keeper' | 'salvageable' | 'cut';
+  qualityIssues?: string[];
+  buyer?: string;
+  firstWedge?: string;
+  validationTest?: string;
+  killReason?: string;
+  adminReviewStatus?: 'published' | 'needs_narrowing' | 'rejected';
+  critique?: {
+    problemSeverity: number;
+    timing: number;
+    moat: number;
+    feasibility: number;
+    founderAccessibility: number;
+    reason: string;
+  };
+  criticModel?: string;
 }
 
 export interface DailyGeneration {
@@ -67,6 +95,25 @@ export interface DailyGeneration {
   ideas: Idea[];
   disclaimer: string;
   generatedAt: any;
+  promptVersion?: string;
+  qualityStats?: {
+    candidates?: number;
+    scored?: number;
+    publishedCount?: number;
+    rejectedCount?: number;
+    avgPublishedScore?: number | null;
+    threshold?: number;
+    criticModel?: string;
+    failOpen?: boolean;
+    semanticDupesDropped?: number;
+    gate?: {
+      inputCount: number;
+      publishableCount: number;
+      fallbackUsed: boolean;
+      rejectedByGate: number;
+      issueCounts: Record<string, number>;
+    };
+  };
   _isMock?: boolean; // legacy flag — stale docs from before mock removal
 }
 

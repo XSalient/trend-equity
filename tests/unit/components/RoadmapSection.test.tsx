@@ -28,9 +28,27 @@ const baseIdea: Idea = {
 
 const mockPlan = {
   roadmap: [
-    { id: 'step-1', step: 'Validate the market', details: 'Interview 20 potential customers', milestone: 'Week 1', isDone: false },
-    { id: 'step-2', step: 'Build MVP', details: 'Core booking flow only', milestone: 'Week 4', isDone: false },
-    { id: 'step-3', step: 'Launch beta', details: 'Invite first 50 users', milestone: 'Week 6', isDone: true },
+    {
+      id: 'step-1',
+      step: 'Validate the market',
+      details: 'Interview 20 potential customers',
+      milestone: 'Week 1',
+      isDone: false,
+    },
+    {
+      id: 'step-2',
+      step: 'Build MVP',
+      details: 'Core booking flow only',
+      milestone: 'Week 4',
+      isDone: false,
+    },
+    {
+      id: 'step-3',
+      step: 'Launch beta',
+      details: 'Invite first 50 users',
+      milestone: 'Week 6',
+      isDone: true,
+    },
   ],
   tools: ['Next.js', 'Stripe', 'Cal.com API'],
   risks: ['High churn if UX poor', 'Enterprise sales cycle long'],
@@ -63,7 +81,13 @@ describe('RoadmapSection', () => {
 
   it('calls handleGenerateFullPlan when CTA clicked', async () => {
     const handleGenerateFullPlan = vi.fn().mockResolvedValue(true);
-    render(<RoadmapSection {...defaultProps} idea={baseIdea} handleGenerateFullPlan={handleGenerateFullPlan} />);
+    render(
+      <RoadmapSection
+        {...defaultProps}
+        idea={baseIdea}
+        handleGenerateFullPlan={handleGenerateFullPlan}
+      />
+    );
     await userEvent.click(screen.getByText('Generate Full Roadmap'));
     expect(handleGenerateFullPlan).toHaveBeenCalledOnce();
   });
@@ -114,9 +138,7 @@ describe('RoadmapSection', () => {
 
   it('shows admin refresh button when isAdmin', () => {
     const idea = { ...baseIdea, fullActionPlan: mockPlan };
-    render(
-      <RoadmapSection {...defaultProps} idea={idea} isAdmin={true} onRefresh={vi.fn()} />
-    );
+    render(<RoadmapSection {...defaultProps} idea={idea} isAdmin={true} onRefresh={vi.fn()} />);
     expect(screen.getByTitle('Force refresh analysis')).toBeInTheDocument();
   });
 });

@@ -48,7 +48,10 @@ describe('explain handler', () => {
   });
 
   it('returns 400 when idea.headline is missing', async () => {
-    const req = createMockRequest({ method: 'POST', body: { idea: { id: '1' }, section: 'Revenue' } });
+    const req = createMockRequest({
+      method: 'POST',
+      body: { idea: { id: '1' }, section: 'Revenue' },
+    });
     const res = createMockResponse();
     await handler(req as any, res as any);
     expect(res.status).toHaveBeenCalledWith(400);
@@ -67,7 +70,10 @@ describe('explain handler', () => {
     vi.mocked(getAuthContext).mockResolvedValue({ uid: 'user1', tier: 'pro' } as any);
     vi.mocked(getCached).mockResolvedValue(mockExplanation);
 
-    const req = createMockRequest({ method: 'POST', body: { idea: mockIdea, section: 'Revenue Model' } });
+    const req = createMockRequest({
+      method: 'POST',
+      body: { idea: mockIdea, section: 'Revenue Model' },
+    });
     const res = createMockResponse();
 
     await handler(req as any, res as any);
@@ -82,7 +88,10 @@ describe('explain handler', () => {
     vi.mocked(checkAndIncrementUsage).mockResolvedValue({ allowed: true, limit: 20 } as any);
     vi.mocked(generateWithAI).mockResolvedValue(mockExplanation);
 
-    const req = createMockRequest({ method: 'POST', body: { idea: mockIdea, section: 'Revenue Model' } });
+    const req = createMockRequest({
+      method: 'POST',
+      body: { idea: mockIdea, section: 'Revenue Model' },
+    });
     const res = createMockResponse();
 
     await handler(req as any, res as any);

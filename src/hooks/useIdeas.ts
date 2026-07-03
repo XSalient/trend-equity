@@ -26,7 +26,7 @@ function stableId(str: string): string {
   return (h >>> 0).toString(36);
 }
 
-export function useIdeas(user: User | null, tier: Tier, authReady: boolean) {
+export function useIdeas(user: User | null, tier: Tier, authReady: boolean, isAdmin = false) {
   const { getCustomSavesLimit } = useTierLimits();
   const [dailyGen, setDailyGen] = useState<DailyGeneration | null>(null);
   const [userSaves, setUserSaves] = useState<UserSave[]>([]);
@@ -42,7 +42,7 @@ export function useIdeas(user: User | null, tier: Tier, authReady: boolean) {
     teamSize: [],
     excludeCategories: [],
     customKeywords: '',
-    sortBy: 'revenue',
+    sortBy: 'quality',
   });
 
   const today = new Date().toISOString().split('T')[0];
@@ -189,8 +189,13 @@ export function useIdeas(user: User | null, tier: Tier, authReady: boolean) {
             }));
           }
         }
-      } catch (err) {
-        handleFirestoreError(err, OperationType.GET, `users/${user.uid}`);
+      } catch (err: any) {
+        // Permission denied for new users (user doc not yet created) — silently ignore
+        if (err?.code === 'permission-denied') {
+          console.debug('[FILTERS] User doc not accessible, using defaults');
+        } else {
+          handleFirestoreError(err, OperationType.GET, `users/${user.uid}`);
+        }
       }
     };
 
@@ -212,8 +217,13 @@ export function useIdeas(user: User | null, tier: Tier, authReady: boolean) {
           },
           { merge: true }
         );
-      } catch (err) {
-        console.error('Failed to save filters:', err);
+      } catch (err: any) {
+        // Permission denied for new users — silently ignore (filters persist locally only)
+        if (err?.code === 'permission-denied') {
+          console.debug('[FILTERS] Cannot save filters to Firestore yet');
+        } else {
+          console.error('Failed to save filters:', err);
+        }
       }
     };
 
@@ -233,7 +243,13 @@ export function useIdeas(user: User | null, tier: Tier, authReady: boolean) {
         setUserSaves(saves);
       },
       (err) => {
-        console.error('Saves Sync Error:', err);
+        // Silently handle permission errors for new users
+        if (err?.code === 'permission-denied') {
+          console.debug('[SAVES] No permission to read saves (new user?), skipping');
+          setUserSaves([]);
+        } else {
+          console.error('Saves Sync Error:', err);
+        }
       }
     );
 
@@ -306,6 +322,22 @@ export function useIdeas(user: User | null, tier: Tier, authReady: boolean) {
       };
       setDailyGen(updatedFeed);
       setCachedFeed(updatedFeed);
+
+      if (isAdmin && updatedIdea.adminReviewStatus) {
+        try {
+          await setDoc(
+            doc(db, 'daily_generations', dailyGen.date || today),
+            { ideas: updatedFeed.ideas, updatedAt: serverTimestamp() },
+            { merge: true }
+          );
+        } catch (err) {
+          handleFirestoreError(
+            err,
+            OperationType.WRITE,
+            `daily_generations/${dailyGen.date || today}`
+          );
+        }
+      }
     }
   };
 
@@ -429,6 +461,11 @@ export function useIdeas(user: User | null, tier: Tier, authReady: boolean) {
       }
 
       filtered.sort((a, b) => {
+        if (filters.sortBy === 'quality') {
+          const aScore = a.qualityScore ?? a.qualityScorePrecheck ?? a.revenuePotentialScore ?? 0;
+          const bScore = b.qualityScore ?? b.qualityScorePrecheck ?? b.revenuePotentialScore ?? 0;
+          return bScore - aScore;
+        }
         if (filters.sortBy === 'revenue') return b.revenuePotentialScore - a.revenuePotentialScore;
         if (filters.sortBy === 'effort') {
           const getEffort = (s: string) => {

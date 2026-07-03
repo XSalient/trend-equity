@@ -32,7 +32,10 @@ const mockValidationToolkit = {
     subHero: 'AI-powered legal research for small firms',
     valueProps: ['Save 20hrs/week', 'Cut research costs by 60%'],
   },
-  interviewScript: ['What is your biggest research pain point?', 'How do you currently handle case law?'],
+  interviewScript: [
+    'What is your biggest research pain point?',
+    'How do you currently handle case law?',
+  ],
   smokeTest: 'Create a landing page with email capture and measure signups',
   successMetrics: ['100 signups in 2 weeks', '$5k MRR in 3 months'],
   generatedAt: '2025-01-01',
@@ -96,7 +99,12 @@ describe('ValidationSection', () => {
   it('shows admin refresh button when isAdmin', () => {
     const idea = { ...baseIdea, validationToolkit: mockValidationToolkit };
     render(
-      <ValidationSection idea={idea} setActiveToolkit={vi.fn()} isAdmin={true} onRefresh={vi.fn()} />
+      <ValidationSection
+        idea={idea}
+        setActiveToolkit={vi.fn()}
+        isAdmin={true}
+        onRefresh={vi.fn()}
+      />
     );
     expect(screen.getByTitle('Force refresh analysis')).toBeInTheDocument();
   });
@@ -105,7 +113,12 @@ describe('ValidationSection', () => {
     const onRefresh = vi.fn();
     const idea = { ...baseIdea, validationToolkit: mockValidationToolkit };
     render(
-      <ValidationSection idea={idea} setActiveToolkit={vi.fn()} isAdmin={true} onRefresh={onRefresh} />
+      <ValidationSection
+        idea={idea}
+        setActiveToolkit={vi.fn()}
+        isAdmin={true}
+        onRefresh={onRefresh}
+      />
     );
     await userEvent.click(screen.getByTitle('Force refresh analysis'));
     expect(onRefresh).toHaveBeenCalledOnce();

@@ -3,7 +3,7 @@ import { Lock, RefreshCw, AlertCircle } from 'lucide-react';
 import { Idea, DailyGeneration, FilterState, UserSave, Tier } from '../../types';
 import { IdeaCard } from '../IdeaCard';
 import { FilterBar } from '../FilterBar';
-import { TIER_LIMITS } from '../../constants';
+import { DAILY_FEATURED_IDEAS, TIER_LIMITS } from '../../constants';
 import { IdeaFeedSkeleton } from '../layout/SkeletonLoaders';
 
 interface IdeaFeedProps {
@@ -49,6 +49,7 @@ export const IdeaFeed: React.FC<IdeaFeedProps> = ({
   user,
   handleLogin,
 }) => {
+  const [showExtras, setShowExtras] = React.useState(false);
   const allIdeas = dailyGen?.ideas || [];
   const tierIdeas = allIdeas.slice(0, TIER_LIMITS[tier].dailyIdeas);
   const filteredIdeas = getFilteredIdeas(tierIdeas);
@@ -60,6 +61,10 @@ export const IdeaFeed: React.FC<IdeaFeedProps> = ({
     filters.marketFocus.length > 0 ||
     filters.teamSize.length > 0 ||
     filters.customKeywords.length > 0;
+  const shouldGroupExtras = !hasActiveFilters && filteredIdeas.length > DAILY_FEATURED_IDEAS;
+  const visibleIdeas =
+    shouldGroupExtras && !showExtras ? filteredIdeas.slice(0, DAILY_FEATURED_IDEAS) : filteredIdeas;
+  const hiddenExtraCount = Math.max(0, filteredIdeas.length - DAILY_FEATURED_IDEAS);
 
   return (
     <>
@@ -138,21 +143,34 @@ export const IdeaFeed: React.FC<IdeaFeedProps> = ({
               </p>
             </div>
           ) : (
-            filteredIdeas.map((idea) => (
-              <IdeaCard
-                key={idea.id}
-                idea={idea}
-                isSaved={userSaves.some((s) => s.idea.id === idea.id)}
-                onToggleSave={() => toggleSave(idea)}
-                onUpdateIdea={updateIdea}
-                isSaving={false}
-                tier={tier}
-                onExport={(fmt) => exportToPDF(idea, fmt)}
-                user={user}
-                handleLogin={handleLogin}
-                isAdmin={isAdmin}
-              />
-            ))
+            <>
+              {visibleIdeas.map((idea) => (
+                <IdeaCard
+                  key={idea.id}
+                  idea={idea}
+                  isSaved={userSaves.some((s) => s.idea.id === idea.id)}
+                  onToggleSave={() => toggleSave(idea)}
+                  onUpdateIdea={updateIdea}
+                  isSaving={false}
+                  tier={tier}
+                  onExport={(fmt) => exportToPDF(idea, fmt)}
+                  user={user}
+                  handleLogin={handleLogin}
+                  isAdmin={isAdmin}
+                />
+              ))}
+
+              {shouldGroupExtras && (
+                <button
+                  onClick={() => setShowExtras((value) => !value)}
+                  className="w-full rounded-2xl border border-zinc-800 bg-zinc-900/50 px-5 py-4 text-sm font-semibold text-zinc-300 transition-colors hover:border-zinc-600 hover:text-white"
+                >
+                  {showExtras
+                    ? 'Hide extra opportunities'
+                    : `Show ${hiddenExtraCount} extra opportunities for deeper scanning`}
+                </button>
+              )}
+            </>
           )}
 
           {tier === 'free' && dailyGen && dailyGen.ideas.length > TIER_LIMITS.free.dailyIdeas && (

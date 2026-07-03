@@ -326,6 +326,7 @@ async function mountVercelRoutes() {
     { method: 'post', path: '/api/generate/action-plan', file: './api/generate/action-plan.ts' },
     { method: 'post', path: '/api/generate/alerts', file: './api/generate/alerts.ts' },
     { method: 'post', path: '/api/generate/build-me', file: './api/generate/build-me.ts' },
+    { method: 'post', path: '/api/generate/evidence', file: './api/generate/evidence.ts' },
     { method: 'post', path: '/api/generate/explain', file: './api/generate/explain.ts' },
     {
       method: 'post',
@@ -335,6 +336,7 @@ async function mountVercelRoutes() {
     { method: 'post', path: '/api/generate/radar', file: './api/generate/radar.ts' },
     { method: 'post', path: '/api/generate/validation', file: './api/generate/validation.ts' },
     { method: 'post', path: '/api/generate/vetting', file: './api/generate/vetting.ts' },
+    { method: 'post', path: '/api/track', file: './api/track.ts' },
   ];
 
   for (const route of routes) {

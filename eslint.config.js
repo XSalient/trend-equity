@@ -15,6 +15,7 @@ export default tseslint.config(
       'build/',
       'coverage/',
       'node_modules/',
+      '.claude/',
       'android/',
       'playwright-report/',
       'test-results/',

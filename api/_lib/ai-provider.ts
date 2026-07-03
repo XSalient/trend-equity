@@ -23,6 +23,18 @@ PROHIBITED PATTERNS — skip or fundamentally reimagine any idea matching these 
 
 QUALITY BAR: Before finalising each idea, ask — "Would a seed-stage partner at a top-10 VC firm pause and want to learn more?" If the idea sounds like something that was well-funded 3–4 years ago, replace it with something fresher.
 
+
+FOUNDER-ACTIONABILITY RULES:
+- The first 10 ideas must be plausible for an independent founder or small team to validate in 7 days.
+- Avoid heavy licensing, securities/insurance brokerage, medical approvals, government procurement, autonomous vehicle infrastructure, aviation infrastructure, or hardware supply chains unless the wedge is pure software and immediately testable.
+- Add buyer, firstWedge, validationTest, and killReason for every idea.
+- buyer: name the exact initial buyer persona with budget authority.
+- firstWedge: the narrow first workflow or painful job-to-be-done, not the full platform vision.
+- validationTest: a concrete 7-day test with target customer count, channel, and pass/fail metric.
+- killReason: the fastest reason a serious founder should abandon or narrow the idea.
+- Ban empty moat language. Do not use "proprietary AI", "exclusive partnerships", "first mover", "patented", or "regulatory lock-in" unless the sentence explains the concrete asset already obtainable by a small team.
+- trendSources must include at least one quantified source. A funding headline alone is not demand proof.
+
 OUTPUT FORMAT: Respond with valid JSON matching the provided schema exactly. No markdown, no commentary outside the JSON.`;
 
 // 1. DATA TYPES
@@ -38,6 +50,8 @@ export const Type = {
 export interface AIResponse {
   text: string;
   parsed?: any;
+  /** Real source URLs from Google Search grounding (when tools are used) */
+  groundingChunks?: { title?: string; uri?: string }[];
 }
 
 export interface GenerationOptions {
@@ -45,6 +59,8 @@ export interface GenerationOptions {
   schema?: any;
   systemInstruction?: string;
   model?: string;
+  /** e.g. [{ googleSearch: {} }] — NOTE: incompatible with schema/JSON mode */
+  tools?: any[];
 }
 
 export interface AIProvider {
@@ -73,13 +89,16 @@ class GoogleProvider implements AIProvider {
 
     console.log(`[GoogleProvider] Calling ${modelId}...`);
 
+    // @google/genai v1.x expects camelCase fields inside `config`; snake_case
+    // top-level fields are silently ignored by the SDK.
     const params: any = {
       model: modelId,
       contents: [{ role: 'user', parts: [{ text: options.prompt }] }],
-      system_instruction: options.systemInstruction,
       config: {
-        response_mime_type: options.schema ? 'application/json' : 'text/plain',
-        response_schema: options.schema,
+        systemInstruction: options.systemInstruction,
+        responseMimeType: options.schema ? 'application/json' : 'text/plain',
+        responseSchema: options.schema,
+        tools: options.tools,
       },
     };
 
@@ -90,6 +109,12 @@ class GoogleProvider implements AIProvider {
     }
 
     const result: AIResponse = { text: resp.text };
+    const chunks = (resp as any).candidates?.[0]?.groundingMetadata?.groundingChunks;
+    if (Array.isArray(chunks)) {
+      result.groundingChunks = chunks
+        .map((c: any) => ({ title: c?.web?.title, uri: c?.web?.uri }))
+        .filter((c: any) => c.uri);
+    }
     if (options.schema) {
       try {
         const cleaned = cleanJSON(resp.text);
@@ -149,7 +174,8 @@ export function getAIProvider(): AIProvider {
 export async function generateWithAI(
   prompt: string,
   schema?: any,
-  systemInstruction?: string
+  systemInstruction?: string,
+  opts?: { model?: string }
 ): Promise<any> {
   const provider = getAIProvider();
 
@@ -165,6 +191,7 @@ export async function generateWithAI(
       prompt: finalPrompt,
       schema,
       systemInstruction: systemInstruction || DEFAULT_SYSTEM_PROMPT,
+      model: opts?.model,
     });
     console.log(`[AI] ${provider.name} status: SUCCESS`);
     return schema ? resp.parsed : resp.text;
@@ -267,6 +294,10 @@ export const ideaSchema = {
     competitorLandscape: { type: Type.STRING },
     regulatoryFlags: { type: Type.STRING },
     marketSize: { type: Type.STRING },
+    buyer: { type: Type.STRING },
+    firstWedge: { type: Type.STRING },
+    validationTest: { type: Type.STRING },
+    killReason: { type: Type.STRING },
   },
   required: [
     'headline',

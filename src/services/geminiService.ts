@@ -92,6 +92,22 @@ export async function explainPlanSection(idea: Idea, section: string, context: s
   return data.text;
 }
 
+export async function generateEvidence(idea: Idea, date?: string, refresh?: boolean) {
+  const response = await fetch(`${API_BASE}/api/generate/evidence`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({ idea, date, refresh }),
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    if (err._usage) _lastUsage['evidence'] = err._usage;
+    throw new Error(err.error || 'Failed to gather market evidence');
+  }
+  const data = await response.json();
+  storeUsage(data);
+  return data;
+}
+
 export async function generateBuildWithMe(idea: Idea, refresh?: boolean) {
   const response = await fetch(`${API_BASE}/api/generate/build-me`, {
     method: 'POST',

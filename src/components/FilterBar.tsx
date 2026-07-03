@@ -226,7 +226,7 @@ export function FilterBar({
       teamSize: [],
       excludeCategories: [],
       customKeywords: '',
-      sortBy: 'revenue',
+      sortBy: 'quality',
     });
   };
 
@@ -275,6 +275,7 @@ export function FilterBar({
               onChange={(v) => setFilters({ ...filters, sortBy: v as any })}
               icon={ArrowUpDown}
               options={[
+                { value: 'quality', label: 'Highest Quality' },
                 { value: 'revenue', label: 'Sort by Potential' },
                 { value: 'newest', label: 'Newest First' },
                 { value: 'effort', label: 'Lowest Effort' },

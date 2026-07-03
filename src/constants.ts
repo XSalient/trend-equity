@@ -1,3 +1,5 @@
+export const DAILY_FEATURED_IDEAS = 10;
+
 export const TIER_LIMITS = {
   free: {
     dailyIdeas: 10,

@@ -14,9 +14,11 @@ import {
   ThumbsUp,
   ThumbsDown,
   Hammer,
+  Search,
 } from 'lucide-react';
 import { Idea } from '../types';
 import { useIdeaActions } from '../hooks/useIdeaActions';
+import { trackEvent } from '../services/trackingService';
 import { IdeaComments } from './idea/IdeaComments';
 import { useIdeaFeedback } from '../hooks/useIdeaFeedback';
 
@@ -27,6 +29,8 @@ import { IdeaCardAnalysis } from './idea/IdeaCardAnalysis';
 import { IdeaCardActionSteps } from './idea/IdeaCardActionSteps';
 import { IdeaCardToolkit } from './idea/IdeaCardToolkit';
 import { IdeaCardVetting } from './idea/IdeaCardVetting';
+import { IdeaCardEvidence } from './idea/IdeaCardEvidence';
+import { IdeaCardQuality } from './idea/IdeaCardQuality';
 
 interface IdeaCardProps {
   idea: Idea;
@@ -69,6 +73,9 @@ export const IdeaCard: React.FC<IdeaCardProps> = ({
     isGeneratingValidation,
     isVetting,
     vettingResult,
+    isGatheringEvidence,
+    evidenceResult,
+    handleGatherEvidence,
     explainingSection,
     explanation,
     setExplanation,
@@ -96,6 +103,22 @@ export const IdeaCard: React.FC<IdeaCardProps> = ({
     toggleReaction,
     loading: reactionLoading,
   } = useIdeaFeedback(idea.id, user?.uid);
+
+  // Engagement telemetry (session-deduped, fire-and-forget)
+  useEffect(() => {
+    trackEvent('impression', idea.id);
+  }, [idea.id]);
+
+  useEffect(() => {
+    if (isExpanded) trackEvent('expand', idea.id);
+  }, [isExpanded, idea.id]);
+
+  const handleExport = onExport
+    ? (format: 'pdf' | 'notion' | 'gdocs') => {
+        trackEvent('export', idea.id);
+        onExport(format);
+      }
+    : undefined;
 
   const isFree = tier === 'free';
   const isBuilder = tier === 'builder';
@@ -152,6 +175,7 @@ export const IdeaCard: React.FC<IdeaCardProps> = ({
     if (isSaved) {
       setShowDeleteConfirm(true);
     } else {
+      trackEvent('save', idea.id);
       onToggleSave();
     }
   };
@@ -212,7 +236,7 @@ export const IdeaCard: React.FC<IdeaCardProps> = ({
           isSaved={isSaved}
           onToggleSave={handleToggleSaveLocal}
           isSaving={isSaving}
-          onExport={onExport}
+          onExport={handleExport}
           isFree={isFree}
           user={user}
         />
@@ -234,6 +258,8 @@ export const IdeaCard: React.FC<IdeaCardProps> = ({
 
         <IdeaCardStats idea={idea} />
 
+        <IdeaCardQuality idea={idea} isAdmin={isAdmin} onUpdateIdea={onUpdateIdea} />
+
         {/* Expandable Sections */}
         <div className="space-y-2 pt-2 border-t border-zinc-800/40">
           <div className="flex items-center gap-2">
@@ -243,6 +269,31 @@ export const IdeaCard: React.FC<IdeaCardProps> = ({
             >
               <span>{isExpanded ? 'Hide Analysis' : 'View VC Analysis & Sources'}</span>
               {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </button>
+
+            <button
+              className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-xl transition-all border ${
+                evidenceResult
+                  ? 'bg-sky-500/10 border-sky-500/30 text-sky-400'
+                  : 'bg-zinc-800/50 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 border-zinc-700/50'
+              }`}
+              onClick={() => {
+                if (!user) {
+                  handleLogin();
+                } else if (evidenceResult) {
+                  setIsExpanded(true);
+                } else {
+                  handleGatherEvidence(false);
+                }
+              }}
+              disabled={isGatheringEvidence}
+            >
+              {isGatheringEvidence ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Search className="w-4 h-4" />
+              )}
+              {evidenceResult ? 'Evidence found' : 'Evidence'}
             </button>
 
             {isBuilder && (
@@ -341,6 +392,15 @@ export const IdeaCard: React.FC<IdeaCardProps> = ({
                     </p>
                   </div>
                 ) : null}
+
+                {evidenceResult && (
+                  <IdeaCardEvidence
+                    evidence={evidenceResult}
+                    isAdmin={isAdmin}
+                    onRefresh={() => handleGatherEvidence(true)}
+                    isRefreshing={isGatheringEvidence}
+                  />
+                )}
 
                 <IdeaCardActionSteps idea={idea} isFree={isFree} />
 

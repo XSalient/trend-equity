@@ -19,7 +19,9 @@ vi.mock('../../../api/_lib/auth', () => ({
 
 vi.mock('../../../api/_lib/usage', () => ({
   checkAndIncrementUsage: vi.fn(),
-  buildUsageResponse: vi.fn().mockResolvedValue({ featureType: 'vetting', remaining: 5, limit: 10, used: 5 }),
+  buildUsageResponse: vi
+    .fn()
+    .mockResolvedValue({ featureType: 'vetting', remaining: 5, limit: 10, used: 5 }),
 }));
 
 import { generateWithAI, normalizeAIResponse } from '../../../api/_lib/ai-provider';
@@ -27,7 +29,12 @@ import { getCached, setCached } from '../../../api/_lib/cache';
 import { getAuthContext } from '../../../api/_lib/auth';
 import { checkAndIncrementUsage, buildUsageResponse } from '../../../api/_lib/usage';
 
-const mockIdea = { id: 'idea-123', headline: 'AI Scheduling SaaS', pitch: 'Automates bookings', vcJustification: 'Large TAM' };
+const mockIdea = {
+  id: 'idea-123',
+  headline: 'AI Scheduling SaaS',
+  pitch: 'Automates bookings',
+  vcJustification: 'Large TAM',
+};
 
 const mockVettingData = {
   score: 82,
@@ -42,7 +49,12 @@ const mockVettingData = {
 describe('vetting handler', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(buildUsageResponse).mockResolvedValue({ featureType: 'vetting', remaining: 5, limit: 10, used: 5 } as any);
+    vi.mocked(buildUsageResponse).mockResolvedValue({
+      featureType: 'vetting',
+      remaining: 5,
+      limit: 10,
+      used: 5,
+    } as any);
   });
 
   it('returns 405 for non-POST requests', async () => {
@@ -110,7 +122,9 @@ describe('vetting handler', () => {
 
     expect(generateWithAI).toHaveBeenCalled();
     expect(setCached).toHaveBeenCalledWith(`vetting_${mockIdea.id}`, mockVettingData);
-    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ score: 82, verdict: 'High Conviction' }));
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ score: 82, verdict: 'High Conviction' })
+    );
   });
 
   it('returns 429 when usage limit reached', async () => {

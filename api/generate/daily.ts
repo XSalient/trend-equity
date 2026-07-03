@@ -6,6 +6,14 @@ import { getRecentIdeaHeadlines } from '../_lib/cache';
 import { getAdminDb } from '../_lib/admin';
 import { getAuthContext } from '../_lib/auth';
 import { getDynamicPrompt, runSelfImprovement } from '../_lib/prompt-optimizer';
+import { critiqueAndRank } from '../_lib/quality-engine';
+import { semanticDedupeCandidates, saveIdeaEmbeddings } from '../_lib/embeddings';
+import { cleanDailyDisclaimer, prepareCandidatesForCritique } from '../_lib/idea-quality';
+import { savePredictions } from '../_lib/prediction-tracker';
+
+// Overgenerate candidates, then a stronger critic model publishes only the top N.
+const CANDIDATES_PER_BATCH = 20;
+const PUBLISH_COUNT = 35;
 
 // Max requests per unique IP per day (unauthenticated protection) (S-4)
 const IP_DAILY_LIMIT = 5;
@@ -101,20 +109,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         ? `\n\nAdditionally, specifically include ${countryCount || 5} ideas tailored for the ${country} Local Market.`
         : '';
 
-    // We split the generation of 35 ideas into three concurrent batches (12, 12, and 11 ideas)
-    // with disjoint category focuses. This allows us to run them in parallel (Promise.all),
-    // speeding up generation from 2+ minutes to ~25s, while avoiding duplicates and truncation.
+    // We generate candidates in three concurrent batches with disjoint category focuses
+    // (Promise.all keeps wall time low and avoids duplicates/truncation). We deliberately
+    // overgenerate (3 x CANDIDATES_PER_BATCH), then critiqueAndRank publishes the top
+    // PUBLISH_COUNT ideas as judged by a stronger critic model.
+    const N = CANDIDATES_PER_BATCH;
     const promptStr1 = signalContext
-      ? `${signalContext}${dedupeBlock}${countryClause}${qualityBlock}\n\nUsing the live market signals above as your PRIMARY source, generate exactly 12 high-conviction business ideas for ${today}. Focus specifically on the following categories: 'Digital / SaaS / AI-SaaS'.`
-      : `Generate exactly 12 high-conviction business ideas for ${today}.${dedupeBlock}${countryClause}${qualityBlock} Focus specifically on the following categories: 'Digital / SaaS / AI-SaaS'.`;
+      ? `${signalContext}${dedupeBlock}${countryClause}${qualityBlock}\n\nUsing the live market signals above as your PRIMARY source, generate exactly ${N} high-conviction business ideas for ${today}. Focus specifically on the following categories: 'Digital / SaaS / AI-SaaS'.`
+      : `Generate exactly ${N} high-conviction business ideas for ${today}.${dedupeBlock}${countryClause}${qualityBlock} Focus specifically on the following categories: 'Digital / SaaS / AI-SaaS'.`;
 
     const promptStr2 = signalContext
-      ? `${signalContext}${dedupeBlock}${countryClause}${qualityBlock}\n\nUsing the live market signals above as your PRIMARY source, generate exactly 12 high-conviction business ideas for ${today}. Focus specifically on the following categories: 'Service / Local / On-Demand', 'Wildcard (creative/misc)'.`
-      : `Generate exactly 12 high-conviction business ideas for ${today}.${dedupeBlock}${countryClause}${qualityBlock} Focus specifically on the following categories: 'Service / Local / On-Demand', 'Wildcard (creative/misc)'.`;
+      ? `${signalContext}${dedupeBlock}${countryClause}${qualityBlock}\n\nUsing the live market signals above as your PRIMARY source, generate exactly ${N} high-conviction business ideas for ${today}. Focus specifically on the following categories: 'Service / Local / On-Demand', 'Wildcard (creative/misc)'.`
+      : `Generate exactly ${N} high-conviction business ideas for ${today}.${dedupeBlock}${countryClause}${qualityBlock} Focus specifically on the following categories: 'Service / Local / On-Demand', 'Wildcard (creative/misc)'.`;
 
     const promptStr3 = signalContext
-      ? `${signalContext}${dedupeBlock}${countryClause}${qualityBlock}\n\nUsing the live market signals above as your PRIMARY source, generate exactly 11 high-conviction business ideas for ${today}. Focus specifically on the following categories: 'Physical / Sustainable / Hardware', 'Deep-Tech / Moonshot'.`
-      : `Generate exactly 11 high-conviction business ideas for ${today}.${dedupeBlock}${countryClause}${qualityBlock} Focus specifically on the following categories: 'Physical / Sustainable / Hardware', 'Deep-Tech / Moonshot'.`;
+      ? `${signalContext}${dedupeBlock}${countryClause}${qualityBlock}\n\nUsing the live market signals above as your PRIMARY source, generate exactly ${N} high-conviction business ideas for ${today}. Focus specifically on the following categories: 'Physical / Sustainable / Hardware', 'Deep-Tech / Moonshot'.`
+      : `Generate exactly ${N} high-conviction business ideas for ${today}.${dedupeBlock}${countryClause}${qualityBlock} Focus specifically on the following categories: 'Physical / Sustainable / Hardware', 'Deep-Tech / Moonshot'.`;
 
     async function generateBatch(promptStr: string, count: number): Promise<any> {
       let attempts = 0;
@@ -140,24 +150,48 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     console.log('[daily] Running 3 batch generation calls concurrently...');
     const [data1, data2, data3] = await Promise.all([
-      generateBatch(promptStr1, 12),
-      generateBatch(promptStr2, 12),
-      generateBatch(promptStr3, 11),
+      generateBatch(promptStr1, N),
+      generateBatch(promptStr2, N),
+      generateBatch(promptStr3, N),
     ]);
 
     const mergedIdeas = [...(data1.ideas || []), ...(data2.ideas || []), ...(data3.ideas || [])];
+
+    // Semantic dedup vs past 30 days runs BEFORE the critic to save critic tokens.
+    const { kept, droppedHeadlines, vectorsByHeadline } = await semanticDedupeCandidates(
+      mergedIdeas,
+      today
+    );
+
+    const gate = prepareCandidatesForCritique(kept, PUBLISH_COUNT);
+
+    console.log(
+      `[daily] Quality gate kept ${gate.stats.publishableCount}/${gate.stats.inputCount} candidates (fallback: ${gate.stats.fallbackUsed})`
+    );
+    console.log(
+      `[daily] Critiquing ${gate.candidatesForCritique.length} candidates with quality engine...`
+    );
+    const { published, rejected, stats } = await critiqueAndRank(
+      gate.candidatesForCritique,
+      PUBLISH_COUNT
+    );
+    console.log(
+      `[daily] Quality engine published ${stats.publishedCount}/${stats.candidates} (avg score: ${stats.avgPublishedScore}, failOpen: ${stats.failOpen})`
+    );
+
     const data = {
       intro:
         data1.intro ||
         data2.intro ||
         data3.intro ||
         "Today's high-signal ideas, curated from live market trends.",
-      ideas: mergedIdeas,
-      disclaimer:
+      ideas: published,
+      disclaimer: cleanDailyDisclaimer(
         data1.disclaimer ||
-        data2.disclaimer ||
-        data3.disclaimer ||
-        'All ideas are AI-generated from real market signals.',
+          data2.disclaimer ||
+          data3.disclaimer ||
+          'All ideas are AI-generated from real market signals.'
+      ),
       date: today,
       generatedAt: new Date().toISOString(),
     };
@@ -166,12 +200,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const finalData = {
       ...data,
       promptVersion: version,
+      qualityStats: {
+        ...stats,
+        semanticDupesDropped: droppedHeadlines.length,
+        gate: gate.stats,
+      },
       date: today,
       generatedAt: new Date().toISOString(),
     };
     await docRef.set(finalData);
 
-    // Save run snapshot in history for audits and logs
+    // Persist published idea vectors for future semantic dedup (non-fatal)
+    await saveIdeaEmbeddings(today, published, vectorsByHeadline);
+
+    // Log publish-time score snapshots for prediction accuracy grading (non-fatal)
+    await savePredictions(today, published, version);
+
+    // Save run snapshot in history for audits and logs. Rejected candidates are kept
+    // here (headline + score + reason only) as training signal for the prompt optimizer.
     const runTimestamp = new Date().toISOString();
     const runId = `${today}_${runTimestamp.replace(/[:.]/g, '-')}`;
     await db
@@ -179,6 +225,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .doc(runId)
       .set({
         ...finalData,
+        rejectedCandidates: [
+          ...gate.rejectedByGate.map((idea) => ({
+            headline: idea.headline,
+            qualityScore: idea.qualityScorePrecheck ?? null,
+            reason: 'quality gate: ' + ((idea.qualityIssues || []).join(', ') || 'cut'),
+          })),
+          ...rejected,
+        ],
         generatedAt: runTimestamp,
       });
 
