@@ -59,7 +59,7 @@ vi.mock('../../../api/_lib/auth', () => ({
   getAuthContext: mockGetAuthContext,
 }));
 
-import handler from '../../../api/generate/action-plan';
+import handler from '../../../api/_handlers/action-plan';
 
 describe('POST /api/generate/action-plan', () => {
   beforeEach(() => {

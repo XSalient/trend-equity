@@ -50,7 +50,7 @@ Key source directories:
 
 **Local dev:** Express BFF in `server.ts` (port 3001). Vite proxies `/api/*` → port 3001.
 
-**Production:** Vercel serverless functions in `api/generate/*.ts`. Each file becomes a separate function. The same handler code runs in both environments via thin shims.
+**Production:** Vercel serverless functions. All `/api/generate/*` routes go through a single catch-all function `api/generate/[feature].ts` that dispatches to handlers in `api/_handlers/` (underscore directories are not deployed as functions). This keeps the deployment under the Vercel Hobby plan's 12-functions-per-deployment limit — add new generate endpoints as `api/_handlers/` files plus a map entry in the catch-all, never as new top-level `api/**/*.ts` files. The same handler code runs in both environments via thin shims.
 
 Shared backend utilities live in `api/_lib/`:
 
@@ -85,7 +85,7 @@ Security rules are in `firestore.rules`; index definitions in `firestore.indexes
 
 - All generation endpoints are POST
 - Rate limits enforced server-side (in-memory + Firestore for monthly quotas)
-- `api/generate/daily.ts` uses a singleton pattern: generates once per day, returns cached result on subsequent calls; only `builder` tier can trigger generation
+- `api/_handlers/daily.ts` uses a singleton pattern: generates once per day, returns cached result on subsequent calls; only `builder` tier can trigger generation
 - `DEV_MOCK=true` enables offline mock mode; the server guards `process.exit(1)` if this flag is set in production
 
 ### Testing
@@ -97,7 +97,7 @@ Security rules are in `firestore.rules`; index definitions in `firestore.indexes
 ### Deployment
 
 - Frontend: Static `dist/` served from Vercel CDN
-- Backend: Vercel serverless (`api/generate/*.ts`)
+- Backend: Vercel serverless (`api/generate/[feature].ts` catch-all + `api/_handlers/*.ts`)
 - Secrets via Doppler (recommended) or Vercel env vars — see `.env.example`
 - Routing rules in `vercel.json`: `/api/*` → serverless, `/*` → SPA (`index.html`)
 

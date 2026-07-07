@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import handler from '../../../api/generate/explain';
+import handler from '../../../api/_handlers/explain';
 import { createMockRequest, createMockResponse } from '../helpers/mockVercel';
 
 vi.mock('../../../api/_lib/ai-provider', () => ({

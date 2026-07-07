@@ -59,7 +59,7 @@ vi.mock('../../../api/_lib/auth', () => ({
   getAuthContext: mockGetAuthContext,
 }));
 
-import handler from '../../../api/generate/radar';
+import handler from '../../../api/_handlers/radar';
 
 describe('POST /api/generate/radar', () => {
   beforeEach(() => {

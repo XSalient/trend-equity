@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import handler from '../../../api/generate/build-me';
+import handler from '../../../api/_handlers/build-me';
 import { createMockRequest, createMockResponse } from '../helpers/mockVercel';
 
 // Mock dependencies

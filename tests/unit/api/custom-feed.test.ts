@@ -34,7 +34,7 @@ vi.mock('../../../api/_lib/auth', () => ({
   getAuthContext: vi.fn(),
 }));
 
-import handler from '../../../api/generate/custom-feed';
+import handler from '../../../api/_handlers/custom-feed';
 import { getAuthContext } from '../../../api/_lib/auth';
 
 const freshFeed = {

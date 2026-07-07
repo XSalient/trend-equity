@@ -54,7 +54,7 @@ vi.mock('../../../api/_lib/admin', () => ({
   getAdminDb: mockGetAdminDb,
 }));
 
-import handler from '../../../api/generate/evidence';
+import handler from '../../../api/_handlers/evidence';
 
 const IDEA = { id: '2026-07-02-abc123', headline: 'Test Idea', pitch: 'A pitch.' };
 const EVIDENCE = {

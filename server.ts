@@ -323,20 +323,20 @@ app.get('/api/usage/analyze-idea', async (req, res) => {
  */
 async function mountVercelRoutes() {
   const routes: { method: 'post' | 'get'; path: string; file: string }[] = [
-    { method: 'post', path: '/api/generate/action-plan', file: './api/generate/action-plan.ts' },
-    { method: 'post', path: '/api/generate/alerts', file: './api/generate/alerts.ts' },
-    { method: 'post', path: '/api/generate/build-me', file: './api/generate/build-me.ts' },
-    { method: 'post', path: '/api/generate/custom-feed', file: './api/generate/custom-feed.ts' },
-    { method: 'post', path: '/api/generate/evidence', file: './api/generate/evidence.ts' },
-    { method: 'post', path: '/api/generate/explain', file: './api/generate/explain.ts' },
+    { method: 'post', path: '/api/generate/action-plan', file: './api/_handlers/action-plan.ts' },
+    { method: 'post', path: '/api/generate/alerts', file: './api/_handlers/alerts.ts' },
+    { method: 'post', path: '/api/generate/build-me', file: './api/_handlers/build-me.ts' },
+    { method: 'post', path: '/api/generate/custom-feed', file: './api/_handlers/custom-feed.ts' },
+    { method: 'post', path: '/api/generate/evidence', file: './api/_handlers/evidence.ts' },
+    { method: 'post', path: '/api/generate/explain', file: './api/_handlers/explain.ts' },
     {
       method: 'post',
       path: '/api/generate/futurecasting',
-      file: './api/generate/futurecasting.ts',
+      file: './api/_handlers/futurecasting.ts',
     },
-    { method: 'post', path: '/api/generate/radar', file: './api/generate/radar.ts' },
-    { method: 'post', path: '/api/generate/validation', file: './api/generate/validation.ts' },
-    { method: 'post', path: '/api/generate/vetting', file: './api/generate/vetting.ts' },
+    { method: 'post', path: '/api/generate/radar', file: './api/_handlers/radar.ts' },
+    { method: 'post', path: '/api/generate/validation', file: './api/_handlers/validation.ts' },
+    { method: 'post', path: '/api/generate/vetting', file: './api/_handlers/vetting.ts' },
     { method: 'post', path: '/api/track', file: './api/track.ts' },
   ];
 

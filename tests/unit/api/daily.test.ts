@@ -88,7 +88,7 @@ vi.mock('../../../api/_lib/embeddings', () => ({
   saveIdeaEmbeddings: vi.fn(async () => undefined),
 }));
 
-import handler from '../../../api/generate/daily';
+import handler from '../../../api/_handlers/daily';
 
 const EMPTY_SIGNALS = {
   googleTrends: [],
