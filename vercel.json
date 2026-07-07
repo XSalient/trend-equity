@@ -29,6 +29,10 @@
     }
   ],
   "rewrites": [
+    {
+      "source": "/api/generate/:feature",
+      "destination": "/api/generate/dispatch?feature=:feature"
+    },
     { "source": "/api/(.*)", "destination": "/api/$1" },
     {
       "source": "/__/auth/(.*)",

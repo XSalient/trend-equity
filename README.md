@@ -299,11 +299,11 @@ npm run admin:info -- your@email.com
 
 ### Architecture
 
-| Layer    | Local dev                        | Production (Vercel)                                                           |
-| -------- | -------------------------------- | ----------------------------------------------------------------------------- |
-| Frontend | `vite --port 3000`               | Static files from `dist/` on Vercel CDN                                       |
-| Backend  | `server.ts` (Express, port 3001) | `api/generate/[feature].ts` catch-all → `api/_handlers/*` (Vercel serverless) |
-| Secrets  | `.env` or Doppler `dev` config   | Vercel env vars or Doppler `prd` config                                       |
+| Layer    | Local dev                        | Production (Vercel)                                                                        |
+| -------- | -------------------------------- | ------------------------------------------------------------------------------------------ |
+| Frontend | `vite --port 3000`               | Static files from `dist/` on Vercel CDN                                                    |
+| Backend  | `server.ts` (Express, port 3001) | `vercel.json` rewrite → `api/generate/dispatch.ts` → `api/_handlers/*` (Vercel serverless) |
+| Secrets  | `.env` or Doppler `dev` config   | Vercel env vars or Doppler `prd` config                                                    |
 
 > `server.ts` is **never deployed** — it is the local-dev BFF only. Production uses the serverless functions in `api/`.
 

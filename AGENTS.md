@@ -50,7 +50,7 @@ Key source directories:
 
 **Local dev:** Express BFF in `server.ts` (port 3001). Vite proxies `/api/*` → port 3001.
 
-**Production:** Vercel serverless functions. All `/api/generate/*` routes go through a single catch-all function `api/generate/[feature].ts` that dispatches to handlers in `api/_handlers/` (underscore directories are not deployed as functions). This keeps the deployment under the Vercel Hobby plan's 12-functions-per-deployment limit — add new generate endpoints as `api/_handlers/` files plus a map entry in the catch-all, never as new top-level `api/**/*.ts` files. The same handler code runs in both environments via thin shims.
+**Production:** Vercel serverless functions. All `/api/generate/*` routes go through a single catch-all function `api/generate/dispatch.ts` that dispatches to handlers in `api/_handlers/` (underscore directories are not deployed as functions). A `vercel.json` rewrite maps `/api/generate/:feature` → `/api/generate/dispatch?feature=:feature` — a bracket dynamic-segment filename (`[feature].ts`) does NOT get registered as a routable path for this Vite (non-Next.js) project and silently 404s/falls through to the SPA. This keeps the deployment under the Vercel Hobby plan's 12-functions-per-deployment limit — add new generate endpoints as `api/_handlers/` files plus a map entry in the catch-all, never as new top-level `api/**/*.ts` files. The same handler code runs in both environments via thin shims.
 
 Shared backend utilities live in `api/_lib/`:
 
@@ -97,7 +97,7 @@ Security rules are in `firestore.rules`; index definitions in `firestore.indexes
 ### Deployment
 
 - Frontend: Static `dist/` served from Vercel CDN
-- Backend: Vercel serverless (`api/generate/[feature].ts` catch-all + `api/_handlers/*.ts`)
+- Backend: Vercel serverless (`api/generate/dispatch.ts` catch-all, routed via `vercel.json` rewrite, + `api/_handlers/*.ts`)
 - Secrets via Doppler (recommended) or Vercel env vars — see `.env.example`
 - Routing rules in `vercel.json`: `/api/*` → serverless, `/*` → SPA (`index.html`)
 

@@ -1,6 +1,7 @@
 /**
- * Unit tests for api/generate/[feature].ts — the catch-all that routes
- * /api/generate/* requests to handlers in api/_handlers/.
+ * Unit tests for api/generate/dispatch.ts — the catch-all that routes
+ * /api/generate/* requests to handlers in api/_handlers/. vercel.json
+ * rewrites /api/generate/:feature to this file with ?feature=:feature.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
@@ -32,7 +33,7 @@ vi.mock('../../../api/_handlers/radar', () => ({ default: vi.fn() }));
 vi.mock('../../../api/_handlers/validation', () => ({ default: vi.fn() }));
 vi.mock('../../../api/_handlers/vetting', () => ({ default: vi.fn() }));
 
-import dispatch, { handlers } from '../../../api/generate/[feature]';
+import dispatch, { handlers } from '../../../api/generate/dispatch';
 
 function makeRes() {
   const res: any = {
@@ -46,7 +47,7 @@ function makeRes() {
   return res;
 }
 
-describe('/api/generate/[feature] dispatcher', () => {
+describe('/api/generate dispatch', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });

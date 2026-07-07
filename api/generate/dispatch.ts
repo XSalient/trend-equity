@@ -17,7 +17,11 @@ type Handler = (req: VercelRequest, res: VercelResponse) => unknown;
 // Single catch-all function for every /api/generate/* endpoint. Vercel's Hobby
 // plan caps deployments at 12 serverless functions, so one file per endpoint
 // is not an option; the real handlers live in api/_handlers/ (underscore
-// directories are not deployed as functions).
+// directories are not deployed as functions). vercel.json rewrites
+// /api/generate/:feature to this file with ?feature=:feature — a bracket
+// dynamic-segment filename ([feature].ts) does NOT get registered as a
+// routable path for non-Next.js (Vite) projects and silently falls through
+// to the SPA catch-all instead of reaching this function.
 export const handlers: Record<string, Handler> = {
   'action-plan': actionPlan,
   alerts,
