@@ -40,7 +40,6 @@ out
 dist
 *.vsix
 .claude
-CLAUDE.md
 .git
 *.tmp
 __pycache__
@@ -63,6 +62,5 @@ probe_models_final.ts
 verify-ai.ts
 test_json_parse.ts
 
-# Claude / AI settings
+# Claude / AI settings (CLAUDE.md is intentionally tracked — it is the canonical shared agent guide)
 .claude/
-CLAUDE.md

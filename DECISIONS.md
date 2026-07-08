@@ -6,6 +6,56 @@ For ongoing context and details, see `CLAUDE.md` and the per-session memory syst
 
 ---
 
+## Project Tracking System — Adopted (2026-07-08)
+
+**Decision:** All work items, decisions, and shipped changes are tracked in-repo so every developer and every AI agent on every machine sees the same state.
+
+**The system:**
+
+| File                       | Holds                                                      | Update when                         |
+| -------------------------- | ---------------------------------------------------------- | ----------------------------------- |
+| `docs/BACKLOG.md`          | All tasks with `TE-NN` ids, statuses, owners, user stories | Starting or finishing any work item |
+| `CHANGELOG.md`             | What shipped, when, with commit hashes                     | Same commit that ships a change     |
+| `DECISIONS.md` (this file) | Product/architecture decisions + rationale                 | The moment a decision is made       |
+| `PRD.md`                   | What the product is (tiers, features)                      | Feature scope changes               |
+| `docs/superpowers/plans/`  | Detailed implementation plans for large tasks              | Before executing L-effort tasks     |
+| `CLAUDE.md`                | How to work in this codebase (canonical agent guide)       | Architecture reality changes        |
+
+**Rationale:** Context previously lived in per-machine AI memory files, stale CLAUDE.md sections, and individual developers' heads — causing exactly the "unaware of already-made changes" confusion this replaces. Git is the only store all machines share.
+
+**Rule:** `AGENTS.md` is a pointer to `CLAUDE.md`, never a copy — one canonical agent guide, zero drift.
+
+---
+
+## App-Store Signal Mining — Deferred (2026-07-08)
+
+**Decision:** Do not add Google Play / iOS App Store signals to the generation pipeline now.
+
+**Rationale:**
+
+- Neither store has an official API for market-research access; community scrapers are brittle, rate-limited, and ToS-gray — high maintenance for a solo project.
+- App-store data is a **lagging** indicator (reflects markets formed 1–2 years ago), weak for trend discovery, which is the core promise. The live pipeline already covers leading indicators (Google Trends, Product Hunt, Reddit, HN, TechCrunch via `api/_lib/signals.ts`).
+- Vercel Hobby constraints (function count, no durable workers) make ingestion pipelines awkward.
+
+**Salvageable piece (post-Stripe):** app-store review mining as per-idea _validation_ evidence ("underserved incumbents with bad reviews"), attached to the evidence layer — not as a discovery source.
+
+---
+
+## Pain-Point Remediation Plan — Adopted (2026-07-08)
+
+**Decision:** Adopt the 10-task remediation backlog from the 2026-07-08 audit (`docs/superpowers/plans/2026-07-08-pain-point-remediation.md`), sequenced P0 → P3.
+
+**Priorities and rationale:**
+
+- **P0 — cost/abuse (TE-01…03):** the daily generation endpoint is triggerable anonymously for arbitrary client-supplied dates, and the in-memory IP limit doesn't survive serverless instances. Direct Gemini-spend exposure; fix first.
+- **P1 — signal trust (TE-04…07):** signal fetching degrades silently and idea→signal citations are unverified, so the "grounded in live signals" differentiator is currently unprovable. Observability before fixes; verification is flag-only for 2 weeks before any dropping (measure-first).
+- **P2 — business proof (TE-08, TE-09):** Stripe + minimal analytics. Stripe webhook is the **sole** writer of `users/{uid}.tier`. Monthly Pro/Builder only at launch — no annual, trials, or coupons.
+- **P3 — code health (TE-10, TE-11):** `useIdeas.ts` split, repo cleanup.
+
+**Explicitly not in scope:** app-store signals, multi-signal expansion, personalization — all gated on Stripe evidence per the positioning strategy below.
+
+---
+
 ## Growth Guides Feature — Parked (2026-07-08)
 
 **Decision:** Do not implement business-growth guides or integrations with acquire.com / trustmrr.com.

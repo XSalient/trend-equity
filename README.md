@@ -4,6 +4,23 @@ AI-powered startup idea platform. Surfaces high-conviction, VC-ready business op
 
 ---
 
+## Project Docs & Tracking
+
+Everything about project state lives in-repo — start here before writing code:
+
+| Doc                                | Purpose                                                                                                                        |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| [docs/BACKLOG.md](docs/BACKLOG.md) | **All tasks** with ids, statuses, owners, user stories. If it's not here, it isn't planned.                                    |
+| [CHANGELOG.md](CHANGELOG.md)       | What shipped, when, with commit hashes.                                                                                        |
+| [DECISIONS.md](DECISIONS.md)       | Product & architecture decisions with rationale (incl. what's deliberately parked).                                            |
+| [PRD.md](PRD.md)                   | Product spec — tiers, features, quotas.                                                                                        |
+| [CLAUDE.md](CLAUDE.md)             | Canonical guide for AI agents & developers: architecture, rules, tracking workflow. ([AGENTS.md](AGENTS.md) just points here.) |
+| `docs/superpowers/plans/`          | Detailed implementation plans for large tasks.                                                                                 |
+
+Workflow: pick a task from the backlog → mark it `in progress` → ship → move to Recently shipped + add a changelog line in the same commit. Decisions get recorded in DECISIONS.md the moment they're made.
+
+---
+
 ## IDE Setup (any editor)
 
 This project uses **standard, IDE-agnostic tooling** — no vendor lock-in:
