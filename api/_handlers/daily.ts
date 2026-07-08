@@ -5,6 +5,7 @@ import { fetchLiveSignals, formatSignalsForPrompt } from '../_lib/signals';
 import { getRecentIdeaHeadlines } from '../_lib/cache';
 import { getAdminDb } from '../_lib/admin';
 import { getAuthContext } from '../_lib/auth';
+import { checkAndIncrementIpLimit } from '../_lib/usage';
 import { getDynamicPrompt, runSelfImprovement } from '../_lib/prompt-optimizer';
 import { critiqueAndRank } from '../_lib/quality-engine';
 import { semanticDedupeCandidates, saveIdeaEmbeddings } from '../_lib/embeddings';
@@ -15,20 +16,18 @@ import { savePredictions } from '../_lib/prediction-tracker';
 const CANDIDATES_PER_BATCH = 20;
 const PUBLISH_COUNT = 35;
 
-// Max requests per unique IP per day (unauthenticated protection) (S-4)
+// Max requests per unique IP per day (unauthenticated/abuse protection) (S-4, TE-02).
+// Enforced via Firestore (api/_lib/usage.ts) so the cap survives across serverless
+// instances — an in-memory Map only ever limits the single instance that handles
+// the request, which on Vercel is effectively no limit at all.
 const IP_DAILY_LIMIT = 5;
-const _ipCounts: Map<string, { count: number; date: string }> = new Map();
 
-function checkIpRateLimit(ip: string): boolean {
-  const today = getToday();
-  const entry = _ipCounts.get(ip);
-  if (!entry || entry.date !== today) {
-    _ipCounts.set(ip, { count: 1, date: today });
-    return true;
-  }
-  if (entry.count >= IP_DAILY_LIMIT) return false;
-  entry.count++;
-  return true;
+function getRequestIp(req: VercelRequest): string {
+  return (
+    (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
+    req.socket?.remoteAddress ||
+    'unknown'
+  );
 }
 
 // Sanitise a user-provided string for safe prompt injection (S-6)
@@ -63,17 +62,38 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    // 2. Authorization: Only allow Admin users to refresh (regenerate) existing generation.
-    // However, any tier (including free/pro/anonymous) can trigger the initial daily generation.
+    // 2. Generation may only be triggered for today's date, by a signed-in user (TE-01).
+    // Prevents anonymous callers from burning AI spend via arbitrary client-supplied
+    // dates — the singleton check above still serves cached results for any date,
+    // to any caller, regardless of auth.
+    if (today !== getToday()) {
+      return res.status(404).json({ error: 'No generation exists for that date.' });
+    }
+    if (!uid) {
+      return res.status(401).json({ error: "Sign in to load today's feed." });
+    }
+
+    // 3. Authorization: Only allow Admin users to refresh (regenerate) existing generation.
+    // However, any signed-in tier can trigger the initial daily generation.
     if (refresh && !isAdmin) {
       return res
         .status(403)
         .json({ error: 'Only administrators can refresh the daily generation.' });
     }
 
+    // 4. Per-IP daily cap on the (non-refresh) generation trigger — refresh is already
+    // gated to admins above, who are trusted and would otherwise get needlessly capped.
+    if (!refresh) {
+      const ip = getRequestIp(req);
+      const ipCheck = await checkAndIncrementIpLimit(ip, IP_DAILY_LIMIT);
+      if (!ipCheck.allowed) {
+        return res.status(429).json({ error: 'Too many requests from this network today.' });
+      }
+    }
+
     console.log(`[daily] Triggering generation for ${today} (refresh=${!!refresh})`);
 
-    // 3. Locking: Prevent concurrent AI calls
+    // 5. Locking: Prevent concurrent AI calls
     const lockRef = db.collection('locks').doc(`daily_gen_${today}`);
     const isLocked = await db.runTransaction(async (tx) => {
       const lockSnap = await tx.get(lockRef);
@@ -89,7 +109,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(429).json({ error: 'Generation already in progress.' });
     }
 
-    // 4. Self-Learning Optimization Loop: Evaluates comments, reactions and self-critiques to refine prompt
+    // 6. Self-Learning Optimization Loop: Evaluates comments, reactions and self-critiques to refine prompt
     await runSelfImprovement(db, !!refresh);
     const { systemPrompt, qualityBlock, version } = await getDynamicPrompt(db);
 
@@ -196,7 +216,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       generatedAt: new Date().toISOString(),
     };
 
-    // 5. Persist and Unlock
+    // 7. Persist and Unlock
     const finalData = {
       ...data,
       promptVersion: version,

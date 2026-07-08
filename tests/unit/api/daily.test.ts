@@ -28,6 +28,7 @@ const {
   mockGetAuthContext,
   mockGetAdminDb,
   mockCheckAndIncrementUsage,
+  mockCheckAndIncrementIpLimit,
   mockCritiqueAndRank,
 } = vi.hoisted(() => ({
   mockGenerateWithAI: vi.fn(),
@@ -37,6 +38,7 @@ const {
   mockGetAuthContext: vi.fn(),
   mockGetAdminDb: vi.fn(),
   mockCheckAndIncrementUsage: vi.fn(),
+  mockCheckAndIncrementIpLimit: vi.fn(),
   mockCritiqueAndRank: vi.fn(),
 }));
 
@@ -69,6 +71,7 @@ vi.mock('../../../api/_lib/admin', () => ({
 
 vi.mock('../../../api/_lib/usage', () => ({
   checkAndIncrementUsage: mockCheckAndIncrementUsage,
+  checkAndIncrementIpLimit: mockCheckAndIncrementIpLimit,
 }));
 
 vi.mock('../../../api/_lib/quality-engine', () => ({
@@ -134,6 +137,7 @@ describe('POST /api/generate/daily', () => {
     // Auth: builder tier required to trigger daily generation
     mockGetAuthContext.mockResolvedValue({ uid: 'user-1', tier: 'builder', isAdmin: true });
     mockCheckAndIncrementUsage.mockResolvedValue({ allowed: true, remaining: 10, limit: null });
+    mockCheckAndIncrementIpLimit.mockResolvedValue({ allowed: true, remaining: 4, limit: 5 });
     // Admin Firestore: idempotent persist stub
     const mockDocRef = {
       get: vi.fn().mockResolvedValue({ exists: false }),
@@ -342,5 +346,103 @@ describe('POST /api/generate/daily', () => {
 
     expect(res._status).toBe(403);
     expect(res._body.error).toContain('Only administrators');
+  });
+
+  // ── TE-01: restrict generation trigger to authed users + today's date ──────
+
+  it('returns 401 when an unauthenticated user requests uncached generation for today', async () => {
+    mockGetAuthContext.mockResolvedValue(null);
+
+    const req = createMockRequest({ body: { date: '2026-04-11' } });
+    const res = createMockResponse();
+
+    await handler(req, res);
+
+    expect(res._status).toBe(401);
+    expect(res._body.error).toContain('Sign in');
+    expect(mockGenerateWithAI).not.toHaveBeenCalled();
+  });
+
+  it('returns 404 when requesting an uncached date that is not today', async () => {
+    const req = createMockRequest({ body: { date: '2099-01-01' } });
+    const res = createMockResponse();
+
+    await handler(req, res);
+
+    expect(res._status).toBe(404);
+    expect(res._body.error).toContain('No generation exists for that date');
+    expect(mockGenerateWithAI).not.toHaveBeenCalled();
+  });
+
+  it('returns cached generation for a past date without requiring authentication', async () => {
+    mockGetAuthContext.mockResolvedValue(null);
+    const cachedData = { ideas: generateMockIdeas(35), date: '2020-01-01' };
+    const cachedDocRef = {
+      get: vi.fn().mockResolvedValue({ exists: true, data: () => cachedData }),
+    };
+    mockGetAdminDb.mockReturnValue({
+      collection: vi.fn().mockReturnValue({ doc: vi.fn().mockReturnValue(cachedDocRef) }),
+      runTransaction: vi.fn(),
+    });
+
+    const req = createMockRequest({ body: { date: '2020-01-01' } });
+    const res = createMockResponse();
+
+    await handler(req, res);
+
+    expect(res._body).toEqual(cachedData);
+    expect(mockGenerateWithAI).not.toHaveBeenCalled();
+  });
+
+  it('proceeds to generation for an authenticated request on today, uncached', async () => {
+    mockGetAuthContext.mockResolvedValue({ uid: 'user-4', tier: 'free' });
+
+    const req = createMockRequest({ body: { date: '2026-04-11' } });
+    const res = createMockResponse();
+
+    await handler(req, res);
+
+    expect(res.json).toHaveBeenCalledOnce();
+    expect(res._body.ideas).toHaveLength(35);
+  });
+
+  // ── TE-02: Firestore-backed per-IP daily limit ──────────────────────────────
+
+  it('returns 429 when the per-IP daily limit is exceeded', async () => {
+    mockGetAuthContext.mockResolvedValue({ uid: 'user-5', tier: 'free' });
+    mockCheckAndIncrementIpLimit.mockResolvedValue({ allowed: false, remaining: 0, limit: 5 });
+
+    const req = createMockRequest({ body: { date: '2026-04-11' } });
+    const res = createMockResponse();
+
+    await handler(req, res);
+
+    expect(res._status).toBe(429);
+    expect(res._body.error).toContain('Too many requests');
+    expect(mockGenerateWithAI).not.toHaveBeenCalled();
+  });
+
+  it('checks the per-IP limit for the initial (non-refresh) generation trigger', async () => {
+    mockGetAuthContext.mockResolvedValue({ uid: 'user-6', tier: 'free' });
+
+    const req = createMockRequest({ body: { date: '2026-04-11' } });
+    const res = createMockResponse();
+
+    await handler(req, res);
+
+    expect(mockCheckAndIncrementIpLimit).toHaveBeenCalledWith('unknown', 5);
+  });
+
+  it('does not apply the per-IP limit to admin refresh requests', async () => {
+    mockCheckAndIncrementIpLimit.mockResolvedValue({ allowed: false, remaining: 0, limit: 5 });
+
+    const req = createMockRequest({ body: { date: '2026-04-11', refresh: true } });
+    const res = createMockResponse();
+
+    await handler(req, res);
+
+    expect(mockCheckAndIncrementIpLimit).not.toHaveBeenCalled();
+    expect(res.json).toHaveBeenCalledOnce();
+    expect(res._body.ideas).toHaveLength(35);
   });
 });

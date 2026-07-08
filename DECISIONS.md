@@ -6,6 +6,18 @@ For ongoing context and details, see `CLAUDE.md` and the per-session memory syst
 
 ---
 
+## TE-01 / TE-02 Shipped — P0 Cost & Abuse Hardening (2026-07-08)
+
+**Decision:** Ship both P0 items from the remediation plan together, same day: (1) daily generation triggerable only by signed-in users for today's date, cached reads unaffected; (2) per-IP daily cap moved from an in-memory `Map` to a Firestore transaction (`checkAndIncrementIpLimit`, hashed IPs, same check-before-increment pattern as `usage.ts`).
+
+**Finding during implementation:** the old `checkIpRateLimit` function in `api/_handlers/daily.ts` was defined but never called — confirmed via ESLint's `no-unused-vars` warning and a repo-wide grep. The daily generation endpoint had **zero** IP-based abuse protection in production before this fix, not merely a weak per-instance one as originally assessed in the 2026-07-08 audit.
+
+**Design call — IP limit skipped on admin refresh:** the per-IP cap only applies to the initial (non-refresh) generation trigger. Refresh is already gated to admins, a small trusted set; capping it too would risk an admin locking themselves out during legitimate same-day re-runs for no abuse-prevention benefit.
+
+**Status:** Shipped, TDD (9 new tests across `tests/unit/api/daily.test.ts` and `tests/unit/lib/usage.test.ts`), full suite green (290/290), `npm run check` clean (0 errors).
+
+---
+
 ## Project Tracking System — Adopted (2026-07-08)
 
 **Decision:** All work items, decisions, and shipped changes are tracked in-repo so every developer and every AI agent on every machine sees the same state.

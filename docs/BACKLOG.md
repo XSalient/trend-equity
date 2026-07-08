@@ -20,13 +20,14 @@ Detailed steps for TE-01…TE-10: [2026-07-08 pain-point remediation plan](super
 
 | ID    | Task                                                                                             | Status            | Owner  | Effort |
 | ----- | ------------------------------------------------------------------------------------------------ | ----------------- | ------ | ------ |
-| TE-01 | Restrict daily generation trigger to authed users + today's date only (`api/_handlers/daily.ts`) | todo              | —      | S      |
-| TE-02 | Replace per-instance in-memory IP limit with Firestore counter (`usage.ts` pattern, hashed IPs)  | todo              | —      | S      |
+| TE-01 | Restrict daily generation trigger to authed users + today's date only (`api/_handlers/daily.ts`) | done (2026-07-08) | Claude | S      |
+| TE-02 | Replace per-instance in-memory IP limit with Firestore counter (`usage.ts` pattern, hashed IPs)  | done (2026-07-08) | Claude | S      |
 | TE-03 | Fix CLAUDE.md drift (cache/usage docs, generation trigger policy, new `_lib` modules)            | done (2026-07-08) | Claude | S      |
 
 **TE-01 user story:** As the product owner, I want the expensive AI generation path triggerable only by signed-in users and only for today's date, so attackers can't burn Gemini budget with anonymous arbitrary-date requests.
 
 **TE-02 user story:** As the product owner, I want request limits enforced across all serverless instances, so cold starts and instance fan-out can't bypass the cap.
+**Finding while implementing:** the old `checkIpRateLimit` in `daily.ts` was never actually called anywhere — the endpoint had **zero** IP protection in production, not just a weak per-instance one. Fixed by wiring the new Firestore-backed `checkAndIncrementIpLimit` into the non-refresh generation-trigger path.
 
 ## Next — P1: protect the "grounded in live signals" differentiator
 
@@ -81,13 +82,15 @@ Sequencing note: do TE-04 before TE-06 — observability first tells us how bad 
 
 ## Recently shipped
 
-| ID  | Task                                                                                            | Shipped    | Commits          |
-| --- | ----------------------------------------------------------------------------------------------- | ---------- | ---------------- |
-| —   | Project tracking system (this file, CHANGELOG, doc map, CLAUDE.md sync)                         | 2026-07-08 | (this commit)    |
-| —   | Pain-point audit + remediation plan                                                             | 2026-07-08 | (this commit)    |
-| —   | DECISIONS.md cross-machine decision log                                                         | 2026-07-08 | 985347f          |
-| —   | `/api/generate/*` consolidation into dispatch catch-all (Vercel Hobby 12-fn limit)              | 2026-07-08 | 210be12, 85ab8dc |
-| —   | Custom requirement feed (Builder, 1 gen/24 h, peek/restore)                                     | 2026-07-03 | 44ec85c, b5436d8 |
-| —   | Quality Engine Wave 1: critic pipeline, semantic dedup, evidence grounding, prediction tracking | 2026-07-03 | 5608d81          |
-| —   | CI pipeline + component tests                                                                   | 2026-05-21 | 39f18be          |
-| —   | Self-learning prompt pipeline (AI critique + user reactions)                                    | 2026-05-20 | 491b7 series     |
+| ID    | Task                                                                                                        | Shipped    | Commits          |
+| ----- | ----------------------------------------------------------------------------------------------------------- | ---------- | ---------------- |
+| TE-01 | Restrict daily generation trigger to authed users + today's date only                                       | 2026-07-08 | (this commit)    |
+| TE-02 | Firestore-backed per-IP daily limit on daily generation (found the old limiter was dead code, never called) | 2026-07-08 | (this commit)    |
+| —     | Project tracking system (this file, CHANGELOG, doc map, CLAUDE.md sync)                                     | 2026-07-08 | (this commit)    |
+| —     | Pain-point audit + remediation plan                                                                         | 2026-07-08 | (this commit)    |
+| —     | DECISIONS.md cross-machine decision log                                                                     | 2026-07-08 | 985347f          |
+| —     | `/api/generate/*` consolidation into dispatch catch-all (Vercel Hobby 12-fn limit)                          | 2026-07-08 | 210be12, 85ab8dc |
+| —     | Custom requirement feed (Builder, 1 gen/24 h, peek/restore)                                                 | 2026-07-03 | 44ec85c, b5436d8 |
+| —     | Quality Engine Wave 1: critic pipeline, semantic dedup, evidence grounding, prediction tracking             | 2026-07-03 | 5608d81          |
+| —     | CI pipeline + component tests                                                                               | 2026-05-21 | 39f18be          |
+| —     | Self-learning prompt pipeline (AI critique + user reactions)                                                | 2026-05-20 | 491b7 series     |

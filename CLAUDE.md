@@ -98,8 +98,8 @@ Security rules are in `firestore.rules`; index definitions in `firestore.indexes
 ### API Patterns
 
 - All generation endpoints are POST
-- Rate limits enforced server-side: Firestore daily/monthly quotas (`usage.ts`); `daily.ts` additionally has a per-IP in-memory limit that is per-instance only (being replaced — see TE-02 in `docs/BACKLOG.md`)
-- `api/_handlers/daily.ts` uses a singleton pattern: generates once per day, returns cached result on subsequent calls. Current policy: **any** request (including unauthenticated) can trigger the initial generation for a client-supplied date; only admins can `refresh`. TE-01 will restrict triggering to authed users + today's date
+- Rate limits enforced server-side: Firestore daily/monthly quotas (`usage.ts`); `daily.ts`'s per-IP daily cap is also Firestore-backed (`checkAndIncrementIpLimit`, hashed IPs) so it survives across serverless instances
+- `api/_handlers/daily.ts` uses a singleton pattern: generates once per day, returns cached result on subsequent calls (any date, any auth state). Triggering a _new_ generation requires a signed-in user and only works for today's date — an uncached past/future date returns 404 rather than generating. Only admins can `refresh` (regenerate) an existing day's generation
 - `DEV_MOCK=true` enables offline mock mode; the server guards `process.exit(1)` if this flag is set in production
 
 ### Testing

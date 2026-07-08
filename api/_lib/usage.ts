@@ -1,4 +1,5 @@
 import { FieldValue } from 'firebase-admin/firestore';
+import { createHash } from 'crypto';
 import { getAdminDb } from './admin';
 
 const USAGE_COLLECTION = 'api_usage';
@@ -195,3 +196,63 @@ export async function buildMonthlyUsageResponse(
 
 /** Alias used by Vercel handler files — same as buildDailyUsageResponse. */
 export const buildUsageResponse = buildDailyUsageResponse;
+
+// ─── Per-IP daily limiting (unauthenticated/abuse protection) ────────────────
+
+function hashIp(ip: string): string {
+  return createHash('sha256').update(ip).digest('hex').slice(0, 16);
+}
+
+function ipUsageDocId(ip: string): string {
+  return `ip_${hashIp(ip)}_${getToday()}`;
+}
+
+/**
+ * Checks whether the given (hashed) IP is within its daily limit, then
+ * atomically increments. Backed by Firestore rather than an in-memory Map so
+ * the limit is enforced across all serverless instances — a Map only ever
+ * protects the single instance that happens to handle the request.
+ * Raw IPs are never persisted, only their SHA-256 hash.
+ */
+export async function checkAndIncrementIpLimit(
+  ip: string,
+  limit: number
+): Promise<{ allowed: boolean; remaining: number; limit: number }> {
+  try {
+    const db = getAdminDb();
+    const docRef = db.collection(USAGE_COLLECTION).doc(ipUsageDocId(ip));
+
+    const result = await db.runTransaction(async (tx) => {
+      const snap = await tx.get(docRef);
+      const current: number = snap.exists ? (snap.data()!.count ?? 0) : 0;
+
+      if (current >= limit) {
+        return { allowed: false, count: current };
+      }
+
+      const next = current + 1;
+      tx.set(
+        docRef,
+        {
+          featureType: 'ip-daily',
+          date: getToday(),
+          count: next,
+          updatedAt: FieldValue.serverTimestamp(),
+        },
+        { merge: true }
+      );
+
+      return { allowed: true, count: next };
+    });
+
+    if (!result.allowed) {
+      return { allowed: false, remaining: 0, limit };
+    }
+    return { allowed: true, remaining: limit - result.count, limit };
+  } catch (e) {
+    // Fail open on DB errors, but log distinctly so occurrences are countable —
+    // unlike quota fail-open, this is the only backstop against IP-based abuse.
+    console.warn('[usage] fail-open: checkAndIncrementIpLimit error:', e);
+    return { allowed: true, remaining: limit, limit };
+  }
+}

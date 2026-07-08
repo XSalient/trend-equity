@@ -44,7 +44,11 @@ vi.mock('firebase-admin/firestore', () => ({
   },
 }));
 
-import { checkAndIncrementUsage, buildUsageResponse } from '../../../api/_lib/usage';
+import {
+  checkAndIncrementUsage,
+  buildUsageResponse,
+  checkAndIncrementIpLimit,
+} from '../../../api/_lib/usage';
 
 /** Helper: simulate a Firestore transaction that increments count from `currentCount` */
 function setupTransaction(currentCount: number) {
@@ -197,5 +201,88 @@ describe('buildUsageResponse', () => {
     expect(result?.used).toBe(14);
     expect(result?.remaining).toBe(1); // 15 - 14 = 1
     expect(result?.limit).toBe(15);
+  });
+});
+
+describe('checkAndIncrementIpLimit (TE-02)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockDb.collection.mockReturnValue(mockCollection);
+  });
+
+  it('allows a fresh IP on first request (count 0 → 1)', async () => {
+    setupTransaction(0);
+
+    const result = await checkAndIncrementIpLimit('1.2.3.4', 5);
+
+    expect(result.allowed).toBe(true);
+    expect(result.remaining).toBe(4);
+    expect(result.limit).toBe(5);
+  });
+
+  it('allows the IP on its 5th request (count 4 → 5)', async () => {
+    setupTransaction(4);
+
+    const result = await checkAndIncrementIpLimit('1.2.3.4', 5);
+
+    expect(result.allowed).toBe(true);
+    expect(result.remaining).toBe(0);
+  });
+
+  it('blocks the IP once the daily limit is reached (count 5 → denied)', async () => {
+    setupTransaction(5);
+
+    const result = await checkAndIncrementIpLimit('1.2.3.4', 5);
+
+    expect(result.allowed).toBe(false);
+    expect(result.remaining).toBe(0);
+    expect(result.limit).toBe(5);
+  });
+
+  it('stores the IP as a salted/hashed doc id, never the raw IP', async () => {
+    setupTransaction(0);
+    await checkAndIncrementIpLimit('203.0.113.7', 5);
+
+    const docId = (mockCollection.doc.mock.calls as any[][])[0]?.[0] as string;
+    const today = new Date().toISOString().split('T')[0];
+    expect(docId).toMatch(new RegExp(`^ip_[0-9a-f]{16}_${today}$`));
+    expect(docId).not.toContain('203.0.113.7');
+  });
+
+  it('produces the same doc id for the same IP on the same day (counter actually shared)', async () => {
+    setupTransaction(0);
+    await checkAndIncrementIpLimit('9.9.9.9', 5);
+    const firstDocId = (mockCollection.doc.mock.calls as any[][])[0]?.[0] as string;
+
+    vi.clearAllMocks();
+    mockDb.collection.mockReturnValue(mockCollection);
+    setupTransaction(0);
+    await checkAndIncrementIpLimit('9.9.9.9', 5);
+    const secondDocId = (mockCollection.doc.mock.calls as any[][])[0]?.[0] as string;
+
+    expect(firstDocId).toBe(secondDocId);
+  });
+
+  it('produces different doc ids for different IPs on the same day', async () => {
+    setupTransaction(0);
+    await checkAndIncrementIpLimit('1.1.1.1', 5);
+    const firstDocId = (mockCollection.doc.mock.calls as any[][])[0]?.[0] as string;
+
+    vi.clearAllMocks();
+    mockDb.collection.mockReturnValue(mockCollection);
+    setupTransaction(0);
+    await checkAndIncrementIpLimit('2.2.2.2', 5);
+    const secondDocId = (mockCollection.doc.mock.calls as any[][])[0]?.[0] as string;
+
+    expect(firstDocId).not.toBe(secondDocId);
+  });
+
+  it('fails open (allows request) when Firestore transaction throws', async () => {
+    mockRunTransaction.mockRejectedValue(new Error('Firestore unavailable'));
+
+    const result = await checkAndIncrementIpLimit('1.2.3.4', 5);
+
+    expect(result.allowed).toBe(true);
+    expect(result.limit).toBe(5);
   });
 });
