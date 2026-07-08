@@ -29,6 +29,36 @@ Detailed steps for TE-01…TE-10: [2026-07-08 pain-point remediation plan](super
 **TE-02 user story:** As the product owner, I want request limits enforced across all serverless instances, so cold starts and instance fan-out can't bypass the cap.
 **Finding while implementing:** the old `checkIpRateLimit` in `daily.ts` was never actually called anywhere — the endpoint had **zero** IP protection in production, not just a weak per-instance one. Fixed by wiring the new Firestore-backed `checkAndIncrementIpLimit` into the non-refresh generation-trigger path.
 
+## Now — P0 (wave 2): findings from the 2026-07-08 UI/feature/tier audit
+
+Full evidence and per-surface inventory: [2026-07-08 UI, Feature & Tier-Promise Audit](audits/2026-07-08-ui-feature-tier-audit.md).
+
+| ID    | Task                                                                                              | Status | Owner | Effort |
+| ----- | ------------------------------------------------------------------------------------------------- | ------ | ----- | ------ |
+| TE-12 | Production Firestore rules: replace dev-mode allow-all with per-collection least-privilege        | todo   | —     | M      |
+| TE-13 | Server-side tier gates + auth requirement on all generate endpoints (copy `analyze-idea` pattern) | todo   | —     | M      |
+| TE-14 | Replace fake client-side upgrade flow with honest pre-Stripe state (waitlist CTA)                 | todo   | —     | S      |
+| TE-15 | Fix enterprise lead capture (anonymous submits fail rules) via serverless endpoint                | todo   | —     | S      |
+
+**TE-12 user story:** As the product owner, I want Firestore rules that only let users write their own safe fields, so a signed-in user can't self-upgrade to Builder, reset quotas, or edit the global feed/config from the browser console.
+
+**TE-13 user story:** As the product owner, I want every paid AI endpoint to verify auth and tier server-side, so Builder features can't be used for free (or anonymously, with no quota at all) by calling the API directly.
+
+**TE-14 user story:** As a free user, I want the upgrade button to tell me the truth (payments coming soon / join waitlist), so the app never shows me "PRO" while the server still treats me as free.
+
+**TE-15 user story:** As a logged-out VC on /enterprise, I want my early-access request to actually be captured, so the B2B funnel isn't silently dropping every lead.
+
+## Next — P1 (wave 2): audit follow-ups, UX & honesty
+
+| ID    | Task                                                                                                                                                                                                         | Status | Owner | Effort |
+| ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------ | ----- | ------ |
+| TE-16 | Anonymous read path for the daily feed (public flag + rules, or API read) so logged-out visitors see the product                                                                                             | todo   | —     | S      |
+| TE-17 | Cron for daily generation (before the 07:00 UTC digest cron) — remove dependence on a human admin                                                                                                            | todo   | —     | S      |
+| TE-18 | Alerts: generate only for Builder tier; stop hidden AI spend for Free/Pro who can't see the bell                                                                                                             | todo   | —     | S      |
+| TE-19 | Dead-UI fixes: 2 dead upgrade buttons, footer legal links, click-to-open export menu (touch), comment relative timestamps, FilterBar top-16 stickiness, Tailwind literal classes in PricingSection           | todo   | —     | M      |
+| TE-20 | `updateIdea` must also sync the Weekly Best list (fold into TE-10 hook split)                                                                                                                                | todo   | —     | S      |
+| TE-21 | Promise/copy reconciliation: Pro next-steps 7-cap or updated promise, saves wording, dead digest weekly toggle, co-founder button, X/Twitter signal claims, PRD digest + validation-toolkit tier corrections | todo   | —     | M      |
+
 ## Next — P1: protect the "grounded in live signals" differentiator
 
 | ID    | Task                                                                                                                              | Status | Owner | Effort |
