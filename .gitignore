@@ -64,3 +64,4 @@ test_json_parse.ts
 
 # Claude / AI settings (CLAUDE.md is intentionally tracked — it is the canonical shared agent guide)
 .claude/
+.serena/

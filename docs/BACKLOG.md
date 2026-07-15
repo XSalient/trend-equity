@@ -50,14 +50,41 @@ Full evidence and per-surface inventory: [2026-07-08 UI, Feature & Tier-Promise 
 
 ## Next — P1 (wave 2): audit follow-ups, UX & honesty
 
-| ID    | Task                                                                                                                                                                                                         | Status | Owner | Effort |
-| ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------ | ----- | ------ |
-| TE-16 | Anonymous read path for the daily feed (public flag + rules, or API read) so logged-out visitors see the product                                                                                             | todo   | —     | S      |
-| TE-17 | Cron for daily generation (before the 07:00 UTC digest cron) — remove dependence on a human admin                                                                                                            | todo   | —     | S      |
-| TE-18 | Alerts: generate only for Builder tier; stop hidden AI spend for Free/Pro who can't see the bell                                                                                                             | todo   | —     | S      |
-| TE-19 | Dead-UI fixes: 2 dead upgrade buttons, footer legal links, click-to-open export menu (touch), comment relative timestamps, FilterBar top-16 stickiness, Tailwind literal classes in PricingSection           | todo   | —     | M      |
-| TE-20 | `updateIdea` must also sync the Weekly Best list (fold into TE-10 hook split)                                                                                                                                | todo   | —     | S      |
-| TE-21 | Promise/copy reconciliation: Pro next-steps 7-cap or updated promise, saves wording, dead digest weekly toggle, co-founder button, X/Twitter signal claims, PRD digest + validation-toolkit tier corrections | todo   | —     | M      |
+| ID    | Task                                                                                                                                                                                                | Status | Owner | Effort |
+| ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ | ----- | ------ |
+| TE-16 | Anonymous read path for the daily feed (public flag + rules, or API read) so logged-out visitors see the product                                                                                    | todo   | —     | S      |
+| TE-17 | Cron for daily generation (before the 07:00 UTC digest cron) — remove dependence on a human admin                                                                                                   | todo   | —     | S      |
+| TE-18 | Alerts: generate only for Builder tier; stop hidden AI spend for Free/Pro who can't see the bell                                                                                                    | todo   | —     | S      |
+| TE-19 | Dead-UI fixes: 2 dead upgrade buttons, footer legal links, click-to-open export menu (touch), comment relative timestamps, FilterBar top-16 stickiness, Tailwind literal classes in PricingSection  | todo   | —     | M      |
+| TE-20 | `updateIdea` must also sync the Weekly Best list (fold into TE-10 hook split)                                                                                                                       | todo   | —     | S      |
+| TE-21 | Promise/copy reconciliation: saves wording, dead digest weekly toggle, co-founder button, X/Twitter signal claims, PRD digest + validation-toolkit tier corrections (next-steps cap moved to TE-25) | todo   | —     | M      |
+
+## Next — P1 (wave 3): free-tier value ladder
+
+Decision + full rationale: [Free-Tier Value Ladder (DECISIONS.md, 2026-07-10)](../DECISIONS.md). Sequencing: all of these gates are cosmetic until TE-12 (rules) and TE-13 (server tier guards) ship — implement TE-23…TE-26 on top of TE-13's `requireTier` helper.
+
+| ID    | Task                                                                                                               | Status | Owner | Effort |
+| ----- | ------------------------------------------------------------------------------------------------------------------ | ------ | ----- | ------ |
+| TE-22 | Basic-vs-Full VC analysis: lock unfair advantage, revenue model & market dynamics behind a visible upsell for Free | todo   | —     | M      |
+| TE-23 | Market Evidence becomes Pro+: server gate in `evidence.ts` + locked teaser button for Free                         | todo   | —     | S      |
+| TE-24 | CSV export becomes Pro+: gate the FilterBar export option, match the PDF-only Free promise                         | todo   | —     | S      |
+| TE-25 | Enforce Pro next-steps cap of 7 using the existing (currently dead) `TIER_LIMITS.roadmapSteps` constant            | todo   | —     | S      |
+| TE-26 | Comments tiering: Free read-only, Pro+ can post — rules + UI state with inline upgrade prompt                      | todo   | —     | M      |
+
+**TE-22 user story:** As a free user browsing the feed, I want to see that each idea has an unfair-advantage read, a revenue model, and market dynamics waiting behind a lock, so I understand exactly what upgrading buys me — and as the owner, I want my strongest upsell shown on every single card instead of given away.
+Acceptance: Free sees headline, pitch, score, VC justification, trend sources, 3 next steps; the locked sections render as titled, blurred/locked panels with one "Unlock full analysis — Pro" CTA (not silently hidden — visible absence sells). Pro/Builder unchanged. PRD §3 already promises this split.
+
+**TE-23 user story:** As a Pro subscriber, I want search-grounded market evidence (competitors, cited market size, why-now) to be part of what I pay for, so my plan visibly includes the platform's core intelligence — and as the owner, I want the most expensive-per-call feature to stop being free.
+Acceptance: `evidence.ts` returns 403 with `upgradeRequired` for free tier; Free sees the Evidence button in a locked state with tooltip copy; Pro/Builder unchanged; pricing page Pro card gains "Market Evidence" line.
+
+**TE-24 user story:** As a Pro subscriber, I want bulk CSV export as a paid capability, so power-user workflows are a reason to subscribe — and Free stays aligned with its promised PDF-only export.
+Acceptance: CSV option in the FilterBar export dropdown routes Free users to the pricing tab (same pattern as filter chips); PDF remains free everywhere.
+
+**TE-25 user story:** As a Pro subscriber, I want 7 next steps where Free gets 3, and as a Builder I want the full roadmap suite to be a visible step beyond that, so each tier's execution depth is distinct instead of Pro silently getting everything.
+Acceptance: `IdeaCardActionSteps` slices by `TIER_LIMITS[tier].roadmapSteps` (3/7/10) instead of `isFree ? 3 : all`; Pro sees "Upgrade to Builder for the full roadmap" note when steps are truncated; dead-constant warning from the audit resolved.
+
+**TE-26 user story:** As a free user, I want to read every idea's community thread but be prompted to upgrade when I try to post, so the community is visible value with a clear next step — matching the PRD's read-only → post ladder.
+Acceptance: comment input disabled for Free with "Posting is a Pro feature" inline prompt; Firestore rules allow comment `create` only for pro/builder (requires TE-12's per-collection rules; tier lookup via custom claims or a rules-readable field decided during TE-12); existing free-authored comments remain readable.
 
 ## Next — P1: protect the "grounded in live signals" differentiator
 
@@ -103,12 +130,13 @@ Sequencing note: do TE-04 before TE-06 — observability first tells us how bad 
 
 ## Parked (decided, not scheduled — see DECISIONS.md for rationale)
 
-| Item                                                    | Decision date | Revisit when                                                  |
-| ------------------------------------------------------- | ------------- | ------------------------------------------------------------- |
-| App-store signal mining (Google Play / iOS reviews)     | 2026-07-08    | Post-Stripe, as per-idea _validation_ evidence, not discovery |
-| Growth guides / acquire.com / trustmrr.com integrations | 2026-07-08    | Post-Stripe, only if Wave 2 evidence layer ships              |
-| Multi-signal ML pipeline expansion                      | 2026-07-02    | Stripe proves willingness to pay                              |
-| Personalization (favorite sectors, user signals)        | 2026-07-02    | Stripe proves willingness to pay                              |
+| Item                                                    | Decision date | Revisit when                                                                 |
+| ------------------------------------------------------- | ------------- | ---------------------------------------------------------------------------- |
+| Time-delayed free feed (Pro at publish, Free at noon)   | 2026-07-10    | Post-Stripe, only if the value-ladder gates (TE-22…26) don't move conversion |
+| App-store signal mining (Google Play / iOS reviews)     | 2026-07-08    | Post-Stripe, as per-idea _validation_ evidence, not discovery                |
+| Growth guides / acquire.com / trustmrr.com integrations | 2026-07-08    | Post-Stripe, only if Wave 2 evidence layer ships                             |
+| Multi-signal ML pipeline expansion                      | 2026-07-02    | Stripe proves willingness to pay                                             |
+| Personalization (favorite sectors, user signals)        | 2026-07-02    | Stripe proves willingness to pay                                             |
 
 ## Recently shipped
 

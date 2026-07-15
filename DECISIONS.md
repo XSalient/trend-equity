@@ -6,6 +6,39 @@ For ongoing context and details, see `CLAUDE.md` and the per-session memory syst
 
 ---
 
+## Free-Tier Value Ladder — Adopted (2026-07-10)
+
+**Decision:** Restructure tier boundaries so each tier has one clear job: **Free = discover** (see that real, scored opportunities exist), **Pro = evaluate** (get the full diligence picture), **Builder = execute** (get the build/validate/track machinery). The 2026-07-08 audit showed Free currently receives _more_ than the PRD promises in four places — those giveaways are reclaimed as Pro value rather than inventing new restrictions.
+
+**The ladder (target state):**
+
+| Capability                        | Free (discover)                                                   | Pro (evaluate)                                                          | Builder (execute)      |
+| --------------------------------- | ----------------------------------------------------------------- | ----------------------------------------------------------------------- | ---------------------- |
+| Daily ideas                       | 10                                                                | 25                                                                      | 35                     |
+| Idea card content                 | Headline, pitch, score, category, VC justification, trend sources | + Unfair advantage, revenue model, market size, competitors, regulatory | same as Pro            |
+| Market Evidence (search-grounded) | ❌ locked teaser                                                  | ✅                                                                      | ✅                     |
+| Next steps                        | 3                                                                 | 7                                                                       | Full 10+ roadmap suite |
+| Saves                             | 5                                                                 | Unlimited                                                               | Unlimited              |
+| Export                            | PDF only                                                          | + CSV, Notion/GDocs                                                     | + CSV, Notion/GDocs    |
+| Comments                          | Read-only                                                         | Post                                                                    | Post (priority later)  |
+| Reactions (👍👎🔨)                | ✅ kept free                                                      | ✅                                                                      | ✅                     |
+
+**Rationale per change:**
+
+1. **Full VC analysis → Pro (TE-22).** PRD always promised Free "Basic VC Analysis"; code ships the full block to everyone. Gating unfair advantage / revenue model / market dynamics behind a _visible locked section_ is the single strongest daily upsell surface — Free users see exactly what they're missing on every card.
+2. **Market Evidence → Pro (TE-23).** It's the most expensive feature per call (two-step Google-grounded generation) and the core "opportunity intelligence" differentiator, currently free to every signed-in user. Free keeps a locked "Evidence" button as the teaser.
+3. **CSV export → Pro (TE-24).** PRD promised Free PDF-only; CSV bulk export is an analyst/power-user feature that belongs with paying tiers.
+4. **Pro next-steps capped at 7 (TE-25).** The unused `roadmapSteps` constant (3/7/10) finally gets enforced, restoring the 3 → 7 → full-roadmap progression that makes Builder's roadmap suite feel like a real step up.
+5. **Comments: Free read-only (TE-26).** Matches the PRD community ladder; posting becomes a Pro perk. Reactions stay free for all — they feed the prompt optimizer and we want maximum signal volume.
+
+**Deliberately NOT limited:** daily feed access (top-of-funnel), reactions (training signal), PDF export (shareability = marketing), the 10-idea count (already decided), saves-count semantics (5 concurrent stays; renaming to "5 saved ideas" in copy is part of TE-21).
+
+**Considered and parked — time-delayed free feed** (Pro sees today's feed at publish, Free at noon): strong perceived-value lever but complicates the singleton daily doc, hurts top-of-funnel first impressions, and is hard to message honestly. Revisit only if post-Stripe conversion data shows the current ladder isn't converting.
+
+**Sequencing constraint:** every gate here is _fake_ until TE-12 (Firestore rules) and TE-13 (server-side tier guards) land — a console user can bypass any client gate today. TE-23/24/25/26 must ride on or after TE-13; TE-22 is content-display gating (data is in a shared doc) and is honest client-side gating only after TE-12 stops free users from reading everything anyway.
+
+---
+
 ## TE-01 / TE-02 Shipped — P0 Cost & Abuse Hardening (2026-07-08)
 
 **Decision:** Ship both P0 items from the remediation plan together, same day: (1) daily generation triggerable only by signed-in users for today's date, cached reads unaffected; (2) per-IP daily cap moved from an in-memory `Map` to a Firestore transaction (`checkAndIncrementIpLimit`, hashed IPs, same check-before-increment pattern as `usage.ts`).

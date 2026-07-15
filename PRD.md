@@ -30,8 +30,9 @@ Trend Equity uses a tiered subscription model:
 | **Saves**                  | 5 saves / month   | Unlimited                  | Unlimited                         | Unlimited                        |
 | **Custom Idea Analysis**   | —                 | 5 / month                  | 20 / month                        | Unlimited                        |
 | **Custom Requirement Feed** | Locked            | 1 keyword, 5 ideas / 24h   | Natural language, 5 ideas / 24h   | Custom thesis feeds             |
-| **Exporting**              | PDF Pitch Deck    | PDF, Notion/GDocs (clipboard) | PDF, Notion/GDocs (clipboard)  | Custom Data Integration (API)    |
-| **Analysis**               | Basic VC Analysis | Full VC Analysis           | Full VC Analysis + Expert Vetting | Proprietary Thesis Alignment     |
+| **Exporting**              | PDF Pitch Deck    | PDF, CSV, Notion/GDocs (clipboard) | PDF, CSV, Notion/GDocs (clipboard)  | Custom Data Integration (API)    |
+| **Analysis**               | Basic VC Analysis (pitch, justification, trend sources) | Full VC Analysis (+ unfair advantage, revenue model, market dynamics) | Full VC Analysis + Expert Vetting | Proprietary Thesis Alignment     |
+| **Market Evidence**        | Locked (teaser)   | ✓ Search-grounded evidence | ✓ Search-grounded evidence        | ✓ + Custom research              |
 | **Execution**              | 3 Next Steps      | 7 Next Steps               | Full 10+ Step Roadmap             | Full 10+ Step Roadmap            |
 | **Weekly Best**            | —                 | ✓                          | ✓                                 | ✓                                |
 | **Advanced Tools**         | Locked            | Email Digest *(planned)*   | Radar, Futurecasting, TE100, API  | Custom Alerts + Dashboard        |
