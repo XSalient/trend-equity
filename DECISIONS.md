@@ -178,6 +178,29 @@ If the Wave 2 evidence layer is prioritized, consider adding a single AI-estimat
 
 ---
 
+## Agent & Generation Pipeline Performance Epic — Planned (2026-07-21)
+
+**Decision:** Adopt a 6-story performance optimization epic (TE-32 through TE-37) targeting 50% reduction in agent story completion time (30 min → 15 min).
+
+**Root causes (ranked by impact):**
+1. Sequential backend AI operations (5–6s waste) — Promise.all for parallel pre-fetches (TE-32)
+2. Redundant discovery per session (3–4 min waste) — Pre-load memory manifest of hot files (TE-34)
+3. Serialized post-story workflow (2 min waste) — Merge docs+code updates into single session (TE-33)
+4. Manual deployment verification (2 min waste) — Smoke-test suite for auto-verify (TE-35)
+5. Sequential test execution (2–3 min waste) — Shard E2E tests, enable Vitest threading (TE-36, TE-37)
+
+**Impact projection:** 10–15 min savings per story.
+
+**Rollout:** Two phases. Week 1: TE-32/33/34 (high ROI, ~7–9 min saved). Week 2: TE-35/36/37 (test infrastructure, ~2–3 min saved, amortized over many stories).
+
+**Rationale:** Agent velocity directly impacts project iteration speed. With 15+ stories remaining before Wave 2 (Stripe + evidence layer) ships, even a 2 min/story improvement compounds to 30+ hours saved over the roadmap. TE-32 (backend parallelization) is a quality improvement regardless; TE-34 (memory manifest) reduces cognitive load for all agentic work; TE-33 (workflow merge) removes friction.
+
+**Out of scope:** Code generation, prompt-engineering optimizations, model upgrades (these are Wave 2 priorities).
+
+**Detailed plan:** [`docs/superpowers/plans/2026-07-21-agent-performance-optimization.md`](docs/superpowers/plans/2026-07-21-agent-performance-optimization.md)
+
+---
+
 ## Positioning Strategy — Active
 
 **Decision:** Reposition Trend-Equity as an "opportunity intelligence platform" (not just an idea feed). Log prediction accuracy early as evidence of value.
