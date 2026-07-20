@@ -1,15 +1,17 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { generateWithAI } from '../_lib/ai-provider';
 import { getCached, setCached } from '../_lib/cache';
-import { getAuthContext } from '../_lib/auth';
+import { getAuthContext, requireTier } from '../_lib/auth';
 import { checkAndIncrementUsage } from '../_lib/usage';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   const authCtx = await getAuthContext(req);
-  const uid = authCtx?.uid;
-  const tier = authCtx?.tier || 'free';
+  if (!authCtx) return res.status(401).json({ error: 'Authentication required.' });
+  const tierCheck = requireTier(authCtx, 'builder');
+  if (tierCheck) return res.status(tierCheck.status).json(tierCheck.body);
+  const { uid, tier } = authCtx;
 
   const { idea, section, context } = req.body;
 
@@ -50,13 +52,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const cached = await getCached(cacheKey);
     if (cached) return res.json({ ...cached, _cached: true });
 
-    if (uid) {
-      const usage = await checkAndIncrementUsage(uid, tier, featureType);
-      if (!usage.allowed) {
-        return res
-          .status(429)
-          .json({ text: 'Daily explanation limit reached. Upgrade for more.', _limited: true });
-      }
+    const usage = await checkAndIncrementUsage(uid, tier, featureType);
+    if (!usage.allowed) {
+      return res
+        .status(429)
+        .json({ text: 'Daily explanation limit reached. Upgrade for more.', _limited: true });
     }
 
     const data = await generateWithAI(

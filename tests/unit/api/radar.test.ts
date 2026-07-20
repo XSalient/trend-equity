@@ -5,10 +5,11 @@
  *  + Returns radar data on successful Gemini call
  *  + Returns cached result with _cached:true on cache hit
  *  + Attaches _usage response for authenticated user
- *  + _usage is null for unauthenticated request
- *  + Builder tier is always allowed (no usage check)
+ *  + Builder tier is always allowed (no usage limit)
  *  - Returns 405 for non-POST request
- *  - Returns 429 when usage limit exceeded (free tier)
+ *  - Returns 401 when unauthenticated (TE-13: radar is Builder-only)
+ *  - Returns 403 for free/pro tier (TE-13)
+ *  - Returns 429 when usage limit exceeded
  *  - Returns 503 when Gemini throws
  *  - Does NOT return mock data when Gemini fails
  */
@@ -55,9 +56,14 @@ vi.mock('../../../api/_lib/usage', () => ({
   buildUsageResponse: mockBuildUsageResponse,
 }));
 
-vi.mock('../../../api/_lib/auth', () => ({
-  getAuthContext: mockGetAuthContext,
-}));
+vi.mock('../../../api/_lib/auth', async () => {
+  const actual =
+    await vi.importActual<typeof import('../../../api/_lib/auth')>('../../../api/_lib/auth');
+  return {
+    getAuthContext: mockGetAuthContext,
+    requireTier: actual.requireTier,
+  };
+});
 
 import handler from '../../../api/_handlers/radar';
 
@@ -69,7 +75,8 @@ describe('POST /api/generate/radar', () => {
     mockCheckAndIncrementUsage.mockResolvedValue({ allowed: true, remaining: 2, limit: 3 });
     mockBuildUsageResponse.mockResolvedValue({ ...MOCK_USAGE_RESPONSE, featureType: 'radar' });
     mockGenerateWithAI.mockResolvedValue(MOCK_RADAR_RESPONSE);
-    mockGetAuthContext.mockResolvedValue(null); // unauthenticated by default
+    // Radar is Builder-only (TE-13) — authenticated Builder user by default
+    mockGetAuthContext.mockResolvedValue({ uid: 'user-1', tier: 'builder' });
   });
 
   // ── Positive cases ────────────────────────────────────────────────
@@ -91,7 +98,6 @@ describe('POST /api/generate/radar', () => {
 
   it('returns cached result with _cached:true when cache hit', async () => {
     mockGetCached.mockResolvedValue(MOCK_RADAR_RESPONSE);
-    mockGetAuthContext.mockResolvedValue({ uid: 'user-1', tier: 'free' });
 
     const req = createMockRequest({ body: {} });
     const res = createMockResponse();
@@ -116,8 +122,6 @@ describe('POST /api/generate/radar', () => {
   });
 
   it('attaches _usage response for authenticated user', async () => {
-    mockGetAuthContext.mockResolvedValue({ uid: 'user-1', tier: 'free' });
-
     const req = createMockRequest({ body: {} });
     const res = createMockResponse();
 
@@ -125,26 +129,6 @@ describe('POST /api/generate/radar', () => {
 
     expect(res._body._usage).toBeDefined();
     expect(res._body._usage.featureType).toBe('radar');
-  });
-
-  it('_usage is null for unauthenticated request (no uid)', async () => {
-    mockBuildUsageResponse.mockResolvedValue(null);
-
-    const req = createMockRequest({ body: {} });
-    const res = createMockResponse();
-
-    await handler(req, res);
-
-    expect(res._body._usage).toBeNull();
-  });
-
-  it('skips usage check when no uid provided', async () => {
-    const req = createMockRequest({ body: {} });
-    const res = createMockResponse();
-
-    await handler(req, res);
-
-    expect(mockCheckAndIncrementUsage).not.toHaveBeenCalled();
   });
 
   // ── Negative cases ────────────────────────────────────────────────
@@ -159,9 +143,8 @@ describe('POST /api/generate/radar', () => {
     expect(res._body.error).toContain('Method not allowed');
   });
 
-  it('returns 429 when free tier usage limit is exceeded', async () => {
+  it('returns 429 when daily usage limit is exceeded', async () => {
     mockCheckAndIncrementUsage.mockResolvedValue({ allowed: false, remaining: 0, limit: 3 });
-    mockGetAuthContext.mockResolvedValue({ uid: 'user-1', tier: 'free' });
 
     const req = createMockRequest({ body: {} });
     const res = createMockResponse();
@@ -171,6 +154,31 @@ describe('POST /api/generate/radar', () => {
     expect(res._status).toBe(429);
     expect(res._body.error).toContain('limit reached');
     expect(res._body._usage.remaining).toBe(0);
+    expect(mockGenerateWithAI).not.toHaveBeenCalled();
+  });
+
+  it('returns 401 when unauthenticated (TE-13)', async () => {
+    mockGetAuthContext.mockResolvedValue(null);
+
+    const req = createMockRequest({ body: {} });
+    const res = createMockResponse();
+
+    await handler(req, res);
+
+    expect(res._status).toBe(401);
+    expect(mockGenerateWithAI).not.toHaveBeenCalled();
+  });
+
+  it('returns 403 for free/pro tier — radar is Builder-only (TE-13)', async () => {
+    mockGetAuthContext.mockResolvedValue({ uid: 'user-1', tier: 'pro' });
+
+    const req = createMockRequest({ body: {} });
+    const res = createMockResponse();
+
+    await handler(req, res);
+
+    expect(res._status).toBe(403);
+    expect(res._body.upgradeRequired).toBe(true);
     expect(mockGenerateWithAI).not.toHaveBeenCalled();
   });
 

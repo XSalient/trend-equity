@@ -2,7 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import AI from '../_lib/ai-provider';
 const { generateWithAI, radarSchema, getToday, normalizeAIResponse } = AI;
 import { getCached, setCached } from '../_lib/cache';
-import { getAuthContext } from '../_lib/auth';
+import { getAuthContext, requireTier } from '../_lib/auth';
 import { checkAndIncrementUsage, buildUsageResponse } from '../_lib/usage';
 import { fetchLiveSignals, formatSignalsForPrompt } from '../_lib/signals';
 
@@ -11,8 +11,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   // Auth context from verified token (S-2)
   const authCtx = await getAuthContext(req);
-  const uid = authCtx?.uid;
-  const tier = authCtx?.tier || 'free';
+  if (!authCtx) return res.status(401).json({ error: 'Authentication required.' });
+  const tierCheck = requireTier(authCtx, 'builder');
+  if (tierCheck) return res.status(tierCheck.status).json(tierCheck.body);
+  const { uid, tier } = authCtx;
 
   const featureType = 'radar';
   const cacheKey = `radar_${getToday()}_v4`; // Bumping to v4
@@ -27,14 +29,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
-    if (uid) {
-      const usage = await checkAndIncrementUsage(uid, tier, featureType);
-      if (!usage.allowed) {
-        return res.status(429).json({
-          error: 'Daily radar limit reached. Upgrade for more analyses.',
-          _usage: { featureType, remaining: 0, limit: usage.limit, used: usage.limit },
-        });
-      }
+    const usage = await checkAndIncrementUsage(uid, tier, featureType);
+    if (!usage.allowed) {
+      return res.status(429).json({
+        error: 'Daily radar limit reached. Upgrade for more analyses.',
+        _usage: { featureType, remaining: 0, limit: usage.limit, used: usage.limit },
+      });
     }
 
     const signals = await fetchLiveSignals();

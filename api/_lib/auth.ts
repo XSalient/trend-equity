@@ -64,3 +64,26 @@ export async function getAuthContext(req: VercelRequest): Promise<AuthContext | 
     return null;
   }
 }
+
+const TIER_RANK: Record<AuthContext['tier'], number> = { free: 0, pro: 1, builder: 2 };
+
+/**
+ * Server-side gate for endpoints promised to a specific tier or above
+ * (see docs/audits/2026-07-08-ui-feature-tier-audit.md §3). Callers must
+ * call getAuthContext() first and 401 on a null result — this only decides
+ * whether an *authenticated* caller's tier clears the bar.
+ * Returns null when the check passes, or the { status, body } pair to send
+ * as-is when it fails.
+ */
+export function requireTier(
+  authCtx: AuthContext,
+  minTier: 'pro' | 'builder'
+): { status: number; body: { error: string; upgradeRequired: true } } | null {
+  if (TIER_RANK[authCtx.tier] >= TIER_RANK[minTier]) return null;
+
+  const label = minTier === 'builder' ? 'Builder' : 'Pro or Builder';
+  return {
+    status: 403,
+    body: { error: `This feature requires a ${label} plan.`, upgradeRequired: true },
+  };
+}

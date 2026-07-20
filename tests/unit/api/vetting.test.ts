@@ -13,9 +13,14 @@ vi.mock('../../../api/_lib/cache', () => ({
   setCached: vi.fn(),
 }));
 
-vi.mock('../../../api/_lib/auth', () => ({
-  getAuthContext: vi.fn(),
-}));
+vi.mock('../../../api/_lib/auth', async () => {
+  const actual =
+    await vi.importActual<typeof import('../../../api/_lib/auth')>('../../../api/_lib/auth');
+  return {
+    getAuthContext: vi.fn(),
+    requireTier: actual.requireTier,
+  };
+});
 
 vi.mock('../../../api/_lib/usage', () => ({
   checkAndIncrementUsage: vi.fn(),
@@ -66,6 +71,7 @@ describe('vetting handler', () => {
   });
 
   it('returns 400 when idea is missing', async () => {
+    vi.mocked(getAuthContext).mockResolvedValue({ uid: 'user1', tier: 'builder' } as any);
     const req = createMockRequest({ method: 'POST', body: {} });
     const res = createMockResponse();
     await handler(req as any, res as any);
@@ -73,6 +79,7 @@ describe('vetting handler', () => {
   });
 
   it('returns 400 when idea.headline is missing', async () => {
+    vi.mocked(getAuthContext).mockResolvedValue({ uid: 'user1', tier: 'builder' } as any);
     const req = createMockRequest({ method: 'POST', body: { idea: { id: '1' } } });
     const res = createMockResponse();
     await handler(req as any, res as any);
@@ -128,7 +135,7 @@ describe('vetting handler', () => {
   });
 
   it('returns 429 when usage limit reached', async () => {
-    vi.mocked(getAuthContext).mockResolvedValue({ uid: 'user1', tier: 'free' } as any);
+    vi.mocked(getAuthContext).mockResolvedValue({ uid: 'user1', tier: 'builder' } as any);
     vi.mocked(getCached).mockResolvedValue(null);
     vi.mocked(checkAndIncrementUsage).mockResolvedValue({ allowed: false, limit: 1 } as any);
 
@@ -176,18 +183,30 @@ describe('vetting handler', () => {
     expect(prompt).toContain('Real Idea');
   });
 
-  it('skips usage check when user is unauthenticated', async () => {
+  it('returns 401 when unauthenticated (TE-13)', async () => {
     vi.mocked(getAuthContext).mockResolvedValue(null);
-    vi.mocked(getCached).mockResolvedValue(null);
-    vi.mocked(generateWithAI).mockResolvedValue(mockVettingData);
-    vi.mocked(normalizeAIResponse).mockReturnValue(mockVettingData as any);
 
     const req = createMockRequest({ method: 'POST', body: { idea: mockIdea } });
     const res = createMockResponse();
 
     await handler(req as any, res as any);
 
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(getCached).not.toHaveBeenCalled();
     expect(checkAndIncrementUsage).not.toHaveBeenCalled();
-    expect(generateWithAI).toHaveBeenCalled();
+    expect(generateWithAI).not.toHaveBeenCalled();
+  });
+
+  it('returns 403 for free/pro tier — vetting is Builder-only (TE-13)', async () => {
+    vi.mocked(getAuthContext).mockResolvedValue({ uid: 'user1', tier: 'pro' } as any);
+
+    const req = createMockRequest({ method: 'POST', body: { idea: mockIdea } });
+    const res = createMockResponse();
+
+    await handler(req as any, res as any);
+
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ upgradeRequired: true }));
+    expect(generateWithAI).not.toHaveBeenCalled();
   });
 });

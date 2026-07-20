@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { generateWithAI, Type, getToday } from '../_lib/ai-provider';
 import { getCached, setCached } from '../_lib/cache';
-import { getAuthContext } from '../_lib/auth';
+import { getAuthContext, requireTier } from '../_lib/auth';
 import { checkAndIncrementUsage } from '../_lib/usage';
 
 const schema = {
@@ -22,8 +22,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   // Auth context from verified token (never from body)
   const authCtx = await getAuthContext(req);
-  const uid = authCtx?.uid;
-  const tier = authCtx?.tier || 'free';
+  if (!authCtx) return res.status(401).json({ error: 'Authentication required.' });
+  const tierCheck = requireTier(authCtx, 'builder');
+  if (tierCheck) return res.status(tierCheck.status).json(tierCheck.body);
+  const { uid, tier } = authCtx;
 
   const featureType = 'alerts';
   const cacheKey = `alerts_${getToday()}`;
@@ -32,11 +34,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const cached = await getCached(cacheKey);
     if (cached) return res.json(cached);
 
-    if (uid) {
-      const usage = await checkAndIncrementUsage(uid, tier, featureType);
-      if (!usage.allowed) {
-        return res.status(429).json({ error: 'Alert limit reached.' });
-      }
+    const usage = await checkAndIncrementUsage(uid, tier, featureType);
+    if (!usage.allowed) {
+      return res.status(429).json({ error: 'Alert limit reached.' });
     }
 
     const data = await generateWithAI('Generate 3-5 high-signal Market Trend Alerts.', schema);

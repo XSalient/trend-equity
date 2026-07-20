@@ -55,9 +55,14 @@ vi.mock('../../../api/_lib/usage', () => ({
   buildUsageResponse: mockBuildUsageResponse,
 }));
 
-vi.mock('../../../api/_lib/auth', () => ({
-  getAuthContext: mockGetAuthContext,
-}));
+vi.mock('../../../api/_lib/auth', async () => {
+  const actual =
+    await vi.importActual<typeof import('../../../api/_lib/auth')>('../../../api/_lib/auth');
+  return {
+    getAuthContext: mockGetAuthContext,
+    requireTier: actual.requireTier,
+  };
+});
 
 import handler from '../../../api/_handlers/action-plan';
 
@@ -69,8 +74,8 @@ describe('POST /api/generate/action-plan', () => {
     mockCheckAndIncrementUsage.mockResolvedValue({ allowed: true, remaining: 2, limit: 3 });
     mockBuildUsageResponse.mockResolvedValue(MOCK_USAGE_RESPONSE);
     mockGenerateWithAI.mockResolvedValue(MOCK_ACTION_PLAN_RESPONSE);
-    // Auth: authenticated user by default (most action tests use a uid)
-    mockGetAuthContext.mockResolvedValue({ uid: 'user-1', tier: 'free' });
+    // Auth: authenticated Builder user by default — action-plan is Builder-only (TE-13)
+    mockGetAuthContext.mockResolvedValue({ uid: 'user-1', tier: 'builder' });
   });
 
   // ── Positive cases ────────────────────────────────────────────────
@@ -167,7 +172,7 @@ describe('POST /api/generate/action-plan', () => {
     expect(res._body.error).toContain('Method not allowed');
   });
 
-  it('returns 429 when free tier limit is exceeded', async () => {
+  it('returns 429 when daily usage limit is exceeded', async () => {
     mockCheckAndIncrementUsage.mockResolvedValue({ allowed: false, remaining: 0, limit: 3 });
 
     const req = createMockRequest({ body: { idea: MOCK_IDEA } });
@@ -177,6 +182,31 @@ describe('POST /api/generate/action-plan', () => {
 
     expect(res._status).toBe(429);
     expect(res._body.error).toContain('limit reached');
+    expect(mockGenerateWithAI).not.toHaveBeenCalled();
+  });
+
+  it('returns 401 when unauthenticated (TE-13)', async () => {
+    mockGetAuthContext.mockResolvedValue(null);
+
+    const req = createMockRequest({ body: { idea: MOCK_IDEA } });
+    const res = createMockResponse();
+
+    await handler(req, res);
+
+    expect(res._status).toBe(401);
+    expect(mockGenerateWithAI).not.toHaveBeenCalled();
+  });
+
+  it('returns 403 for free/pro tier — action-plan is Builder-only (TE-13)', async () => {
+    mockGetAuthContext.mockResolvedValue({ uid: 'user-1', tier: 'pro' });
+
+    const req = createMockRequest({ body: { idea: MOCK_IDEA } });
+    const res = createMockResponse();
+
+    await handler(req, res);
+
+    expect(res._status).toBe(403);
+    expect(res._body.upgradeRequired).toBe(true);
     expect(mockGenerateWithAI).not.toHaveBeenCalled();
   });
 

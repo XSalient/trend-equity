@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { generateWithAI, Type, normalizeAIResponse } from '../_lib/ai-provider';
 import { getCached, setCached } from '../_lib/cache';
-import { getAuthContext } from '../_lib/auth';
+import { getAuthContext, requireTier } from '../_lib/auth';
 import { checkAndIncrementUsage, buildUsageResponse } from '../_lib/usage';
 
 const VALID_HORIZONS = ['2027', '2030', '2035'] as const;
@@ -44,8 +44,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   const authCtx = await getAuthContext(req);
-  const uid = authCtx?.uid;
-  const tier = authCtx?.tier || 'free';
+  if (!authCtx) return res.status(401).json({ error: 'Authentication required.' });
+  const tierCheck = requireTier(authCtx, 'builder');
+  if (tierCheck) return res.status(tierCheck.status).json(tierCheck.body);
+  const { uid, tier } = authCtx;
 
   // FIX (D-1, S-6): Whitelist horizon values — never trust free-form input in prompts
   const rawHorizon = req.body?.horizon;
@@ -66,14 +68,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
-    if (uid) {
-      const usage = await checkAndIncrementUsage(uid, tier, featureType);
-      if (!usage.allowed) {
-        return res.status(429).json({
-          error: 'Daily futurecasting limit reached. Upgrade for more analyses.',
-          _usage: { featureType, remaining: 0, limit: usage.limit, used: usage.limit },
-        });
-      }
+    const usage = await checkAndIncrementUsage(uid, tier, featureType);
+    if (!usage.allowed) {
+      return res.status(429).json({
+        error: 'Daily futurecasting limit reached. Upgrade for more analyses.',
+        _usage: { featureType, remaining: 0, limit: usage.limit, used: usage.limit },
+      });
     }
 
     const rawData = await generateWithAI(

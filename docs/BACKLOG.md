@@ -33,12 +33,12 @@ Detailed steps for TE-01…TE-10: [2026-07-08 pain-point remediation plan](super
 
 Full evidence and per-surface inventory: [2026-07-08 UI, Feature & Tier-Promise Audit](audits/2026-07-08-ui-feature-tier-audit.md).
 
-| ID    | Task                                                                                              | Status           | Owner  | Effort |
-| ----- | ------------------------------------------------------------------------------------------------- | ---------------- | ------ | ------ |
+| ID    | Task                                                                                              | Status            | Owner  | Effort |
+| ----- | ------------------------------------------------------------------------------------------------- | ----------------- | ------ | ------ |
 | TE-12 | Production Firestore rules: replace dev-mode allow-all with per-collection least-privilege        | done (2026-07-20) | Claude | M      |
-| TE-13 | Server-side tier gates + auth requirement on all generate endpoints (copy `analyze-idea` pattern) | todo        | —      | M      |
-| TE-14 | Replace fake client-side upgrade flow with honest pre-Stripe state (waitlist CTA)                 | todo        | —      | S      |
-| TE-15 | Fix enterprise lead capture (anonymous submits fail rules) via serverless endpoint                | todo        | —      | S      |
+| TE-13 | Server-side tier gates + auth requirement on all generate endpoints (copy `analyze-idea` pattern) | done (2026-07-20) | Claude | M      |
+| TE-14 | Replace fake client-side upgrade flow with honest pre-Stripe state (waitlist CTA)                 | todo              | —      | S      |
+| TE-15 | Fix enterprise lead capture (anonymous submits fail rules) via serverless endpoint                | todo              | —      | S      |
 
 **TE-12 user story:** As the product owner, I want Firestore rules that only let users write their own safe fields, so a signed-in user can't self-upgrade to Builder, reset quotas, or edit the global feed/config from the browser console.
 
@@ -50,14 +50,16 @@ Full evidence and per-surface inventory: [2026-07-08 UI, Feature & Tier-Promise 
 
 ## Next — P1 (wave 2): audit follow-ups, UX & honesty
 
-| ID    | Task                                                                                                                                                                                                | Status | Owner | Effort |
-| ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ | ----- | ------ |
-| TE-16 | Anonymous read path for the daily feed (public flag + rules, or API read) so logged-out visitors see the product                                                                                    | todo   | —     | S      |
-| TE-17 | Cron for daily generation (before the 07:00 UTC digest cron) — remove dependence on a human admin                                                                                                   | todo   | —     | S      |
-| TE-18 | Alerts: generate only for Builder tier; stop hidden AI spend for Free/Pro who can't see the bell                                                                                                    | todo   | —     | S      |
-| TE-19 | Dead-UI fixes: 2 dead upgrade buttons, footer legal links, click-to-open export menu (touch), comment relative timestamps, FilterBar top-16 stickiness, Tailwind literal classes in PricingSection  | todo   | —     | M      |
-| TE-20 | `updateIdea` must also sync the Weekly Best list (fold into TE-10 hook split)                                                                                                                       | todo   | —     | S      |
-| TE-21 | Promise/copy reconciliation: saves wording, dead digest weekly toggle, co-founder button, X/Twitter signal claims, PRD digest + validation-toolkit tier corrections (next-steps cap moved to TE-25) | todo   | —     | M      |
+| ID    | Task                                                                                                                                                                                                | Status            | Owner  | Effort |
+| ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------- | ------ | ------ |
+| TE-16 | Anonymous read path for the daily feed (public flag + rules, or API read) so logged-out visitors see the product                                                                                    | todo              | —      | S      |
+| TE-17 | Cron for daily generation (before the 07:00 UTC digest cron) — remove dependence on a human admin                                                                                                   | todo              | —      | S      |
+| TE-18 | Alerts: generate only for Builder tier; stop hidden AI spend for Free/Pro who can't see the bell                                                                                                    | done (2026-07-20) | Claude | S      |
+| TE-19 | Dead-UI fixes: 2 dead upgrade buttons, footer legal links, click-to-open export menu (touch), comment relative timestamps, FilterBar top-16 stickiness, Tailwind literal classes in PricingSection  | todo              | —      | M      |
+| TE-20 | `updateIdea` must also sync the Weekly Best list (fold into TE-10 hook split)                                                                                                                       | todo              | —      | S      |
+| TE-21 | Promise/copy reconciliation: saves wording, dead digest weekly toggle, co-founder button, X/Twitter signal claims, PRD digest + validation-toolkit tier corrections (next-steps cap moved to TE-25) | todo              | —      | M      |
+
+**TE-18 note:** shipped as a side effect of TE-13 — `alerts.ts` now 403s below Builder tier, so `useAlerts`'s per-signed-in-user generation attempt can no longer trigger AI spend for Free/Pro (it just gets a harmless rejected call). The client still fires that doomed request rather than skipping it client-side; leaving that micro-optimization out of scope here.
 
 ## Next — P1 (wave 3): free-tier value ladder
 
@@ -171,6 +173,8 @@ Sequencing note: do TE-04 before TE-06 — observability first tells us how bad 
 
 | ID    | Task                                                                                                        | Shipped    | Commits          |
 | ----- | ----------------------------------------------------------------------------------------------------------- | ---------- | ---------------- |
+| TE-13 | Server-side auth + tier gates on all 8 previously-ungated generate endpoints                                | 2026-07-20 | (this commit)    |
+| TE-18 | Alerts stop generating (and spending AI budget) for Free/Pro — side effect of TE-13's Builder gate          | 2026-07-20 | (this commit)    |
 | TE-12 | Production Firestore rules: per-collection least-privilege security (prevent self-upgrade, quota tampering) | 2026-07-20 | 6fd7159          |
 | TE-01 | Restrict daily generation trigger to authed users + today's date only                                       | 2026-07-08 | (this commit)    |
 | TE-02 | Firestore-backed per-IP daily limit on daily generation (found the old limiter was dead code, never called) | 2026-07-08 | (this commit)    |

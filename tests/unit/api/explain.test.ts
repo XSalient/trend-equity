@@ -11,9 +11,14 @@ vi.mock('../../../api/_lib/cache', () => ({
   setCached: vi.fn(),
 }));
 
-vi.mock('../../../api/_lib/auth', () => ({
-  getAuthContext: vi.fn(),
-}));
+vi.mock('../../../api/_lib/auth', async () => {
+  const actual =
+    await vi.importActual<typeof import('../../../api/_lib/auth')>('../../../api/_lib/auth');
+  return {
+    getAuthContext: vi.fn(),
+    requireTier: actual.requireTier,
+  };
+});
 
 vi.mock('../../../api/_lib/usage', () => ({
   checkAndIncrementUsage: vi.fn(),
@@ -40,6 +45,7 @@ describe('explain handler', () => {
   });
 
   it('returns 400 when idea is missing', async () => {
+    vi.mocked(getAuthContext).mockResolvedValue({ uid: 'user1', tier: 'builder' } as any);
     const req = createMockRequest({ method: 'POST', body: { section: 'Revenue Model' } });
     const res = createMockResponse();
     await handler(req as any, res as any);
@@ -48,6 +54,7 @@ describe('explain handler', () => {
   });
 
   it('returns 400 when idea.headline is missing', async () => {
+    vi.mocked(getAuthContext).mockResolvedValue({ uid: 'user1', tier: 'builder' } as any);
     const req = createMockRequest({
       method: 'POST',
       body: { idea: { id: '1' }, section: 'Revenue' },
@@ -59,6 +66,7 @@ describe('explain handler', () => {
   });
 
   it('returns 400 when section is missing', async () => {
+    vi.mocked(getAuthContext).mockResolvedValue({ uid: 'user1', tier: 'builder' } as any);
     const req = createMockRequest({ method: 'POST', body: { idea: mockIdea } });
     const res = createMockResponse();
     await handler(req as any, res as any);
@@ -67,7 +75,7 @@ describe('explain handler', () => {
   });
 
   it('returns cached explanation on cache hit', async () => {
-    vi.mocked(getAuthContext).mockResolvedValue({ uid: 'user1', tier: 'pro' } as any);
+    vi.mocked(getAuthContext).mockResolvedValue({ uid: 'user1', tier: 'builder' } as any);
     vi.mocked(getCached).mockResolvedValue(mockExplanation);
 
     const req = createMockRequest({
@@ -83,7 +91,7 @@ describe('explain handler', () => {
   });
 
   it('generates explanation when cache misses', async () => {
-    vi.mocked(getAuthContext).mockResolvedValue({ uid: 'user1', tier: 'pro' } as any);
+    vi.mocked(getAuthContext).mockResolvedValue({ uid: 'user1', tier: 'builder' } as any);
     vi.mocked(getCached).mockResolvedValue(null);
     vi.mocked(checkAndIncrementUsage).mockResolvedValue({ allowed: true, limit: 20 } as any);
     vi.mocked(generateWithAI).mockResolvedValue(mockExplanation);
@@ -102,7 +110,7 @@ describe('explain handler', () => {
   });
 
   it('passes additional context to the AI prompt', async () => {
-    vi.mocked(getAuthContext).mockResolvedValue({ uid: 'user1', tier: 'pro' } as any);
+    vi.mocked(getAuthContext).mockResolvedValue({ uid: 'user1', tier: 'builder' } as any);
     vi.mocked(getCached).mockResolvedValue(null);
     vi.mocked(checkAndIncrementUsage).mockResolvedValue({ allowed: true, limit: 20 } as any);
     vi.mocked(generateWithAI).mockResolvedValue(mockExplanation);
@@ -121,7 +129,7 @@ describe('explain handler', () => {
   });
 
   it('returns 429 when usage limit reached', async () => {
-    vi.mocked(getAuthContext).mockResolvedValue({ uid: 'user1', tier: 'free' } as any);
+    vi.mocked(getAuthContext).mockResolvedValue({ uid: 'user1', tier: 'builder' } as any);
     vi.mocked(getCached).mockResolvedValue(null);
     vi.mocked(checkAndIncrementUsage).mockResolvedValue({ allowed: false, limit: 5 } as any);
 
@@ -135,7 +143,7 @@ describe('explain handler', () => {
   });
 
   it('returns 500 on AI generation error', async () => {
-    vi.mocked(getAuthContext).mockResolvedValue({ uid: 'user1', tier: 'pro' } as any);
+    vi.mocked(getAuthContext).mockResolvedValue({ uid: 'user1', tier: 'builder' } as any);
     vi.mocked(getCached).mockResolvedValue(null);
     vi.mocked(checkAndIncrementUsage).mockResolvedValue({ allowed: true, limit: 20 } as any);
     vi.mocked(generateWithAI).mockRejectedValue(new Error('Service error'));
@@ -150,7 +158,7 @@ describe('explain handler', () => {
   });
 
   it('sanitizes dangerous characters in section name before prompt', async () => {
-    vi.mocked(getAuthContext).mockResolvedValue({ uid: 'user1', tier: 'pro' } as any);
+    vi.mocked(getAuthContext).mockResolvedValue({ uid: 'user1', tier: 'builder' } as any);
     vi.mocked(getCached).mockResolvedValue(null);
     vi.mocked(checkAndIncrementUsage).mockResolvedValue({ allowed: true, limit: 20 } as any);
     vi.mocked(generateWithAI).mockResolvedValue(mockExplanation);
@@ -168,17 +176,28 @@ describe('explain handler', () => {
     expect(prompt).toContain('Revenue');
   });
 
-  it('skips usage check for unauthenticated users', async () => {
+  it('returns 401 when unauthenticated (TE-13)', async () => {
     vi.mocked(getAuthContext).mockResolvedValue(null);
-    vi.mocked(getCached).mockResolvedValue(null);
-    vi.mocked(generateWithAI).mockResolvedValue(mockExplanation);
 
     const req = createMockRequest({ method: 'POST', body: { idea: mockIdea, section: 'Revenue' } });
     const res = createMockResponse();
 
     await handler(req as any, res as any);
 
+    expect(res.status).toHaveBeenCalledWith(401);
     expect(checkAndIncrementUsage).not.toHaveBeenCalled();
-    expect(generateWithAI).toHaveBeenCalled();
+    expect(generateWithAI).not.toHaveBeenCalled();
+  });
+
+  it('returns 403 for free/pro tier — explain is Builder-only (TE-13)', async () => {
+    vi.mocked(getAuthContext).mockResolvedValue({ uid: 'user1', tier: 'pro' } as any);
+
+    const req = createMockRequest({ method: 'POST', body: { idea: mockIdea, section: 'Revenue' } });
+    const res = createMockResponse();
+
+    await handler(req as any, res as any);
+
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(generateWithAI).not.toHaveBeenCalled();
   });
 });

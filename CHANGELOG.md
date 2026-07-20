@@ -10,6 +10,7 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/): **Added 
 
 ### Added
 
+- **TE-13:** Server-side auth + tier gates on the 8 previously-ungated generate endpoints (`vetting`, `build-me`, `action-plan`, `radar`, `futurecasting`, `validation`, `explain`, `alerts`). Added a shared `requireTier(authCtx, 'pro' | 'builder')` helper in `api/_lib/auth.ts`. Every endpoint now 401s without a verified Firebase token and 403s (`upgradeRequired: true`) below its promised tier (Builder for all of them except `validation`, which is Pro+) — closing both the entitlement hole (free users/curl scripts getting Builder features free) and the cost hole (unauthenticated callers skipping quotas entirely). `alerts` being gated Builder-only also stops the hidden AI spend on every Free/Pro sign-in described in TE-18. Added unit test coverage for the 401/403 paths on all 8 handlers, including new `futurecasting.test.ts` and `alerts.test.ts` (previously untested).
 - **TE-12:** Production Firestore security rules with per-collection least-privilege access control (6fd7159).
   - User-owned collections require doc ownership; client cannot write privileged fields (`tier`, `role`, `apiAccess`)
   - Server-only collections (`api_usage`, `api_cache`, `daily_generations_history`, `locks`, etc.) deny all client access

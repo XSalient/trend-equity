@@ -29,9 +29,14 @@ vi.mock('../../../api/_lib/cache', () => ({
   setCached: vi.fn(),
 }));
 
-vi.mock('../../../api/_lib/auth', () => ({
-  getAuthContext: vi.fn(),
-}));
+vi.mock('../../../api/_lib/auth', async () => {
+  const actual =
+    await vi.importActual<typeof import('../../../api/_lib/auth')>('../../../api/_lib/auth');
+  return {
+    getAuthContext: vi.fn(),
+    requireTier: actual.requireTier,
+  };
+});
 
 vi.mock('../../../api/_lib/usage', () => ({
   checkAndIncrementUsage: vi.fn(),
@@ -56,10 +61,29 @@ describe('build-me handler', () => {
   });
 
   it('returns 400 for missing idea', async () => {
+    vi.mocked(getAuthContext).mockResolvedValue({ uid: 'user1', tier: 'builder', isAdmin: false });
     const req = createMockRequest({ method: 'POST', body: {} });
     const res = createMockResponse();
     await handler(req as any, res as any);
     expect(res.status).toHaveBeenCalledWith(400);
+  });
+
+  it('returns 401 when unauthenticated (TE-13)', async () => {
+    vi.mocked(getAuthContext).mockResolvedValue(null);
+    const req = createMockRequest({ method: 'POST', body: { idea: { id: '1', headline: 'X' } } });
+    const res = createMockResponse();
+    await handler(req as any, res as any);
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(generateWithAI).not.toHaveBeenCalled();
+  });
+
+  it('returns 403 for free/pro tier — build-me is Builder-only (TE-13)', async () => {
+    vi.mocked(getAuthContext).mockResolvedValue({ uid: 'user1', tier: 'pro', isAdmin: false });
+    const req = createMockRequest({ method: 'POST', body: { idea: { id: '1', headline: 'X' } } });
+    const res = createMockResponse();
+    await handler(req as any, res as any);
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(generateWithAI).not.toHaveBeenCalled();
   });
 
   it('generates build pack when not cached', async () => {
