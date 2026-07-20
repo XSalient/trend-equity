@@ -111,7 +111,6 @@ Full implementation plan: [2026-07-21 agent performance optimization](superpower
 | ----- | ---------------------------------------------------------------------------------- | ----------- | ------ | ------ |
 | TE-32 | Parallelize AI handler pipeline (pre-fetch embeddings + signals during generation) | todo        | —      | M      |
 | TE-33 | Merge code+docs workflow (update BACKLOG/CHANGELOG inline, single commit)          | todo        | —      | S      |
-| TE-34 | Pre-load memory manifest (hot files, key patterns, line ranges)                    | in progress | Claude | S      |
 | TE-35 | Auto-verify deployments (smoke-test key routes post-Vercel push)                   | todo        | —      | M      |
 | TE-36 | Shard E2E tests by feature area (parallel Playwright execution)                    | todo        | —      | M      |
 | TE-37 | Optimize Vitest threading (enable parallel test execution)                         | todo        | —      | S      |
@@ -202,6 +201,7 @@ Sequencing note: do TE-04 before TE-06 — observability first tells us how bad 
 
 | ID    | Task                                                                                                        | Shipped    | Commits          |
 | ----- | ----------------------------------------------------------------------------------------------------------- | ---------- | ---------------- |
+| TE-34 | Pre-load memory manifest (hot files, key patterns, line ranges)                                             | 2026-07-21 | d6e7060          |
 | TE-15 | Anonymous lead capture: serverless endpoint accepts form submissions, stores in Firestore with server auth  | 2026-07-21 | (this commit)    |
 | TE-14 | Honest waitlist flow: replace fake tier upgrades with "Join Waitlist" modal, remove deceptive UI state      | 2026-07-21 | a6a6a14          |
 | TE-13 | Server-side auth + tier gates on all 8 previously-ungated generate endpoints                                | 2026-07-20 | (this commit)    |

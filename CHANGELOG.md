@@ -10,6 +10,12 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/): **Added 
 
 ### Added
 
+- **TE-34:** Hot files manifest for agent context caching (0 lines touched, saves ~3–4 min per story).
+  - New memory file: `hot_files_manifest.md` — 10 frequently-touched files with line ranges
+  - Organized by frontend/backend core/handlers; includes Firestore transaction, tier lookup, AI generation patterns
+  - Indexed in memory system so agents don't re-read architecture docs every session
+  - Will reduce onboarding time for new agent sessions and improve story completion velocity
+
 - **TE-15:** Anonymous enterprise lead capture via serverless endpoint — B2B funnel no longer silently drops leads.
   - New endpoint: `POST /api/enterprise-lead` (standalone, not in `/api/generate/` dispatch) — accepts anonymous form submissions
   - Rate limiting: 5 per IP per hour (Firestore-backed, survives across instances)
