@@ -183,6 +183,7 @@ If the Wave 2 evidence layer is prioritized, consider adding a single AI-estimat
 **Decision:** Adopt a 6-story performance optimization epic (TE-32 through TE-37) targeting 50% reduction in agent story completion time (30 min → 15 min).
 
 **Root causes (ranked by impact):**
+
 1. Sequential backend AI operations (5–6s waste) — Promise.all for parallel pre-fetches (TE-32)
 2. Redundant discovery per session (3–4 min waste) — Pre-load memory manifest of hot files (TE-34)
 3. Serialized post-story workflow (2 min waste) — Merge docs+code updates into single session (TE-33)

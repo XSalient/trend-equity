@@ -4,7 +4,8 @@
 
 **Goal:** Reduce agent story completion time from ~30 min to ~15 min by eliminating redundant discovery, parallelizing independent backend operations, and streamlining the post-story workflow. This unlocks faster iteration velocity and improves context efficiency.
 
-**Architecture:** 
+**Architecture:**
+
 - Backend: Parallelize AI handler pipeline operations (`generateWithAI`, `semanticDedup`, `fetchEvidence` can run in parallel where independent)
 - Agent workflow: Merge documentation updates into code-writing phase, pre-load hot-file context
 - Testing: Enable parallel E2E test sharding, parallelize Vitest runs
@@ -18,12 +19,12 @@
 
 ## Task Summary
 
-| #   | Task                                                          | Priority | Effort | Time saved |
-| --- | ------------------------------------------------------------- | -------- | ------ | ---------- |
-| 1   | Parallelize AI handler pipeline (Promise.all dedup + evidence) | P1       | M      | 5–6s/call  |
-| 2   | Merge docs+code workflow (update BACKLOG/CHANGELOG inline)     | P1       | S      | 2 min/story |
+| #   | Task                                                           | Priority | Effort | Time saved    |
+| --- | -------------------------------------------------------------- | -------- | ------ | ------------- |
+| 1   | Parallelize AI handler pipeline (Promise.all dedup + evidence) | P1       | M      | 5–6s/call     |
+| 2   | Merge docs+code workflow (update BACKLOG/CHANGELOG inline)     | P1       | S      | 2 min/story   |
 | 3   | Pre-load memory manifest for hot files & patterns              | P1       | S      | 3–4 min/story |
-| 4   | Auto-verify deployments (smoke-test key routes post-push)      | P1       | M      | 2 min/story |
+| 4   | Auto-verify deployments (smoke-test key routes post-push)      | P1       | M      | 2 min/story   |
 | 5   | Shard E2E tests by feature area (parallel Playwright)          | P2       | M      | 2–3 min/story |
 | 6   | Optimize Vitest threading (enable parallel test execution)     | P2       | S      | 1–2 min/story |
 
@@ -34,14 +35,17 @@
 **User story:** As an agent executing generation requests, I want the AI handler to fetch embeddings and market signals in parallel with the main generation call, so that independent operations don't serialize and add latency unnecessarily.
 
 **Current behavior:**
+
 ```ts
 const aiResult = await generateWithAI(...);        // 8s
 const deduped = await semanticDedupeCandidates(aiResult); // 2s (waits for aiResult)
 const evidence = await fetchEvidence(aiResult);   // 2–3s (waits for aiResult)
 ```
+
 **Total:** ~12–13s. Only the final 2s is necessary waiting.
 
 **Target behavior:**
+
 ```ts
 const [aiResult, priorEmbeddings, signals] = await Promise.all([
   generateWithAI(...),         // 8s (in parallel)
@@ -51,9 +55,11 @@ const [aiResult, priorEmbeddings, signals] = await Promise.all([
 const deduped = await semanticDedupeCandidates(aiResult, priorEmbeddings); // 2s
 const evidence = await fetchEvidence(aiResult, signals);  // 1s (cached signals)
 ```
+
 **Total:** ~10–11s. Saves 2–3s per call by pre-fetching independent data.
 
 **Files:**
+
 - Modify: `api/_lib/ai-provider.ts` (if handler logic is centralized)
 - Modify: `api/_handlers/daily.ts` (or wherever `generateWithAI` is called)
 - Modify: `api/_handlers/analyze-idea.ts` (same pattern)
@@ -84,6 +90,7 @@ const evidence = await fetchEvidence(aiResult, signals);  // 1s (cached signals)
 **User story:** As an agent, I want to update BACKLOG.md, CHANGELOG.md, and DECISIONS.md in the same edit session as code, so I don't have a separate "docs update" step and can stage all changes in a single commit.
 
 **Current workflow (serialized):**
+
 1. Write code + tests (3–5 min)
 2. Commit code
 3. Update BACKLOG.md (mark done) — new edit session (1 min)
@@ -92,11 +99,13 @@ const evidence = await fetchEvidence(aiResult, signals);  // 1s (cached signals)
 6. Commit docs separately or amend (adds friction)
 
 **Target workflow (merged):**
+
 1. Write code + tests (3–5 min)
 2. Update BACKLOG.md, CHANGELOG.md, DECISIONS.md in same session (2 min, parallel edits)
 3. Single commit with all changes (code + docs together)
 
 **Files:**
+
 - Modify: `docs/BACKLOG.md` (on story completion)
 - Modify: `CHANGELOG.md` (on story completion)
 - Modify: `DECISIONS.md` (if decision made)
@@ -123,6 +132,7 @@ const evidence = await fetchEvidence(aiResult, signals);  // 1s (cached signals)
 **User story:** As an agent starting a new session, I want a memory manifest that lists the hot files, key patterns, and their offsets, so I don't re-read architecture docs every session.
 
 **Current flow (redundant discovery):**
+
 1. Agent reads CLAUDE.md architecture section (15–20 lines)
 2. Agent reads `src/types.ts` (understanding shared types)
 3. Agent reads `api/_lib/ai-provider.ts` (understanding AI layer)
@@ -130,11 +140,13 @@ const evidence = await fetchEvidence(aiResult, signals);  // 1s (cached signals)
 5. Agent reads tier-checking pattern from `auth.ts`
 
 **Target flow (pre-loaded):**
+
 1. Agent loads memory manifest at session start (list of key files + line ranges)
 2. Agent uses exact line ranges when referencing patterns
 3. Saves ~3–4 min per story via cached context
 
 **Files:**
+
 - Create: `.claude/projects/*/memory/hot_files_manifest.md` (new memory file)
 - Update: `MEMORY.md` to index the manifest
 
@@ -162,6 +174,7 @@ const evidence = await fetchEvidence(aiResult, signals);  // 1s (cached signals)
 **User story:** As an agent, I want key routes auto-verified after a Vercel deployment, so I don't spend 2 min manually checking the live site in a browser.
 
 **Current flow (manual, slow):**
+
 1. `git push` → Vercel starts deploy
 2. Wait ~2 min for build
 3. Manually navigate to `https://trend-equity.vercel.app` in browser
@@ -169,6 +182,7 @@ const evidence = await fetchEvidence(aiResult, signals);  // 1s (cached signals)
 5. Report "live and working"
 
 **Target flow (automated):**
+
 1. `git push` → Vercel starts deploy
 2. Deployment webhook or cron triggers smoke test
 3. Test hits key endpoints: `GET /`, `GET /api/status`, `POST /api/generate/daily` (with mock), tier gates
@@ -176,6 +190,7 @@ const evidence = await fetchEvidence(aiResult, signals);  // 1s (cached signals)
 5. Saves manual verification time
 
 **Files:**
+
 - Create: `tests/e2e/smoke-test.spec.ts` (new Playwright test suite — short, fast, critical paths only)
 - Create: `api/webhooks/deploy-complete.ts` (optional: triggered by Vercel deployment event, if needed; low priority)
 - Update: `.github/workflows/` or `vercel.json` (optional: trigger smoke test post-deploy)
@@ -204,16 +219,19 @@ const evidence = await fetchEvidence(aiResult, signals);  // 1s (cached signals)
 **User story:** As an agent running tests before merge, I want E2E tests to run in parallel by feature area, so the full test suite finishes in ~2 min instead of ~5 min.
 
 **Current behavior:**
+
 - Playwright runs tests **sequentially** (per CLAUDE.md: "sequential (non-parallel)").
 - All tests share one state (serial baseline prevents flakiness).
 - Total runtime: ~5 min.
 
 **Target behavior:**
+
 - Shard tests by feature: `feed.spec.ts`, `auth.spec.ts`, `tier-gates.spec.ts`, `saves.spec.ts` run in parallel.
 - Each shard gets its own database/auth state (isolated via unique test user or snapshot reset).
 - Total runtime: ~2–3 min (3–4 shards running at once).
 
 **Files:**
+
 - Reorganize: `tests/e2e/*.spec.ts` (group by feature, not sequential)
 - Modify: `playwright.config.ts` (enable workers, set `fullyParallel: false` per feature group or `true` if isolated)
 - Create: `tests/e2e/fixtures/` (shared setup/teardown for isolated test state)
@@ -242,16 +260,19 @@ const evidence = await fetchEvidence(aiResult, signals);  // 1s (cached signals)
 **User story:** As an agent running unit tests, I want Vitest to use multiple worker threads, so `npm run test:unit` finishes in ~1 min instead of ~2 min.
 
 **Current behavior:**
+
 - Vitest uses **Node environment** (from CLAUDE.md).
 - Default is single-threaded (sequential test files).
 - Runtime: ~2 min for 290 tests.
 
 **Target behavior:**
+
 - Enable Vitest workers (4 threads by default, auto-detect CPU count).
 - Tests run in parallel across files.
 - Runtime: ~1 min.
 
 **Files:**
+
 - Modify: `vitest.config.ts` (enable workers, set pool size)
 
 **Acceptance criteria:**
@@ -274,16 +295,19 @@ const evidence = await fetchEvidence(aiResult, signals);  // 1s (cached signals)
 ## Rollout Schedule
 
 **Week 1 (July 21–25):**
+
 - TE-29 (parallelize AI pipeline)
 - TE-30 (merge docs+code workflow)
 - TE-31 (pre-load memory manifest)
 
 **Week 2 (July 28–Aug 1):**
+
 - TE-32 (auto-verify deployments)
 - TE-33 (shard E2E tests)
 - TE-34 (Vitest threading)
 
 **Expected impact:**
+
 - Agent story time: 30 min → 15 min (50% reduction)
 - Test run time: 5 min → 3 min
 - Generation latency: 12s → 9s per call
