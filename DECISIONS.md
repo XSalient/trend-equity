@@ -157,6 +157,27 @@ If the Wave 2 evidence layer is prioritized, consider adding a single AI-estimat
 
 ---
 
+## TE-15: Anonymous Enterprise Lead Capture — Deployed (2026-07-21)
+
+**Decision:** Accept anonymous enterprise lead submissions via a serverless endpoint instead of direct Firestore writes (which fail the TE-12 security rules for unauthenticated users).
+
+**Implementation:**
+
+- New endpoint: `POST /api/enterprise-lead` (standalone serverless function, not part of `/api/generate/*` dispatch)
+- Validates required fields: `firstName`, `email`, `company`, `role`; optional `lastName`, `message`
+- Rate limiting: 5 submissions per IP per hour (Firestore-backed via `api_usage` collection)
+- Writes to `enterprise_leads` collection with server credentials (Admin SDK bypasses rules)
+- Adds server metadata: `createdAt`, `source: 'enterprise_landing'`, IP hash
+- Frontend (`EnterpriseLanding.tsx`): removed forced authentication flow, now calls serverless endpoint
+
+**Why not external services (StaticForms)?** Retains data ownership (Firestore, not third-party), enables future integrations (CRM sync, automation), and simplifies the data model. A serverless endpoint is zero-cost under Vercel's Hobby plan and keeps the lead pipeline internal.
+
+**Rules:** Firestore rules unchanged — `enterprise_leads` collection still shows `allow create: if request.auth != null` (client-side restriction), but Admin SDK writes bypass this. The rule prevents accidental client-side writes while allowing the server-side handler to work.
+
+**Testing:** Rate-limit transaction pattern tested via analogous `checkAndIncrementIpLimit` in `api/_lib/usage.ts`; handler tested locally before deploy.
+
+---
+
 ## Positioning Strategy — Active
 
 **Decision:** Reposition Trend-Equity as an "opportunity intelligence platform" (not just an idea feed). Log prediction accuracy early as evidence of value.

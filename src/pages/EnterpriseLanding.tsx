@@ -1,7 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
-import { db } from '../firebase';
 import { useAuth } from '../hooks/useAuth';
 import {
   TrendingUp,
@@ -113,11 +111,7 @@ export default function EnterpriseLanding() {
   const [submitted, setSubmitted] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (authReady && !user) {
-      handleLogin();
-    }
-  }, [authReady, user, handleLogin]);
+  // Note: No automatic login required. Anonymous VCs can submit leads via serverless endpoint.
 
   const scrollTo = (ref: React.RefObject<HTMLDivElement>) =>
     ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -135,11 +129,21 @@ export default function EnterpriseLanding() {
     }
     setSubmitting(true);
     try {
-      await addDoc(collection(db, 'enterprise_leads'), {
-        ...form,
-        createdAt: serverTimestamp(),
-        source: 'enterprise_landing',
+      const response = await fetch('/api/enterprise-lead', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
       });
+
+      if (!response.ok) {
+        const error = await response.json();
+        setSubmitError(
+          error.error || 'Something went wrong. Please try again or email us directly.'
+        );
+        setSubmitting(false);
+        return;
+      }
+
       setSubmitted(true);
     } catch {
       setSubmitError('Something went wrong. Please try again or email us directly.');
@@ -147,19 +151,6 @@ export default function EnterpriseLanding() {
       setSubmitting(false);
     }
   };
-
-  if (!authReady) {
-    return (
-      <div className="min-h-screen bg-zinc-950 text-white flex items-center justify-center">
-        <div className="text-center">
-          <div className="mb-4 flex justify-center">
-            <div className="animate-spin w-8 h-8 border-2 border-emerald-500/30 border-t-emerald-500 rounded-full" />
-          </div>
-          <p className="text-zinc-400">Loading...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white font-sans antialiased">

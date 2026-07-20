@@ -8,6 +8,16 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/): **Added 
 
 ## 2026-07-21
 
+### Added
+
+- **TE-15:** Anonymous enterprise lead capture via serverless endpoint — B2B funnel no longer silently drops leads.
+  - New endpoint: `POST /api/enterprise-lead` (standalone, not in `/api/generate/` dispatch) — accepts anonymous form submissions
+  - Rate limiting: 5 per IP per hour (Firestore-backed, survives across instances)
+  - Validates required fields (`firstName`, `email`, `company`, `role`); optional `lastName`, `message`
+  - Writes to `enterprise_leads` collection with server credentials (Admin SDK bypasses TE-12 rules for unauthenticated client restriction)
+  - Frontend: `EnterpriseLanding.tsx` removes forced authentication, calls serverless endpoint directly
+  - Rationale: retains data ownership (Firestore, not external service), enables future CRM/automation integrations
+
 ### Changed
 
 - **TE-14:** Replaced fake client-side tier upgrade flow with honest pre-Stripe state (a6a6a14).
