@@ -6,6 +6,22 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/): **Added 
 
 ## Unreleased
 
+## 2026-07-20
+
+### Added
+
+- **TE-12:** Production Firestore security rules with per-collection least-privilege access control (6fd7159).
+  - User-owned collections require doc ownership; client cannot write privileged fields (`tier`, `role`, `apiAccess`)
+  - Server-only collections (`api_usage`, `api_cache`, `daily_generations_history`, `locks`, etc.) deny all client access
+  - Shared collections (`daily_generations`, `comments`, `app_config`) use read-only or owner-gated write rules
+  - Enterprise lead capture gated to authenticated users; added sign-in redirect on `/enterprise` page
+  - Comprehensive unit tests (84 test cases) using `@firebase/rules-unit-testing`
+  - Closes critical security gaps: prevents self-upgrade to Builder, quota reset, and cross-user data tampering
+
+### Docs
+
+## Unreleased (pre-2026-07-20)
+
 ### Docs
 
 - Free-Tier Value Ladder decision (DECISIONS.md, 2026-07-10): Free = discover, Pro = evaluate, Builder = execute. Reclaims the audit's accidental giveaways as Pro value — full VC analysis, Market Evidence, CSV export, 7-step cap, comment posting — as backlog items TE-22…TE-26 with user stories; time-delayed free feed considered and parked. PRD tier table updated to the target matrix.

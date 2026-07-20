@@ -33,12 +33,12 @@ Detailed steps for TE-01…TE-10: [2026-07-08 pain-point remediation plan](super
 
 Full evidence and per-surface inventory: [2026-07-08 UI, Feature & Tier-Promise Audit](audits/2026-07-08-ui-feature-tier-audit.md).
 
-| ID    | Task                                                                                              | Status       | Owner | Effort |
-| ----- | ------------------------------------------------------------------------------------------------- | ------------ | ----- | ------ |
-| TE-12 | Production Firestore rules: replace dev-mode allow-all with per-collection least-privilege        | in progress  | Claude | M      |
-| TE-13 | Server-side tier gates + auth requirement on all generate endpoints (copy `analyze-idea` pattern) | todo        | —     | M      |
-| TE-14 | Replace fake client-side upgrade flow with honest pre-Stripe state (waitlist CTA)                 | todo        | —     | S      |
-| TE-15 | Fix enterprise lead capture (anonymous submits fail rules) via serverless endpoint                | todo        | —     | S      |
+| ID    | Task                                                                                              | Status           | Owner  | Effort |
+| ----- | ------------------------------------------------------------------------------------------------- | ---------------- | ------ | ------ |
+| TE-12 | Production Firestore rules: replace dev-mode allow-all with per-collection least-privilege        | done (2026-07-20) | Claude | M      |
+| TE-13 | Server-side tier gates + auth requirement on all generate endpoints (copy `analyze-idea` pattern) | todo        | —      | M      |
+| TE-14 | Replace fake client-side upgrade flow with honest pre-Stripe state (waitlist CTA)                 | todo        | —      | S      |
+| TE-15 | Fix enterprise lead capture (anonymous submits fail rules) via serverless endpoint                | todo        | —      | S      |
 
 **TE-12 user story:** As the product owner, I want Firestore rules that only let users write their own safe fields, so a signed-in user can't self-upgrade to Builder, reset quotas, or edit the global feed/config from the browser console.
 
@@ -90,23 +90,23 @@ Acceptance: comment input disabled for Free with "Posting is a Pro feature" inli
 
 Context: dedup already exists in two layers — a prompt "DO NOT REPEAT" block over the **last 3 days** ([`cache.ts`](../api/_lib/cache.ts) `getRecentIdeaHeadlines`, wired at [`daily.ts:118`](../api/_handlers/daily.ts)) and a hard semantic drop over the **last 30 days** at cosine ≥ **0.85** ([`embeddings.ts`](../api/_lib/embeddings.ts) `semanticDedupeCandidates`). The feed still feels repetitive because "same idea, different words" scores ~0.78–0.84 and passes the 0.85 gate, and the embedding text is only `headline: pitch`. These two items are low-effort, high-value, and independent of the P0 security work (they touch the generation pipeline, not Firestore rules).
 
-| ID    | Task                                                                                                                                          | Status | Owner | Effort |
-| ----- | ------------------------------------------------------------------------------------------------------------------------------------------- | ------ | ----- | ------ |
-| TE-27 | Widen the prompt "DO NOT REPEAT" window from 3 → **14 days** and include a one-line problem/target descriptor per prior idea, not just the headline | todo   | —     | S      |
+| ID    | Task                                                                                                                                                                           | Status | Owner | Effort |
+| ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------ | ----- | ------ |
+| TE-27 | Widen the prompt "DO NOT REPEAT" window from 3 → **14 days** and include a one-line problem/target descriptor per prior idea, not just the headline                            | todo   | —     | S      |
 | TE-28 | Tighten + enrich semantic dedup: lower default `DEDUP_SIM_THRESHOLD` 0.85 → **0.80**, and embed `headline + pitch + targetMarket + businessModel` instead of `headline: pitch` | todo   | —     | S      |
 
-**TE-27 user story:** As a user, I want the generator told the *last 14 days* of ideas (each as headline + a one-line problem/target-market summary) so it steers into genuinely new problem spaces up front, instead of only avoiding the last 3 days' headlines. Acceptance: `getRecentIdeaHeadlines` (or a new `getRecentIdeaSummaries`) lookback param is 14; the prompt block lists `headline — <short problem/target>`; both [`daily.ts`](../api/_handlers/daily.ts) and [`server.ts`](../server.ts) dev paths use the same window; existing tests updated.
+**TE-27 user story:** As a user, I want the generator told the _last 14 days_ of ideas (each as headline + a one-line problem/target-market summary) so it steers into genuinely new problem spaces up front, instead of only avoiding the last 3 days' headlines. Acceptance: `getRecentIdeaHeadlines` (or a new `getRecentIdeaSummaries`) lookback param is 14; the prompt block lists `headline — <short problem/target>`; both [`daily.ts`](../api/_handlers/daily.ts) and [`server.ts`](../server.ts) dev paths use the same window; existing tests updated.
 
-**TE-28 user story:** As a user, I want an idea that is the *same concept reworded* to be caught and dropped, so the feed stops feeling repetitive. Acceptance: default threshold in `getDedupeThreshold()` is 0.80 (still env-overridable via `DEDUP_SIM_THRESHOLD`); `embedText()` in [`embeddings.ts`](../api/_lib/embeddings.ts) concatenates headline, pitch, target market and business model; `.env.example` default updated; unit tests in `tests/unit/lib/embeddings.test.ts` cover the richer text + new default. Ship together with TE-29 so the 0.80 choice is validated by measured drop rates, not guessed.
+**TE-28 user story:** As a user, I want an idea that is the _same concept reworded_ to be caught and dropped, so the feed stops feeling repetitive. Acceptance: default threshold in `getDedupeThreshold()` is 0.80 (still env-overridable via `DEDUP_SIM_THRESHOLD`); `embedText()` in [`embeddings.ts`](../api/_lib/embeddings.ts) concatenates headline, pitch, target market and business model; `.env.example` default updated; unit tests in `tests/unit/lib/embeddings.test.ts` cover the richer text + new default. Ship together with TE-29 so the 0.80 choice is validated by measured drop rates, not guessed.
 
 ## Next — P1 (wave 4): idea diversity — measurement & structural fixes
 
 Sequencing: do **TE-29 first (or alongside TE-28)** — measure the near-miss distribution before committing to a threshold, per the Truman-Show "ground every claim in evidence" rule. TE-30/TE-31 are structural and can follow once the data says whether tuning alone was enough.
 
-| ID    | Task                                                                                                                              | Status | Owner | Effort |
-| ----- | ------------------------------------------------------------------------------------------------------------------------------- | ------ | ----- | ------ |
-| TE-29 | Dedup observability: record per-run semantic-dup drop count + the 0.75–0.85 near-miss similarity distribution in `qualityStats`  | todo   | —     | S      |
-| TE-30 | Intra-day diversity guard: cap how many near-neighbour ideas (above a cluster threshold) publish in a single day; enforce category spread across the published set | todo   | —     | M      |
+| ID    | Task                                                                                                                                                                              | Status | Owner | Effort |
+| ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ | ----- | ------ |
+| TE-29 | Dedup observability: record per-run semantic-dup drop count + the 0.75–0.85 near-miss similarity distribution in `qualityStats`                                                   | todo   | —     | S      |
+| TE-30 | Intra-day diversity guard: cap how many near-neighbour ideas (above a cluster threshold) publish in a single day; enforce category spread across the published set                | todo   | —     | M      |
 | TE-31 | Right-size daily volume: reduce `PUBLISH_COUNT` (35) and/or raise overgeneration (`CANDIDATES_PER_BATCH`), so the model isn't forced to pad with reworded filler to hit the count | todo   | —     | S      |
 
 **TE-29 user story:** As the product owner, I want each generation run to log how many candidates were dropped as semantic duplicates and the distribution of near-misses (candidates scoring 0.75–0.85 vs the prior 30 days), so I can tune the threshold from evidence instead of intuition. Acceptance: `semanticDedupeCandidates` returns per-candidate max-similarity; `daily.ts` writes `qualityStats.dedup = { dropped, nearMissBuckets }`; visible in `daily_generations_history`. Mirrors the TE-04 signal-observability pattern.
@@ -171,6 +171,7 @@ Sequencing note: do TE-04 before TE-06 — observability first tells us how bad 
 
 | ID    | Task                                                                                                        | Shipped    | Commits          |
 | ----- | ----------------------------------------------------------------------------------------------------------- | ---------- | ---------------- |
+| TE-12 | Production Firestore rules: per-collection least-privilege security (prevent self-upgrade, quota tampering) | 2026-07-20 | 6fd7159          |
 | TE-01 | Restrict daily generation trigger to authed users + today's date only                                       | 2026-07-08 | (this commit)    |
 | TE-02 | Firestore-backed per-IP daily limit on daily generation (found the old limiter was dead code, never called) | 2026-07-08 | (this commit)    |
 | —     | Project tracking system (this file, CHANGELOG, doc map, CLAUDE.md sync)                                     | 2026-07-08 | (this commit)    |
