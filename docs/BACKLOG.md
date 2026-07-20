@@ -107,14 +107,14 @@ Full implementation plan: [2026-07-21 agent performance optimization](superpower
 
 **Context:** Agent story completion takes ~30 min. Profiling identified three bottlenecks: (1) serialized backend AI operations (2–3s waste), (2) redundant discovery per session (3–4 min waste), (3) sequential post-story workflow (2 min waste). This epic targets ~15 min completion time (50% reduction).
 
-| ID    | Task                                                                               | Status | Owner | Effort |
-| ----- | ---------------------------------------------------------------------------------- | ------ | ----- | ------ |
-| TE-32 | Parallelize AI handler pipeline (pre-fetch embeddings + signals during generation) | todo   | —     | M      |
-| TE-33 | Merge code+docs workflow (update BACKLOG/CHANGELOG inline, single commit)          | todo   | —     | S      |
-| TE-34 | Pre-load memory manifest (hot files, key patterns, line ranges)                    | todo   | —     | S      |
-| TE-35 | Auto-verify deployments (smoke-test key routes post-Vercel push)                   | todo   | —     | M      |
-| TE-36 | Shard E2E tests by feature area (parallel Playwright execution)                    | todo   | —     | M      |
-| TE-37 | Optimize Vitest threading (enable parallel test execution)                         | todo   | —     | S      |
+| ID    | Task                                                                               | Status      | Owner  | Effort |
+| ----- | ---------------------------------------------------------------------------------- | ----------- | ------ | ------ |
+| TE-32 | Parallelize AI handler pipeline (pre-fetch embeddings + signals during generation) | todo        | —      | M      |
+| TE-33 | Merge code+docs workflow (update BACKLOG/CHANGELOG inline, single commit)          | todo        | —      | S      |
+| TE-34 | Pre-load memory manifest (hot files, key patterns, line ranges)                    | in progress | Claude | S      |
+| TE-35 | Auto-verify deployments (smoke-test key routes post-Vercel push)                   | todo        | —      | M      |
+| TE-36 | Shard E2E tests by feature area (parallel Playwright execution)                    | todo        | —      | M      |
+| TE-37 | Optimize Vitest threading (enable parallel test execution)                         | todo        | —      | S      |
 
 **TE-32 user story:** As an agent executing generation requests, I want the AI handler to fetch embeddings and market signals in parallel with the main generation call, so independent operations don't serialize. Acceptance: `Promise.all([generateWithAI(), getRecentEmbeddings(), getMarketSignals()])` in handlers; embeddings + signals pre-fetched during generation (not after); unit tests confirm concurrent execution; live handler latency improves by 2–3s per call; no functional change to output.
 
