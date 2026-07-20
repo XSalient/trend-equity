@@ -17,6 +17,7 @@ import {
   Wand2,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { WaitlistModal } from './WaitlistModal';
 
 interface PricingSectionProps {
   currentPlan: 'free' | 'pro' | 'builder';
@@ -115,6 +116,8 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
   onOpenApiAccess,
 }) => {
   const [pendingDowngrade, setPendingDowngrade] = useState<'free' | 'pro' | null>(null);
+  const [waitlistOpen, setWaitlistOpen] = useState(false);
+  const [waitlistTier, setWaitlistTier] = useState<'pro' | 'builder'>('pro');
   const validPlans: PlanKey[] = ['free', 'pro', 'builder'];
   const safePlan: PlanKey = validPlans.includes(currentPlan) ? currentPlan : 'free';
   const [selectedTier, setSelectedTier] = useState<PlanKey>(safePlan);
@@ -241,7 +244,10 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
           <button
             onClick={(e) => {
               e.stopPropagation();
-              if (currentPlan === 'free') onUpgrade('pro');
+              if (currentPlan === 'free') {
+                setWaitlistTier('pro');
+                setWaitlistOpen(true);
+              }
               if (currentPlan === 'builder') handleDowngradeClick('pro');
             }}
             disabled={currentPlan === 'pro'}
@@ -256,7 +262,7 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
               ? 'CURRENT PLAN'
               : currentPlan === 'builder'
                 ? 'DOWNGRADE'
-                : 'UPGRADE TO PRO'}
+                : 'JOIN WAITLIST'}
           </button>
         </div>
 
@@ -304,7 +310,10 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
           <button
             onClick={(e) => {
               e.stopPropagation();
-              if (currentPlan !== 'builder') onUpgrade('builder');
+              if (currentPlan !== 'builder') {
+                setWaitlistTier('builder');
+                setWaitlistOpen(true);
+              }
             }}
             disabled={currentPlan === 'builder'}
             className={`w-full py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${
@@ -313,7 +322,7 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
                 : 'bg-amber-600 hover:bg-amber-500 text-white shadow-lg shadow-amber-900/20'
             }`}
           >
-            {currentPlan === 'builder' ? 'CURRENT PLAN' : 'UPGRADE TO BUILDER'}
+            {currentPlan === 'builder' ? 'CURRENT PLAN' : 'JOIN WAITLIST'}
           </button>
         </div>
       </div>
@@ -398,6 +407,13 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
           )}
         </motion.div>
       </AnimatePresence>
+
+      {/* Waitlist Modal */}
+      <WaitlistModal
+        isOpen={waitlistOpen}
+        onClose={() => setWaitlistOpen(false)}
+        tier={waitlistTier}
+      />
 
       {/* Downgrade Confirmation Modal */}
       <AnimatePresence>

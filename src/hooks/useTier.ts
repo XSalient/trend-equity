@@ -60,16 +60,14 @@ export function useTier(user: User | null) {
   }, [user]);
 
   /**
-   * FIX (S-9): Tier changes are NOT persisted to Firestore from the client.
+   * TE-14: Removed fake upgrade functionality.
+   * Tier changes are NOT persisted to Firestore from the client.
    * Tier should only be changed server-side after verified payment (e.g., Stripe webhook).
-   * This function updates local UI state only — the tier reverts on reload until
-   * a server-side payment system writes the new tier via Admin SDK.
-   *
-   * FIX (U-2): Replaced alert() with notification state.
+   * Users join waitlist instead of fake upgrading.
    */
   const handleUpgrade = async (plan: Tier) => {
-    setTier(plan);
-    notify(`Upgraded to ${plan.toUpperCase()}! Reload will revert until payment is connected.`);
+    // TE-14: No longer used — waitlist modal handles tier interest instead
+    console.warn('[useTier] handleUpgrade called but should be replaced by waitlist modal');
   };
 
   const handleDowngrade = async (plan: Tier) => {
@@ -78,20 +76,16 @@ export function useTier(user: User | null) {
   };
 
   /**
-   * FIX (B-4): upgradeToBuilder now persists to Firestore for logged-in users.
-   * Still requires server-side payment verification to be complete.
-   *
-   * FIX (U-2): Replaced alert() with notification state.
+   * TE-14: upgradeToBuilder no longer fakes an upgrade.
+   * Tier changes only happen server-side after verified payment (Stripe webhook).
    */
   const upgradeToBuilder = async (onLoginNeeded: () => void) => {
     if (!user) {
       onLoginNeeded();
       return;
     }
-    setTier('builder');
-    // NOTE: This client-side Firestore write is blocked by updated security rules.
-    // Tier persistence requires a server-side payment webhook. Keeping local state change only.
-    notify('Builder tier unlocked for this session.');
+    // TE-14: No longer changes tier client-side. Waitlist modal handles tier interest.
+    notify('Join the waitlist to get Builder tier when payments launch.');
   };
 
   return {
