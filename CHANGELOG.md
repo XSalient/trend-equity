@@ -6,6 +6,17 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/): **Added 
 
 ## Unreleased
 
+## 2026-07-21
+
+### Changed
+
+- **TE-14:** Replaced fake client-side tier upgrade flow with honest pre-Stripe state (a6a6a14).
+  - Free users clicking "Upgrade" buttons now see a "Join Waitlist" modal instead of a deceptive tier change
+  - New `WaitlistModal.tsx` component: email signup with graceful fallback (no backend endpoint yet)
+  - `PricingSection.tsx` buttons now open waitlist modal instead of calling `onUpgrade()`
+  - Removed deceptive tier-change messaging from `useTier.ts` — `handleUpgrade()` no longer fakes state changes
+  - Closes the credibility gap: users are no longer shown a fake "CURRENT PLAN" badge that reverts on reload
+
 ## 2026-07-20
 
 ### Added

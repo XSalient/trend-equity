@@ -37,7 +37,7 @@ Full evidence and per-surface inventory: [2026-07-08 UI, Feature & Tier-Promise 
 | ----- | ------------------------------------------------------------------------------------------------- | ----------------- | ------ | ------ |
 | TE-12 | Production Firestore rules: replace dev-mode allow-all with per-collection least-privilege        | done (2026-07-20) | Claude | M      |
 | TE-13 | Server-side tier gates + auth requirement on all generate endpoints (copy `analyze-idea` pattern) | done (2026-07-20) | Claude | M      |
-| TE-14 | Replace fake client-side upgrade flow with honest pre-Stripe state (waitlist CTA)                 | in progress       | Claude | S      |
+| TE-14 | Replace fake client-side upgrade flow with honest pre-Stripe state (waitlist CTA)                 | done (2026-07-21) | Claude | S      |
 | TE-15 | Fix enterprise lead capture (anonymous submits fail rules) via serverless endpoint                | todo              | —      | S      |
 
 **TE-12 user story:** As the product owner, I want Firestore rules that only let users write their own safe fields, so a signed-in user can't self-upgrade to Builder, reset quotas, or edit the global feed/config from the browser console.
@@ -173,6 +173,7 @@ Sequencing note: do TE-04 before TE-06 — observability first tells us how bad 
 
 | ID    | Task                                                                                                        | Shipped    | Commits          |
 | ----- | ----------------------------------------------------------------------------------------------------------- | ---------- | ---------------- |
+| TE-14 | Honest waitlist flow: replace fake tier upgrades with "Join Waitlist" modal, remove deceptive UI state      | 2026-07-21 | a6a6a14          |
 | TE-13 | Server-side auth + tier gates on all 8 previously-ungated generate endpoints                                | 2026-07-20 | (this commit)    |
 | TE-18 | Alerts stop generating (and spending AI budget) for Free/Pro — side effect of TE-13's Builder gate          | 2026-07-20 | (this commit)    |
 | TE-12 | Production Firestore rules: per-collection least-privilege security (prevent self-upgrade, quota tampering) | 2026-07-20 | 6fd7159          |
