@@ -142,6 +142,7 @@ All project state lives in-repo so every developer and agent on every machine se
 - **Vertical Slice**: Implement complete, working end-to-end slices (UI + logic + data + tests) rather than horizontal layers.
 - **Truman Show Principle**: Ground every claim in real evidence (logs, terminal, browser, test results). Never be sycophantic. Report problems clearly and objectively.
 - **Component-First**: Prefer small, focused, reusable components. Aggressively reuse existing component patterns.
+- **Post-Story Checklist**: After finishing any user story (TE-NN), execute: (1) update `docs/BACKLOG.md` (move to done), `CHANGELOG.md` (add entry), `DECISIONS.md` (document any decisions); (2) stage + commit with `feat(scope): TE-NN description` format + bullet-point changelog + Co-Author line; (3) run `npm run check` to verify pre-commit hooks pass; (4) `git push origin main` to trigger Vercel deployment; (5) verify live within ~2 min at https://trend-equity.vercel.app. See `.claude/projects/*/memory/workflow_post_story_checklist.md` for full checklist.
 
 ### 2. Context & Token Discipline
 
