@@ -1,7 +1,8 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
+import { useAuth } from '../hooks/useAuth';
 import {
   TrendingUp,
   Zap,
@@ -96,6 +97,7 @@ const FADE_UP = {
 };
 
 export default function EnterpriseLanding() {
+  const { user, authReady, handleLogin } = useAuth();
   const formRef = useRef<HTMLDivElement>(null);
   const featuresRef = useRef<HTMLDivElement>(null);
 
@@ -110,6 +112,12 @@ export default function EnterpriseLanding() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (authReady && !user) {
+      handleLogin();
+    }
+  }, [authReady, user, handleLogin]);
 
   const scrollTo = (ref: React.RefObject<HTMLDivElement>) =>
     ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -139,6 +147,19 @@ export default function EnterpriseLanding() {
       setSubmitting(false);
     }
   };
+
+  if (!authReady) {
+    return (
+      <div className="min-h-screen bg-zinc-950 text-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="mb-4 flex justify-center">
+            <div className="animate-spin w-8 h-8 border-2 border-emerald-500/30 border-t-emerald-500 rounded-full" />
+          </div>
+          <p className="text-zinc-400">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white font-sans antialiased">
