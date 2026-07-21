@@ -12,6 +12,7 @@ import {
   semanticDedupeCandidates,
   saveIdeaEmbeddings,
   getDedupeThreshold,
+  getRecentEmbeddings,
 } from '../_lib/embeddings';
 import { cleanDailyDisclaimer, prepareCandidatesForCritique } from '../_lib/idea-quality';
 import { savePredictions } from '../_lib/prediction-tracker';
@@ -171,17 +172,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    console.log('[daily] Running 3 batch generation calls concurrently...');
-    const [data1, data2, data3] = await Promise.all([
+    console.log('[daily] Running 3 batch generation + pre-fetching embeddings concurrently...');
+    const [data1, data2, data3, preFetchedEmbeddings] = await Promise.all([
       generateBatch(promptStr1, N),
       generateBatch(promptStr2, N),
       generateBatch(promptStr3, N),
+      getRecentEmbeddings(today),
     ]);
 
     const mergedIdeas = [...(data1.ideas || []), ...(data2.ideas || []), ...(data3.ideas || [])];
 
     // Semantic dedup vs past 30 days runs BEFORE the critic to save critic tokens.
-    const dedupResult = await semanticDedupeCandidates(mergedIdeas, today);
+    // Pre-fetched embeddings avoid redundant network calls during dedup.
+    const dedupResult = await semanticDedupeCandidates(mergedIdeas, today, preFetchedEmbeddings);
     const { kept, droppedHeadlines, vectorsByHeadline, similarityScores } = dedupResult;
 
     // Compute near-miss distribution (candidates close to the dedup threshold)

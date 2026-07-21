@@ -11,7 +11,7 @@ interface EnterpriseLeadSubmission {
 }
 
 function validateEmail(email: string): boolean {
-  const emailRegex = /^[\w.+\-]+@[\w.\-]+$/;
+  const emailRegex = /^[\w.+-]+@[\w.-]+$/;
   return emailRegex.test(email);
 }
 

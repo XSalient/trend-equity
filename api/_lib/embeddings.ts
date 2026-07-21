@@ -126,10 +126,14 @@ function embedText(idea: any): string {
  * Returns kept candidates plus their vectors (keyed by headline) so the
  * caller can persist vectors for the ideas it ultimately publishes.
  * Also tracks per-candidate max-similarity scores for observability.
+ *
+ * Optional `preFetchedEmbeddings` param allows callers to pre-fetch recent
+ * embeddings in parallel with generation, avoiding redundant network calls.
  */
 export async function semanticDedupeCandidates(
   candidates: any[],
-  excludeDate: string
+  excludeDate: string,
+  preFetchedEmbeddings?: IdeaVector[] | null
 ): Promise<SemanticDedupResult> {
   const failOpen: SemanticDedupResult = {
     kept: candidates,
@@ -142,7 +146,7 @@ export async function semanticDedupeCandidates(
   try {
     const threshold = getDedupeThreshold();
     const [existing, candidateVectors] = await Promise.all([
-      getRecentEmbeddings(excludeDate),
+      preFetchedEmbeddings || getRecentEmbeddings(excludeDate),
       embedTexts(candidates.map(embedText)),
     ]);
 
