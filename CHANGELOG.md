@@ -10,6 +10,13 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/): **Added 
 
 ### Added
 
+- **TE-16:** Anonymous read path for daily feed — logged-out visitors can now browse today's ideas.
+  - `daily.ts` now marks all published ideas with `public: true` when saving to Firestore
+  - Firestore rules already supported public reads (`allow read: if ... || resource.data.public == true`)
+  - Client-side hooks handle permission-denied gracefully for logged-out users attempting authenticated reads
+  - No UI changes needed; anonymous users already see the same feed interface, just can't save or generate
+  - Enables logged-out discovery, organic SEO (if needed), and sharing via direct links
+
 - **TE-33:** Merge code+docs workflow — eliminate serialized documentation steps, update project tracking files in same session as code.
   - Reordered post-story checklist: code + docs edits now happen in parallel (same session), then single commit with all changes
   - DECISIONS.md now updated immediately when a decision is made (not batched at end)

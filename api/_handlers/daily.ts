@@ -251,6 +251,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       },
       date: today,
       generatedAt: new Date().toISOString(),
+      public: true,
     };
     await docRef.set(finalData);
 
