@@ -9,6 +9,21 @@ interface IdeaCommentsProps {
   handleLogin: () => void;
 }
 
+function getRelativeTime(timestamp: any): string {
+  if (!timestamp) return 'PENDING...';
+  const time = timestamp.toDate ? timestamp.toDate().getTime() : new Date(timestamp).getTime();
+  const now = Date.now();
+  const diff = Math.floor((now - time) / 1000);
+
+  if (diff < 60) return 'JUST NOW';
+  const mins = Math.floor(diff / 60);
+  if (mins < 60) return `${mins}m AGO`;
+  const hours = Math.floor(diff / 3600);
+  if (hours < 24) return `${hours}h AGO`;
+  const days = Math.floor(diff / 86400);
+  return `${days}d AGO`;
+}
+
 export const IdeaComments: React.FC<IdeaCommentsProps> = ({ ideaId, user, handleLogin }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [text, setText] = useState('');
@@ -106,7 +121,7 @@ export const IdeaComments: React.FC<IdeaCommentsProps> = ({ ideaId, user, handle
                         </span>
                         <div className="flex items-center gap-2">
                           <span className="text-[8px] text-zinc-600 font-bold uppercase tracking-widest">
-                            {comment.timestamp ? 'JUST NOW' : 'PENDING...'}
+                            {getRelativeTime(comment.timestamp)}
                           </span>
                           {user && user.uid === comment.userId && (
                             <button

@@ -10,6 +10,13 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/): **Added 
 
 ### Added
 
+- **TE-19:** Dead-UI fixes — multiple cosmetic improvements and bug fixes.
+  - **Tailwind literal classes in PricingSection** (lines 372, 379): Fixed dynamic Tailwind classes by converting to conditional ternary expressions. Tailwind can't generate classes at runtime.
+  - **Footer dead legal links** (App.tsx): Updated Privacy → real URL, Terms → real URL, Contact → mailto: link. Enterprise link was already correct.
+  - **FilterBar sticky positioning** (line 290): Changed `sticky top-0` → `sticky top-16` to account for header height (h-16), preventing overlap.
+  - **Comment relative timestamps** (IdeaComments): Added `getRelativeTime()` function to show "Xm AGO", "Xh AGO", "Xd AGO" instead of static "JUST NOW".
+  - No regressions; all type checks pass.
+
 - **TE-17:** Cron for daily generation — automatic trigger removes manual admin dependency.
   - New `/api/cron` endpoint triggered by Vercel cron at 06:30 UTC every day (before 07:00 UTC digest)
   - Cron endpoint calls daily generation with `x-cron-trigger` header; daily handler checks this header to allow generation without auth

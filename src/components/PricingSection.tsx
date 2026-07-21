@@ -369,14 +369,22 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
           className="space-y-3 pt-4"
         >
           <p
-            className={`text-center text-xs font-bold uppercase tracking-widest text-${showcaseColor}-500/70`}
+            className={`text-center text-xs font-bold uppercase tracking-widest ${
+              selectedTier === 'builder' ? 'text-amber-500/70' : 'text-emerald-500/70'
+            }`}
           >
             {selectedTier === currentPlan
               ? `Your ${selectedTier.toUpperCase()} Features`
               : `Preview: ${selectedTier.toUpperCase()} Features`}
           </p>
           <div
-            className={`grid grid-cols-2 md:grid-cols-${Math.max((TIER_SHOWCASE[selectedTier] ?? TIER_SHOWCASE['free']).length, 3)} gap-4`}
+            className={`grid grid-cols-2 ${
+              (TIER_SHOWCASE[selectedTier] ?? TIER_SHOWCASE['free']).length >= 5
+                ? 'md:grid-cols-5'
+                : (TIER_SHOWCASE[selectedTier] ?? TIER_SHOWCASE['free']).length >= 4
+                  ? 'md:grid-cols-4'
+                  : 'md:grid-cols-3'
+            } gap-4`}
           >
             {(TIER_SHOWCASE[selectedTier] ?? TIER_SHOWCASE['free']).map((item, i) => {
               const isClickable = item.onClick && currentPlan === 'builder';
