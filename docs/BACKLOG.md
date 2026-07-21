@@ -131,13 +131,13 @@ Full implementation plan: [2026-07-21 agent performance optimization](superpower
 
 ## Next — P1 (wave 4): idea diversity — measurement & structural fixes
 
-Sequencing: do **TE-29 first (or alongside TE-28)** — measure the near-miss distribution before committing to a threshold, per the Truman-Show "ground every claim in evidence" rule. TE-30/TE-31 are structural and can follow once the data says whether tuning alone was enough.
+Sequencing: TE-29 done — now measure the near-miss distribution to ground the 0.80 threshold choice. TE-30/TE-31 follow once the data says whether tuning alone was enough.
 
-| ID    | Task                                                                                                                                                                              | Status | Owner | Effort |
-| ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ | ----- | ------ |
-| TE-29 | Dedup observability: record per-run semantic-dup drop count + the 0.75–0.85 near-miss similarity distribution in `qualityStats`                                                   | todo   | —     | S      |
-| TE-30 | Intra-day diversity guard: cap how many near-neighbour ideas (above a cluster threshold) publish in a single day; enforce category spread across the published set                | todo   | —     | M      |
-| TE-31 | Right-size daily volume: reduce `PUBLISH_COUNT` (35) and/or raise overgeneration (`CANDIDATES_PER_BATCH`), so the model isn't forced to pad with reworded filler to hit the count | todo   | —     | S      |
+| ID    | Task                                                                                                                                                                              | Status            | Owner  | Effort |
+| ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------- | ------ | ------ |
+| TE-29 | Dedup observability: record per-run semantic-dup drop count + the 0.75–0.85 near-miss similarity distribution in `qualityStats`                                                   | done (2026-07-21) | Claude | S      |
+| TE-30 | Intra-day diversity guard: cap how many near-neighbour ideas (above a cluster threshold) publish in a single day; enforce category spread across the published set                | todo              | —      | M      |
+| TE-31 | Right-size daily volume: reduce `PUBLISH_COUNT` (35) and/or raise overgeneration (`CANDIDATES_PER_BATCH`), so the model isn't forced to pad with reworded filler to hit the count | todo              | —      | S      |
 
 **TE-29 user story:** As the product owner, I want each generation run to log how many candidates were dropped as semantic duplicates and the distribution of near-misses (candidates scoring 0.75–0.85 vs the prior 30 days), so I can tune the threshold from evidence instead of intuition. Acceptance: `semanticDedupeCandidates` returns per-candidate max-similarity; `daily.ts` writes `qualityStats.dedup = { dropped, nearMissBuckets }`; visible in `daily_generations_history`. Mirrors the TE-04 signal-observability pattern.
 
@@ -201,9 +201,10 @@ Sequencing note: do TE-04 before TE-06 — observability first tells us how bad 
 
 | ID    | Task                                                                                                        | Shipped    | Commits          |
 | ----- | ----------------------------------------------------------------------------------------------------------- | ---------- | ---------------- |
+| TE-29 | Dedup observability: per-run drop count + 0.75–0.85 near-miss distribution in qualityStats                 | 2026-07-21 | 288f826          |
 | TE-34 | Pre-load memory manifest (hot files, key patterns, line ranges)                                             | 2026-07-21 | d6e7060          |
-| TE-28 | Tighten semantic dedup: lower threshold 0.85 → 0.80, embed headline+pitch+marketSize+revenueSkeleton        | 2026-07-21 | (this commit)    |
-| TE-27 | Extend dedup window to 14 days + enrich prompt with headline + pitch per recent idea                        | 2026-07-21 | (this commit)    |
+| TE-28 | Tighten semantic dedup: lower threshold 0.85 → 0.80, embed headline+pitch+marketSize+revenueSkeleton        | 2026-07-21 | 9e96561          |
+| TE-27 | Extend dedup window to 14 days + enrich prompt with headline + pitch per recent idea                        | 2026-07-21 | b46310b          |
 | TE-15 | Anonymous lead capture: serverless endpoint accepts form submissions, stores in Firestore with server auth  | 2026-07-21 | (this commit)    |
 | TE-14 | Honest waitlist flow: replace fake tier upgrades with "Join Waitlist" modal, remove deceptive UI state      | 2026-07-21 | a6a6a14          |
 | TE-13 | Server-side auth + tier gates on all 8 previously-ungated generate endpoints                                | 2026-07-20 | (this commit)    |

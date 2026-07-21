@@ -10,6 +10,14 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/): **Added 
 
 ### Added
 
+- **TE-29:** Dedup observability — instrument pipeline to log drop counts and near-miss distribution.
+  - `semanticDedupeCandidates()` now returns per-candidate max-similarity scores for all candidates (kept & dropped)
+  - `daily.ts` buckets near-misses into 0.75–0.80, 0.80–0.85, 0.85–0.90, 0.90+ bands
+  - Persists buckets to `qualityStats.dedup = { dropped, nearMissBuckets, threshold }`, visible in `daily_generations_history`
+  - Grounds the 0.80 threshold choice from TE-28 with real measurement data (not guesswork)
+  - Updated types + unit tests; mocks now include similarityScores field
+  - Mirrors TE-04 signal-observability pattern for consistent observability
+
 - **TE-34:** Hot files manifest for agent context caching (0 lines touched, saves ~3–4 min per story).
   - New memory file: `hot_files_manifest.md` — 10 frequently-touched files with line ranges
   - Organized by frontend/backend core/handlers; includes Firestore transaction, tier lookup, AI generation patterns
