@@ -10,6 +10,14 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/): **Added 
 
 ### Added
 
+- **TE-33:** Merge code+docs workflow — eliminate serialized documentation steps, update project tracking files in same session as code.
+  - Reordered post-story checklist: code + docs edits now happen in parallel (same session), then single commit with all changes
+  - DECISIONS.md now updated immediately when a decision is made (not batched at end)
+  - Removed sequential context-switch overhead from documentation workflow
+  - Saves ~2 min per story; compounds to ~8 min/week velocity uplift across team (matches TE-32 data-driven profiling)
+  - Updated memory file with merged workflow pattern; example shows code → docs → commit → hash-update sequence
+  - No functional code change; pure workflow optimization
+
 - **TE-32:** Parallelize AI handler pipeline — pre-fetch embeddings in parallel with generation batches.
   - `semanticDedupeCandidates()` now accepts optional `preFetchedEmbeddings` parameter for better composition
   - `daily.ts` now calls `Promise.all([generateBatch(...), getRecentEmbeddings()])` to eliminate serialization

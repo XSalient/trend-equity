@@ -110,7 +110,7 @@ Full implementation plan: [2026-07-21 agent performance optimization](superpower
 | ID    | Task                                                                               | Status            | Owner  | Effort |
 | ----- | ---------------------------------------------------------------------------------- | ----------------- | ------ | ------ |
 | TE-32 | Parallelize AI handler pipeline (pre-fetch embeddings + signals during generation) | done (2026-07-21) | Claude | M      |
-| TE-33 | Merge code+docs workflow (update BACKLOG/CHANGELOG inline, single commit)          | todo              | —      | S      |
+| TE-33 | Merge code+docs workflow (update BACKLOG/CHANGELOG inline, single commit)          | done (2026-07-21) | Claude | S      |
 | TE-35 | Auto-verify deployments (smoke-test key routes post-Vercel push)                   | todo              | —      | M      |
 | TE-36 | Shard E2E tests by feature area (parallel Playwright execution)                    | todo              | —      | M      |
 | TE-37 | Optimize Vitest threading (enable parallel test execution)                         | todo              | —      | S      |
