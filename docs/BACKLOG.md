@@ -201,6 +201,7 @@ Sequencing note: do TE-04 before TE-06 — observability first tells us how bad 
 
 | ID    | Task                                                                                                        | Shipped    | Commits          |
 | ----- | ----------------------------------------------------------------------------------------------------------- | ---------- | ---------------- |
+| TE-33 | Merge code+docs workflow: eliminate serialized doc steps, single commit with BACKLOG/CHANGELOG/DECISIONS    | 2026-07-21 | d985f05          |
 | TE-32 | Parallelize AI handler pipeline: pre-fetch embeddings in parallel with generation batches                   | 2026-07-21 | c63cf5c          |
 | TE-29 | Dedup observability: per-run drop count + 0.75–0.85 near-miss distribution in qualityStats                  | 2026-07-21 | 288f826          |
 | TE-34 | Pre-load memory manifest (hot files, key patterns, line ranges)                                             | 2026-07-21 | d6e7060          |
