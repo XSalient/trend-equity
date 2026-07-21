@@ -16,6 +16,14 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/): **Added 
   - Indexed in memory system so agents don't re-read architecture docs every session
   - Will reduce onboarding time for new agent sessions and improve story completion velocity
 
+- **TE-28:** Tighten semantic dedup to catch same-concept-reworded ideas + enrich embedding text.
+  - Lowered default cosine similarity threshold from **0.85 → 0.80** in `getDedupeThreshold()` (still env-overridable via `DEDUP_SIM_THRESHOLD`)
+  - Enriched `embedText()` to concatenate `headline + pitch + marketSize + revenueSkeleton` instead of just `headline: pitch`
+  - Richer embedding text (4 fields instead of 2) improves semantic distinction for near-miss candidates; 0.80 threshold catches the 0.78–0.84 band of subtle duplicates
+  - Updated `.env.example` default from `0.85` to `0.80`
+  - Added unit tests: new test for 0.80 default, new test verifying richer embedding text inclusion
+  - Designed to ship with TE-29 (observability) so threshold choice is validated by measured drop rates, not guessed
+
 - **TE-27:** Stop reworded-duplicate feed by extending dedup window to 14 days + enriching prompt context.
   - `getRecentIdeaHeadlines()` now returns past **14 days** (up from 3) to give the AI model broader context
   - Enriched data: each historical idea now includes `{ headline, pitch }` instead of headline-only

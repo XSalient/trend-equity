@@ -32,7 +32,7 @@ function getEmbedModel(): string {
 
 export function getDedupeThreshold(): number {
   const parsed = Number(process.env.DEDUP_SIM_THRESHOLD);
-  return Number.isFinite(parsed) && parsed > 0 && parsed <= 1 ? parsed : 0.85;
+  return Number.isFinite(parsed) && parsed > 0 && parsed <= 1 ? parsed : 0.8;
 }
 
 export async function embedTexts(texts: string[]): Promise<number[][]> {
@@ -105,7 +105,7 @@ export async function getRecentEmbeddings(
 }
 
 function embedText(idea: any): string {
-  return `${idea.headline || ''}: ${idea.pitch || ''}`;
+  return `${idea.headline || ''} ${idea.pitch || ''} ${idea.marketSize || ''} ${idea.revenueSkeleton || ''}`;
 }
 
 /**

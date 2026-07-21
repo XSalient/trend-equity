@@ -95,7 +95,7 @@ Context: dedup already exists in two layers — a prompt "DO NOT REPEAT" block o
 | ID    | Task                                                                                                                                                                           | Status            | Owner  | Effort |
 | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------- | ------ | ------ |
 | TE-27 | Widen the prompt "DO NOT REPEAT" window from 3 → **14 days** and include a one-line problem/target descriptor per prior idea, not just the headline                            | done (2026-07-21) | Claude | S      |
-| TE-28 | Tighten + enrich semantic dedup: lower default `DEDUP_SIM_THRESHOLD` 0.85 → **0.80**, and embed `headline + pitch + targetMarket + businessModel` instead of `headline: pitch` | todo              | —      | S      |
+| TE-28 | Tighten + enrich semantic dedup: lower default `DEDUP_SIM_THRESHOLD` 0.85 → **0.80**, and embed `headline + pitch + targetMarket + businessModel` instead of `headline: pitch` | done (2026-07-21) | Claude | S      |
 
 **TE-27 user story:** As a user, I want the generator told the _last 14 days_ of ideas (each as headline + a one-line problem/target-market summary) so it steers into genuinely new problem spaces up front, instead of only avoiding the last 3 days' headlines. Acceptance: `getRecentIdeaHeadlines` (or a new `getRecentIdeaSummaries`) lookback param is 14; the prompt block lists `headline — <short problem/target>`; both [`daily.ts`](../api/_handlers/daily.ts) and [`server.ts`](../server.ts) dev paths use the same window; existing tests updated.
 
@@ -202,6 +202,7 @@ Sequencing note: do TE-04 before TE-06 — observability first tells us how bad 
 | ID    | Task                                                                                                        | Shipped    | Commits          |
 | ----- | ----------------------------------------------------------------------------------------------------------- | ---------- | ---------------- |
 | TE-34 | Pre-load memory manifest (hot files, key patterns, line ranges)                                             | 2026-07-21 | d6e7060          |
+| TE-28 | Tighten semantic dedup: lower threshold 0.85 → 0.80, embed headline+pitch+marketSize+revenueSkeleton        | 2026-07-21 | (this commit)    |
 | TE-27 | Extend dedup window to 14 days + enrich prompt with headline + pitch per recent idea                        | 2026-07-21 | (this commit)    |
 | TE-15 | Anonymous lead capture: serverless endpoint accepts form submissions, stores in Firestore with server auth  | 2026-07-21 | (this commit)    |
 | TE-14 | Honest waitlist flow: replace fake tier upgrades with "Join Waitlist" modal, remove deceptive UI state      | 2026-07-21 | a6a6a14          |
