@@ -189,7 +189,7 @@ app.post('/api/generate/daily', async (req, res) => {
 
     const dedupeBlock =
       recentHeadlines.length > 0
-        ? `\n\nDO NOT REPEAT RECENT IDEAS — these headlines were already generated in the past 3 days. Generate completely different problem spaces, target markets, and business models:\n${recentHeadlines.map((h: string, i: number) => `  ${i + 1}. ${h}`).join('\n')}\n`
+        ? `\n\nDO NOT REPEAT RECENT IDEAS — these headlines and problem spaces were already generated in the past 14 days. Generate completely different problem spaces, target markets, and business models:\n${recentHeadlines.map((idea: any, i: number) => `  ${i + 1}. ${idea.headline} — ${idea.pitch}`).join('\n')}\n`
         : '';
 
     const qualityBlock = `\n\nREQUIREMENTS FOR EVERY IDEA:\n- Cite ≥1 specific signal in trendSources — include the actual data point, not just the source name\n- Find SECOND-ORDER opportunities: what problem does the signal CREATE downstream that is currently undersolved?\n- Enforce sector diversity: no more than 3 ideas from any single sector (AI/ML, FinTech, HealthTech, EdTech, CleanTech, Consumer, B2B SaaS, Marketplace, PropTech, AgriTech, LegalTech, GovTech, etc.)\n- unfairAdvantage must describe a STRUCTURAL edge (proprietary data, regulatory moat, distribution lock-in, network effects) — never "better UX" or "first mover"\n- Spread effort levels: at least 8 solo-buildable (<6 weeks), at least 8 small-team, the rest for well-funded teams\n- At least 20% of ideas should address markets outside the US\n- AVOID: generic AI assistants without proprietary data, basic CRUD SaaS, copycat marketplaces without structural differentiation`;

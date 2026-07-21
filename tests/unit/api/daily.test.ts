@@ -177,7 +177,10 @@ describe('POST /api/generate/daily', () => {
   });
 
   it('injects DO NOT REPEAT block into prompt when recent headlines exist', async () => {
-    mockGetRecentIdeaHeadlines.mockResolvedValue(['Old Idea 1', 'Old Idea 2']);
+    mockGetRecentIdeaHeadlines.mockResolvedValue([
+      { headline: 'Old Idea 1', pitch: 'Problem 1 solution' },
+      { headline: 'Old Idea 2', pitch: 'Problem 2 solution' },
+    ]);
 
     const req = createMockRequest({ body: { date: '2026-04-11' } });
     const res = createMockResponse();
@@ -186,8 +189,8 @@ describe('POST /api/generate/daily', () => {
 
     const promptArg: string = mockGenerateWithAI.mock.calls[0][0];
     expect(promptArg).toContain('DO NOT REPEAT RECENT IDEAS');
-    expect(promptArg).toContain('Old Idea 1');
-    expect(promptArg).toContain('Old Idea 2');
+    expect(promptArg).toContain('Old Idea 1 — Problem 1 solution');
+    expect(promptArg).toContain('Old Idea 2 — Problem 2 solution');
   });
 
   it('does NOT inject dedup block when no recent headlines', async () => {

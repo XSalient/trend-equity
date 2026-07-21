@@ -36,19 +36,24 @@ export async function setCached(key: string, value: any): Promise<void> {
   }
 }
 
+interface RecentIdeaSummary {
+  headline: string;
+  pitch: string;
+}
+
 /**
- * Returns headline strings from daily_generations docs for the `lookbackDays`
- * days immediately before `excludeDate` (ISO yyyy-mm-dd). Used to build a
- * deduplication block so the AI doesn't repeat recent idea spaces.
+ * Returns enriched idea summaries (headline + pitch) from daily_generations docs
+ * for the `lookbackDays` days immediately before `excludeDate` (ISO yyyy-mm-dd).
+ * Used to build a deduplication block so the AI doesn't repeat recent idea spaces.
  */
 export async function getRecentIdeaHeadlines(
   excludeDate: string,
-  lookbackDays = 3
-): Promise<string[]> {
+  lookbackDays = 14
+): Promise<RecentIdeaSummary[]> {
   try {
     const db = getAdminDb();
     const base = new Date(excludeDate);
-    const headlines: string[] = [];
+    const summaries: RecentIdeaSummary[] = [];
 
     const fetches = Array.from({ length: lookbackDays }, (_, i) => {
       const d = new Date(base);
@@ -63,11 +68,16 @@ export async function getRecentIdeaHeadlines(
       const data = snap.data();
       if (Array.isArray(data?.ideas)) {
         for (const idea of data.ideas) {
-          if (idea?.headline) headlines.push(idea.headline as string);
+          if (idea?.headline && idea?.pitch) {
+            summaries.push({
+              headline: idea.headline as string,
+              pitch: idea.pitch as string,
+            });
+          }
         }
       }
     }
-    return headlines;
+    return summaries;
   } catch (e) {
     console.error('[cache] getRecentIdeaHeadlines error:', e);
     return [];

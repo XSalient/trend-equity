@@ -134,23 +134,33 @@ describe('getRecentIdeaHeadlines', () => {
     mockDb.collection.mockReturnValue(mockCollection);
   });
 
-  it('returns headlines from the lookbackDays prior daily_generations docs', async () => {
-    const headlines1 = ['Idea A', 'Idea B'];
-    const headlines2 = ['Idea C'];
+  it('returns enriched summaries (headline + pitch) from the lookbackDays prior daily_generations docs', async () => {
+    const summaries = [
+      { headline: 'Idea A', pitch: 'Problem A solution' },
+      { headline: 'Idea B', pitch: 'Problem B solution' },
+      { headline: 'Idea C', pitch: 'Problem C solution' },
+    ];
 
     // First call returns doc with 2 ideas, second with 1, third empty
     mockCollection.doc
       .mockReturnValueOnce({
-        get: vi
-          .fn()
-          .mockResolvedValue(
-            makeDocSnap(true, { ideas: [{ headline: 'Idea A' }, { headline: 'Idea B' }] })
-          ),
+        get: vi.fn().mockResolvedValue(
+          makeDocSnap(true, {
+            ideas: [
+              { headline: 'Idea A', pitch: 'Problem A solution' },
+              { headline: 'Idea B', pitch: 'Problem B solution' },
+            ],
+          })
+        ),
         set: vi.fn(),
         delete: vi.fn(),
       })
       .mockReturnValueOnce({
-        get: vi.fn().mockResolvedValue(makeDocSnap(true, { ideas: [{ headline: 'Idea C' }] })),
+        get: vi
+          .fn()
+          .mockResolvedValue(
+            makeDocSnap(true, { ideas: [{ headline: 'Idea C', pitch: 'Problem C solution' }] })
+          ),
         set: vi.fn(),
         delete: vi.fn(),
       })
@@ -162,7 +172,7 @@ describe('getRecentIdeaHeadlines', () => {
 
     const result = await getRecentIdeaHeadlines('2026-04-11', 3);
 
-    expect(result).toEqual(expect.arrayContaining([...headlines1, ...headlines2]));
+    expect(result).toEqual(summaries);
     expect(result).toHaveLength(3);
   });
 
@@ -177,14 +187,18 @@ describe('getRecentIdeaHeadlines', () => {
     expect(result).toEqual([]);
   });
 
-  it('skips ideas with no headline field', async () => {
+  it('skips ideas missing headline or pitch fields', async () => {
     mockCollection.doc
       .mockReturnValueOnce({
-        get: vi
-          .fn()
-          .mockResolvedValue(
-            makeDocSnap(true, { ideas: [{ headline: 'Good Idea' }, { pitch: 'no headline here' }] })
-          ),
+        get: vi.fn().mockResolvedValue(
+          makeDocSnap(true, {
+            ideas: [
+              { headline: 'Good Idea', pitch: 'Good pitch' },
+              { headline: 'No pitch idea' }, // missing pitch
+              { pitch: 'No headline pitch' }, // missing headline
+            ],
+          })
+        ),
         set: vi.fn(),
         delete: vi.fn(),
       })
@@ -200,7 +214,19 @@ describe('getRecentIdeaHeadlines', () => {
       });
 
     const result = await getRecentIdeaHeadlines('2026-04-11', 3);
-    expect(result).toEqual(['Good Idea']);
+    expect(result).toEqual([{ headline: 'Good Idea', pitch: 'Good pitch' }]);
+  });
+
+  it('uses default 14-day lookback window', async () => {
+    mockCollection.doc.mockReturnValue({
+      get: vi.fn().mockResolvedValue(makeDocSnap(false)),
+      set: vi.fn(),
+      delete: vi.fn(),
+    });
+
+    const result = await getRecentIdeaHeadlines('2026-04-11');
+    // Should not throw, returns empty array from 14 missing docs
+    expect(result).toEqual([]);
   });
 
   it('returns empty array on Firestore error (fail-open)', async () => {

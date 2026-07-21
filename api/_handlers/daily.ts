@@ -44,7 +44,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const authCtx = await getAuthContext(req);
   const uid = authCtx?.uid;
-  const tier = authCtx?.tier || 'free';
   const isAdmin = authCtx?.isAdmin || false;
 
   const { date, country, countryCount, refresh } = req.body;
@@ -121,7 +120,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const dedupeBlock =
       recentHeadlines.length > 0
-        ? `\n\nDO NOT REPEAT RECENT IDEAS — these headlines were already generated in the past 3 days. Generate completely different problem spaces, target markets, and business models:\n${recentHeadlines.map((h, i) => `  ${i + 1}. ${h}`).join('\n')}\n`
+        ? `\n\nDO NOT REPEAT RECENT IDEAS — these headlines and problem spaces were already generated in the past 14 days. Generate completely different problem spaces, target markets, and business models:\n${recentHeadlines.map((idea, i) => `  ${i + 1}. ${idea.headline} — ${idea.pitch}`).join('\n')}\n`
         : '';
 
     const countryClause =
@@ -146,7 +145,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       ? `${signalContext}${dedupeBlock}${countryClause}${qualityBlock}\n\nUsing the live market signals above as your PRIMARY source, generate exactly ${N} high-conviction business ideas for ${today}. Focus specifically on the following categories: 'Physical / Sustainable / Hardware', 'Deep-Tech / Moonshot'.`
       : `Generate exactly ${N} high-conviction business ideas for ${today}.${dedupeBlock}${countryClause}${qualityBlock} Focus specifically on the following categories: 'Physical / Sustainable / Hardware', 'Deep-Tech / Moonshot'.`;
 
-    async function generateBatch(promptStr: string, count: number): Promise<any> {
+    async function generateBatch(promptStr: string, _count: number): Promise<any> {
       let attempts = 0;
       while (attempts < 2) {
         try {
@@ -266,7 +265,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     try {
       const db = getAdminDb();
       await db.collection('locks').doc(`daily_gen_${today}`).delete();
-    } catch (lockErr) {
+    } catch (_lockErr) {
       // Ignore unlock errors
     }
 

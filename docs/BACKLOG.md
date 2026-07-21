@@ -92,10 +92,10 @@ Acceptance: comment input disabled for Free with "Posting is a Pro feature" inli
 
 Context: dedup already exists in two layers — a prompt "DO NOT REPEAT" block over the **last 3 days** ([`cache.ts`](../api/_lib/cache.ts) `getRecentIdeaHeadlines`, wired at [`daily.ts:118`](../api/_handlers/daily.ts)) and a hard semantic drop over the **last 30 days** at cosine ≥ **0.85** ([`embeddings.ts`](../api/_lib/embeddings.ts) `semanticDedupeCandidates`). The feed still feels repetitive because "same idea, different words" scores ~0.78–0.84 and passes the 0.85 gate, and the embedding text is only `headline: pitch`. These two items are low-effort, high-value, and independent of the P0 security work (they touch the generation pipeline, not Firestore rules).
 
-| ID    | Task                                                                                                                                                                           | Status | Owner | Effort |
-| ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------ | ----- | ------ |
-| TE-27 | Widen the prompt "DO NOT REPEAT" window from 3 → **14 days** and include a one-line problem/target descriptor per prior idea, not just the headline                            | todo   | —     | S      |
-| TE-28 | Tighten + enrich semantic dedup: lower default `DEDUP_SIM_THRESHOLD` 0.85 → **0.80**, and embed `headline + pitch + targetMarket + businessModel` instead of `headline: pitch` | todo   | —     | S      |
+| ID    | Task                                                                                                                                                                           | Status            | Owner  | Effort |
+| ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------- | ------ | ------ |
+| TE-27 | Widen the prompt "DO NOT REPEAT" window from 3 → **14 days** and include a one-line problem/target descriptor per prior idea, not just the headline                            | done (2026-07-21) | Claude | S      |
+| TE-28 | Tighten + enrich semantic dedup: lower default `DEDUP_SIM_THRESHOLD` 0.85 → **0.80**, and embed `headline + pitch + targetMarket + businessModel` instead of `headline: pitch` | todo              | —      | S      |
 
 **TE-27 user story:** As a user, I want the generator told the _last 14 days_ of ideas (each as headline + a one-line problem/target-market summary) so it steers into genuinely new problem spaces up front, instead of only avoiding the last 3 days' headlines. Acceptance: `getRecentIdeaHeadlines` (or a new `getRecentIdeaSummaries`) lookback param is 14; the prompt block lists `headline — <short problem/target>`; both [`daily.ts`](../api/_handlers/daily.ts) and [`server.ts`](../server.ts) dev paths use the same window; existing tests updated.
 
@@ -107,13 +107,13 @@ Full implementation plan: [2026-07-21 agent performance optimization](superpower
 
 **Context:** Agent story completion takes ~30 min. Profiling identified three bottlenecks: (1) serialized backend AI operations (2–3s waste), (2) redundant discovery per session (3–4 min waste), (3) sequential post-story workflow (2 min waste). This epic targets ~15 min completion time (50% reduction).
 
-| ID    | Task                                                                               | Status      | Owner  | Effort |
-| ----- | ---------------------------------------------------------------------------------- | ----------- | ------ | ------ |
-| TE-32 | Parallelize AI handler pipeline (pre-fetch embeddings + signals during generation) | todo        | —      | M      |
-| TE-33 | Merge code+docs workflow (update BACKLOG/CHANGELOG inline, single commit)          | todo        | —      | S      |
-| TE-35 | Auto-verify deployments (smoke-test key routes post-Vercel push)                   | todo        | —      | M      |
-| TE-36 | Shard E2E tests by feature area (parallel Playwright execution)                    | todo        | —      | M      |
-| TE-37 | Optimize Vitest threading (enable parallel test execution)                         | todo        | —      | S      |
+| ID    | Task                                                                               | Status | Owner | Effort |
+| ----- | ---------------------------------------------------------------------------------- | ------ | ----- | ------ |
+| TE-32 | Parallelize AI handler pipeline (pre-fetch embeddings + signals during generation) | todo   | —     | M      |
+| TE-33 | Merge code+docs workflow (update BACKLOG/CHANGELOG inline, single commit)          | todo   | —     | S      |
+| TE-35 | Auto-verify deployments (smoke-test key routes post-Vercel push)                   | todo   | —     | M      |
+| TE-36 | Shard E2E tests by feature area (parallel Playwright execution)                    | todo   | —     | M      |
+| TE-37 | Optimize Vitest threading (enable parallel test execution)                         | todo   | —     | S      |
 
 **TE-32 user story:** As an agent executing generation requests, I want the AI handler to fetch embeddings and market signals in parallel with the main generation call, so independent operations don't serialize. Acceptance: `Promise.all([generateWithAI(), getRecentEmbeddings(), getMarketSignals()])` in handlers; embeddings + signals pre-fetched during generation (not after); unit tests confirm concurrent execution; live handler latency improves by 2–3s per call; no functional change to output.
 
@@ -202,6 +202,7 @@ Sequencing note: do TE-04 before TE-06 — observability first tells us how bad 
 | ID    | Task                                                                                                        | Shipped    | Commits          |
 | ----- | ----------------------------------------------------------------------------------------------------------- | ---------- | ---------------- |
 | TE-34 | Pre-load memory manifest (hot files, key patterns, line ranges)                                             | 2026-07-21 | d6e7060          |
+| TE-27 | Extend dedup window to 14 days + enrich prompt with headline + pitch per recent idea                        | 2026-07-21 | (this commit)    |
 | TE-15 | Anonymous lead capture: serverless endpoint accepts form submissions, stores in Firestore with server auth  | 2026-07-21 | (this commit)    |
 | TE-14 | Honest waitlist flow: replace fake tier upgrades with "Join Waitlist" modal, remove deceptive UI state      | 2026-07-21 | a6a6a14          |
 | TE-13 | Server-side auth + tier gates on all 8 previously-ungated generate endpoints                                | 2026-07-20 | (this commit)    |

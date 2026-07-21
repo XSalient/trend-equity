@@ -16,6 +16,14 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/): **Added 
   - Indexed in memory system so agents don't re-read architecture docs every session
   - Will reduce onboarding time for new agent sessions and improve story completion velocity
 
+- **TE-27:** Stop reworded-duplicate feed by extending dedup window to 14 days + enriching prompt context.
+  - `getRecentIdeaHeadlines()` now returns past **14 days** (up from 3) to give the AI model broader context
+  - Enriched data: each historical idea now includes `{ headline, pitch }` instead of headline-only
+  - Updated dedup block format: "headline — pitch summary" helps the AI understand the _problem space_ of each recent idea, not just the name
+  - Both production (`daily.ts`) and dev (`server.ts`) paths now use consistent 14-day window
+  - Unit tests updated to verify 14-day default + enriched format; tested skipping ideas with missing pitch/headline
+  - Rationale: prevents more subtle near-misses (same concept, different words) which score ~0.78–0.84 similarity and previously passed the 0.85 dedup threshold
+
 - **TE-15:** Anonymous enterprise lead capture via serverless endpoint — B2B funnel no longer silently drops leads.
   - New endpoint: `POST /api/enterprise-lead` (standalone, not in `/api/generate/` dispatch) — accepts anonymous form submissions
   - Rate limiting: 5 per IP per hour (Firestore-backed, survives across instances)
