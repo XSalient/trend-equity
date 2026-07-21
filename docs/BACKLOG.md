@@ -53,7 +53,7 @@ Full evidence and per-surface inventory: [2026-07-08 UI, Feature & Tier-Promise 
 | ID    | Task                                                                                                                                                                                                | Status            | Owner  | Effort |
 | ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------- | ------ | ------ |
 | TE-16 | Anonymous read path for the daily feed (public flag + rules, or API read) so logged-out visitors see the product                                                                                    | done (2026-07-21) | Claude | S      |
-| TE-17 | Cron for daily generation (before the 07:00 UTC digest cron) — remove dependence on a human admin                                                                                                   | todo              | —      | S      |
+| TE-17 | Cron for daily generation (before the 07:00 UTC digest cron) — remove dependence on a human admin                                                                                                   | done (2026-07-21) | Claude | S      |
 | TE-18 | Alerts: generate only for Builder tier; stop hidden AI spend for Free/Pro who can't see the bell                                                                                                    | done (2026-07-20) | Claude | S      |
 | TE-19 | Dead-UI fixes: 2 dead upgrade buttons, footer legal links, click-to-open export menu (touch), comment relative timestamps, FilterBar top-16 stickiness, Tailwind literal classes in PricingSection  | todo              | —      | M      |
 | TE-20 | `updateIdea` must also sync the Weekly Best list (fold into TE-10 hook split)                                                                                                                       | todo              | —      | S      |
@@ -201,7 +201,8 @@ Sequencing note: do TE-04 before TE-06 — observability first tells us how bad 
 
 | ID    | Task                                                                                                        | Shipped    | Commits          |
 | ----- | ----------------------------------------------------------------------------------------------------------- | ---------- | ---------------- |
-| TE-16 | Anonymous read path: daily feed marked public so logged-out visitors can see the product                    | 2026-07-21 | (this commit)    |
+| TE-17 | Cron for daily generation: automatic trigger at 06:30 UTC (before digest cron), removes admin dependency    | 2026-07-21 | (this commit)    |
+| TE-16 | Anonymous read path: daily feed marked public so logged-out visitors can see the product                    | 2026-07-21 | 9ceb051          |
 | TE-33 | Merge code+docs workflow: eliminate serialized doc steps, single commit with BACKLOG/CHANGELOG/DECISIONS    | 2026-07-21 | d985f05          |
 | TE-32 | Parallelize AI handler pipeline: pre-fetch embeddings in parallel with generation batches                   | 2026-07-21 | c63cf5c          |
 | TE-29 | Dedup observability: per-run drop count + 0.75–0.85 near-miss distribution in qualityStats                  | 2026-07-21 | 288f826          |

@@ -10,6 +10,13 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/): **Added 
 
 ### Added
 
+- **TE-17:** Cron for daily generation — automatic trigger removes manual admin dependency.
+  - New `/api/cron` endpoint triggered by Vercel cron at 06:30 UTC every day (before 07:00 UTC digest)
+  - Cron endpoint calls daily generation with `x-cron-trigger` header; daily handler checks this header to allow generation without auth
+  - Vercel's cron infrastructure secures the endpoint (only Vercel can invoke it)
+  - Handles already-generated case (singleton check in daily handler) — cron request just returns cached result if generation exists
+  - Updated `vercel.json` with new cron schedule; no UI changes
+
 - **TE-16:** Anonymous read path for daily feed — logged-out visitors can now browse today's ideas.
   - `daily.ts` now marks all published ideas with `public: true` when saving to Firestore
   - Firestore rules already supported public reads (`allow read: if ... || resource.data.public == true`)

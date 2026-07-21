@@ -1,7 +1,10 @@
 {
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
-  "crons": [{ "path": "/api/admin", "schedule": "0 7 * * *" }],
+  "crons": [
+    { "path": "/api/cron", "schedule": "30 6 * * *" },
+    { "path": "/api/admin", "schedule": "0 7 * * *" }
+  ],
   "functions": {
     "api/generate/**/*.ts": { "maxDuration": 300 }
   },

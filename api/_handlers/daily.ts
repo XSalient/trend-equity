@@ -50,6 +50,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const authCtx = await getAuthContext(req);
   const uid = authCtx?.uid;
   const isAdmin = authCtx?.isAdmin || false;
+  const isCronTrigger = req.headers['x-cron-trigger'] === 'true';
 
   const { date, country, countryCount, refresh } = req.body;
   const today = sanitiseInput(date, 10) || getToday();
@@ -67,13 +68,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // 2. Generation may only be triggered for today's date, by a signed-in user (TE-01).
-    // Prevents anonymous callers from burning AI spend via arbitrary client-supplied
-    // dates — the singleton check above still serves cached results for any date,
-    // to any caller, regardless of auth.
+    // Prevents anonymous callers from burning AI spend via arbitrary client-supplied dates.
+    // Exception: Vercel cron (TE-17) is trusted and can trigger without auth.
+    // The singleton check above still serves cached results for any date, to any caller.
     if (today !== getToday()) {
       return res.status(404).json({ error: 'No generation exists for that date.' });
     }
-    if (!uid) {
+    if (!uid && !isCronTrigger) {
       return res.status(401).json({ error: "Sign in to load today's feed." });
     }
 
