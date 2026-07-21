@@ -10,6 +10,14 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/): **Added 
 
 ### Added
 
+- **TE-32:** Parallelize AI handler pipeline — pre-fetch embeddings in parallel with generation batches.
+  - `semanticDedupeCandidates()` now accepts optional `preFetchedEmbeddings` parameter for better composition
+  - `daily.ts` now calls `Promise.all([generateBatch(...), getRecentEmbeddings()])` to eliminate serialization
+  - Embeddings fetched during generation instead of after; eliminates 2–3s latency on handler completion
+  - Backward compatible: callers can pass pre-fetched embeddings or let the function fetch them internally
+  - Added unit tests verifying concurrent execution with artificial delays
+  - One-line fix: removed unnecessary regex escaping in `api/enterprise-lead.ts` (eslint error)
+
 - **TE-29:** Dedup observability — instrument pipeline to log drop counts and near-miss distribution.
   - `semanticDedupeCandidates()` now returns per-candidate max-similarity scores for all candidates (kept & dropped)
   - `daily.ts` buckets near-misses into 0.75–0.80, 0.80–0.85, 0.85–0.90, 0.90+ bands

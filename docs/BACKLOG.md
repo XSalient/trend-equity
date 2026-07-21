@@ -107,13 +107,13 @@ Full implementation plan: [2026-07-21 agent performance optimization](superpower
 
 **Context:** Agent story completion takes ~30 min. Profiling identified three bottlenecks: (1) serialized backend AI operations (2–3s waste), (2) redundant discovery per session (3–4 min waste), (3) sequential post-story workflow (2 min waste). This epic targets ~15 min completion time (50% reduction).
 
-| ID    | Task                                                                               | Status      | Owner  | Effort |
-| ----- | ---------------------------------------------------------------------------------- | ----------- | ------ | ------ |
-| TE-32 | Parallelize AI handler pipeline (pre-fetch embeddings + signals during generation) | in progress | Claude | M      |
-| TE-33 | Merge code+docs workflow (update BACKLOG/CHANGELOG inline, single commit)          | todo        | —      | S      |
-| TE-35 | Auto-verify deployments (smoke-test key routes post-Vercel push)                   | todo        | —      | M      |
-| TE-36 | Shard E2E tests by feature area (parallel Playwright execution)                    | todo        | —      | M      |
-| TE-37 | Optimize Vitest threading (enable parallel test execution)                         | todo        | —      | S      |
+| ID    | Task                                                                               | Status            | Owner  | Effort |
+| ----- | ---------------------------------------------------------------------------------- | ----------------- | ------ | ------ |
+| TE-32 | Parallelize AI handler pipeline (pre-fetch embeddings + signals during generation) | done (2026-07-21) | Claude | M      |
+| TE-33 | Merge code+docs workflow (update BACKLOG/CHANGELOG inline, single commit)          | todo              | —      | S      |
+| TE-35 | Auto-verify deployments (smoke-test key routes post-Vercel push)                   | todo              | —      | M      |
+| TE-36 | Shard E2E tests by feature area (parallel Playwright execution)                    | todo              | —      | M      |
+| TE-37 | Optimize Vitest threading (enable parallel test execution)                         | todo              | —      | S      |
 
 **TE-32 user story:** As an agent executing generation requests, I want the AI handler to fetch embeddings and market signals in parallel with the main generation call, so independent operations don't serialize. Acceptance: `Promise.all([generateWithAI(), getRecentEmbeddings(), getMarketSignals()])` in handlers; embeddings + signals pre-fetched during generation (not after); unit tests confirm concurrent execution; live handler latency improves by 2–3s per call; no functional change to output.
 
@@ -201,6 +201,7 @@ Sequencing note: do TE-04 before TE-06 — observability first tells us how bad 
 
 | ID    | Task                                                                                                        | Shipped    | Commits          |
 | ----- | ----------------------------------------------------------------------------------------------------------- | ---------- | ---------------- |
+| TE-32 | Parallelize AI handler pipeline: pre-fetch embeddings in parallel with generation batches                   | 2026-07-21 | c63cf5c          |
 | TE-29 | Dedup observability: per-run drop count + 0.75–0.85 near-miss distribution in qualityStats                  | 2026-07-21 | 288f826          |
 | TE-34 | Pre-load memory manifest (hot files, key patterns, line ranges)                                             | 2026-07-21 | d6e7060          |
 | TE-28 | Tighten semantic dedup: lower threshold 0.85 → 0.80, embed headline+pitch+marketSize+revenueSkeleton        | 2026-07-21 | 9e96561          |
