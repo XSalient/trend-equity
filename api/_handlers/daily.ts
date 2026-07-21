@@ -8,7 +8,11 @@ import { getAuthContext } from '../_lib/auth';
 import { checkAndIncrementIpLimit } from '../_lib/usage';
 import { getDynamicPrompt, runSelfImprovement } from '../_lib/prompt-optimizer';
 import { critiqueAndRank } from '../_lib/quality-engine';
-import { semanticDedupeCandidates, saveIdeaEmbeddings } from '../_lib/embeddings';
+import {
+  semanticDedupeCandidates,
+  saveIdeaEmbeddings,
+  getDedupeThreshold,
+} from '../_lib/embeddings';
 import { cleanDailyDisclaimer, prepareCandidatesForCritique } from '../_lib/idea-quality';
 import { savePredictions } from '../_lib/prediction-tracker';
 
@@ -177,10 +181,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const mergedIdeas = [...(data1.ideas || []), ...(data2.ideas || []), ...(data3.ideas || [])];
 
     // Semantic dedup vs past 30 days runs BEFORE the critic to save critic tokens.
-    const { kept, droppedHeadlines, vectorsByHeadline } = await semanticDedupeCandidates(
-      mergedIdeas,
-      today
-    );
+    const dedupResult = await semanticDedupeCandidates(mergedIdeas, today);
+    const { kept, droppedHeadlines, vectorsByHeadline, similarityScores } = dedupResult;
+
+    // Compute near-miss distribution (candidates close to the dedup threshold)
+    const threshold = getDedupeThreshold();
+    const nearMissBuckets = {
+      '0.75-0.80': 0,
+      '0.80-0.85': 0,
+      '0.85-0.90': 0,
+      '0.90+': 0,
+    };
+    for (const score of similarityScores.filter((s) => s.maxSimilarity >= 0.75)) {
+      if (score.maxSimilarity < 0.8) nearMissBuckets['0.75-0.80']++;
+      else if (score.maxSimilarity < 0.85) nearMissBuckets['0.80-0.85']++;
+      else if (score.maxSimilarity < 0.9) nearMissBuckets['0.85-0.90']++;
+      else nearMissBuckets['0.90+']++;
+    }
 
     const gate = prepareCandidatesForCritique(kept, PUBLISH_COUNT);
 
@@ -222,6 +239,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       qualityStats: {
         ...stats,
         semanticDupesDropped: droppedHeadlines.length,
+        dedup: {
+          dropped: droppedHeadlines.length,
+          nearMissBuckets,
+          threshold,
+        },
         gate: gate.stats,
       },
       date: today,

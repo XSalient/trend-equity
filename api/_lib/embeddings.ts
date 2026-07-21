@@ -19,6 +19,18 @@ export interface IdeaVector {
   v: number[];
 }
 
+export interface CandidateSimilarityScore {
+  headline: string;
+  maxSimilarity: number;
+}
+
+export interface SemanticDedupResult {
+  kept: any[];
+  droppedHeadlines: string[];
+  vectorsByHeadline: Map<string, number[]>;
+  similarityScores: CandidateSimilarityScore[];
+}
+
 let _client: GoogleGenAI | null = null;
 function getClient(): GoogleGenAI {
   const apiKey = process.env.GEMINI_API_KEY;
@@ -113,15 +125,17 @@ function embedText(idea: any): string {
  * earlier-indexed sibling in the same candidate set.
  * Returns kept candidates plus their vectors (keyed by headline) so the
  * caller can persist vectors for the ideas it ultimately publishes.
+ * Also tracks per-candidate max-similarity scores for observability.
  */
 export async function semanticDedupeCandidates(
   candidates: any[],
   excludeDate: string
-): Promise<{ kept: any[]; droppedHeadlines: string[]; vectorsByHeadline: Map<string, number[]> }> {
-  const failOpen = {
+): Promise<SemanticDedupResult> {
+  const failOpen: SemanticDedupResult = {
     kept: candidates,
     droppedHeadlines: [] as string[],
     vectorsByHeadline: new Map<string, number[]>(),
+    similarityScores: [],
   };
   if (candidates.length === 0) return failOpen;
 
@@ -136,12 +150,21 @@ export async function semanticDedupeCandidates(
     const keptVectors: number[][] = [];
     const droppedHeadlines: string[] = [];
     const vectorsByHeadline = new Map<string, number[]>();
+    const similarityScores: CandidateSimilarityScore[] = [];
 
     for (let i = 0; i < candidates.length; i++) {
       const v = candidateVectors[i];
-      const tooSimilar =
-        existing.some((e) => cosineSim(v, e.v) >= threshold) ||
-        keptVectors.some((k) => cosineSim(v, k) >= threshold);
+      const existingSims = existing.map((e) => cosineSim(v, e.v));
+      const keptSims = keptVectors.map((k) => cosineSim(v, k));
+      const allSims = [...existingSims, ...keptSims];
+      const maxSimilarity = allSims.length > 0 ? Math.max(...allSims) : 0;
+
+      const tooSimilar = maxSimilarity >= threshold;
+
+      similarityScores.push({
+        headline: candidates[i].headline,
+        maxSimilarity,
+      });
 
       if (tooSimilar) {
         droppedHeadlines.push(candidates[i].headline);
@@ -157,7 +180,7 @@ export async function semanticDedupeCandidates(
         `[embeddings] Semantic dedup dropped ${droppedHeadlines.length}/${candidates.length} candidates (threshold ${threshold})`
       );
     }
-    return { kept, droppedHeadlines, vectorsByHeadline };
+    return { kept, droppedHeadlines, vectorsByHeadline, similarityScores };
   } catch (e) {
     console.error('[embeddings] semanticDedupeCandidates error (fail-open):', e);
     return failOpen;

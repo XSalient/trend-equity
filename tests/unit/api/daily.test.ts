@@ -87,8 +87,10 @@ vi.mock('../../../api/_lib/embeddings', () => ({
     kept: candidates,
     droppedHeadlines: [],
     vectorsByHeadline: new Map(),
+    similarityScores: candidates.map((c: any) => ({ headline: c.headline, maxSimilarity: 0.5 })),
   })),
   saveIdeaEmbeddings: vi.fn(async () => undefined),
+  getDedupeThreshold: vi.fn(() => 0.8),
 }));
 
 import handler from '../../../api/_handlers/daily';

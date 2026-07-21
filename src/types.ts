@@ -107,6 +107,16 @@ export interface DailyGeneration {
     criticModel?: string;
     failOpen?: boolean;
     semanticDupesDropped?: number;
+    dedup?: {
+      dropped: number;
+      nearMissBuckets: {
+        '0.75-0.80': number;
+        '0.80-0.85': number;
+        '0.85-0.90': number;
+        '0.90+': number;
+      };
+      threshold: number;
+    };
     gate?: {
       inputCount: number;
       publishableCount: number;

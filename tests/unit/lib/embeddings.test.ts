@@ -108,10 +108,17 @@ describe('semanticDedupeCandidates', () => {
       { id: 'b', headline: 'Fresh Idea', pitch: 'p2' },
     ];
 
-    const { kept, droppedHeadlines } = await semanticDedupeCandidates(candidates, '2026-07-02');
+    const { kept, droppedHeadlines, similarityScores } = await semanticDedupeCandidates(
+      candidates,
+      '2026-07-02'
+    );
 
     expect(kept.map((c: any) => c.headline)).toEqual(['Fresh Idea']);
     expect(droppedHeadlines).toEqual(['Dupe Idea']);
+    // Verify similarity scores are tracked
+    expect(similarityScores).toHaveLength(2);
+    expect(similarityScores[0]).toMatchObject({ headline: 'Dupe Idea', maxSimilarity: 1 });
+    expect(similarityScores[1]).toMatchObject({ headline: 'Fresh Idea', maxSimilarity: 0 });
   });
 
   it('drops near-duplicate siblings within the same candidate batch', async () => {
@@ -179,6 +186,36 @@ describe('semanticDedupeCandidates', () => {
     expect(embeddedTexts[0]).toContain('Subscription at $299/mo');
 
     expect(kept).toHaveLength(2);
+  });
+
+  it('tracks similarity scores for all candidates (kept and dropped)', async () => {
+    mockEmbedContent.mockResolvedValue(
+      embedResponse([
+        [1, 0],
+        [0, 1],
+        [0.5, 0.5],
+      ])
+    );
+
+    const candidates = [
+      { id: 'a', headline: 'First', pitch: 'p' },
+      { id: 'b', headline: 'Orthogonal', pitch: 'p' },
+      { id: 'c', headline: 'Hybrid', pitch: 'p' },
+    ];
+
+    const { kept, similarityScores } = await semanticDedupeCandidates(candidates, '2026-07-02');
+
+    // Verify similarity scores are returned for all candidates
+    expect(similarityScores).toHaveLength(3);
+    expect(similarityScores[0]).toMatchObject({ headline: 'First' });
+    expect(similarityScores[1]).toMatchObject({ headline: 'Orthogonal' });
+    expect(similarityScores[2]).toMatchObject({ headline: 'Hybrid' });
+    // All should have maxSimilarity number
+    for (const score of similarityScores) {
+      expect(typeof score.maxSimilarity).toBe('number');
+      expect(score.maxSimilarity).toBeGreaterThanOrEqual(0);
+      expect(score.maxSimilarity).toBeLessThanOrEqual(1);
+    }
   });
 
   it('respects DEDUP_SIM_THRESHOLD from env', async () => {
