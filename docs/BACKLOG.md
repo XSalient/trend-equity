@@ -201,7 +201,8 @@ Sequencing note: do TE-04 before TE-06 — observability first tells us how bad 
 
 | ID    | Task                                                                                                        | Shipped    | Commits          |
 | ----- | ----------------------------------------------------------------------------------------------------------- | ---------- | ---------------- |
-| TE-19 | Dead-UI fixes: Tailwind literal classes, footer links, FilterBar stickiness, comment timestamps             | 2026-07-21 | (this commit)    |
+| TE-20 | `updateIdea` must sync Weekly Best list when ideas are updated across all feeds and tabs                    | 2026-07-21 | 14092b6          |
+| TE-19 | Dead-UI fixes: Tailwind literal classes, footer links, FilterBar stickiness, comment timestamps             | 2026-07-21 | e9b267d          |
 | TE-17 | Cron for daily generation: automatic trigger at 06:30 UTC (before digest cron), removes admin dependency    | 2026-07-21 | 2404943          |
 | TE-16 | Anonymous read path: daily feed marked public so logged-out visitors can see the product                    | 2026-07-21 | 9ceb051          |
 | TE-33 | Merge code+docs workflow: eliminate serialized doc steps, single commit with BACKLOG/CHANGELOG/DECISIONS    | 2026-07-21 | d985f05          |
@@ -210,13 +211,13 @@ Sequencing note: do TE-04 before TE-06 — observability first tells us how bad 
 | TE-34 | Pre-load memory manifest (hot files, key patterns, line ranges)                                             | 2026-07-21 | d6e7060          |
 | TE-28 | Tighten semantic dedup: lower threshold 0.85 → 0.80, embed headline+pitch+marketSize+revenueSkeleton        | 2026-07-21 | 9e96561          |
 | TE-27 | Extend dedup window to 14 days + enrich prompt with headline + pitch per recent idea                        | 2026-07-21 | b46310b          |
-| TE-15 | Anonymous lead capture: serverless endpoint accepts form submissions, stores in Firestore with server auth  | 2026-07-21 | (this commit)    |
+| TE-15 | Anonymous lead capture: serverless endpoint accepts form submissions, stores in Firestore with server auth  | 2026-07-21 | adb53ef          |
 | TE-14 | Honest waitlist flow: replace fake tier upgrades with "Join Waitlist" modal, remove deceptive UI state      | 2026-07-21 | a6a6a14          |
-| TE-13 | Server-side auth + tier gates on all 8 previously-ungated generate endpoints                                | 2026-07-20 | (this commit)    |
-| TE-18 | Alerts stop generating (and spending AI budget) for Free/Pro — side effect of TE-13's Builder gate          | 2026-07-20 | (this commit)    |
+| TE-13 | Server-side auth + tier gates on all 8 previously-ungated generate endpoints                                | 2026-07-20 | b2bef09          |
+| TE-18 | Alerts stop generating (and spending AI budget) for Free/Pro — side effect of TE-13's Builder gate          | 2026-07-20 | b2bef09          |
 | TE-12 | Production Firestore rules: per-collection least-privilege security (prevent self-upgrade, quota tampering) | 2026-07-20 | 6fd7159          |
-| TE-01 | Restrict daily generation trigger to authed users + today's date only                                       | 2026-07-08 | (this commit)    |
-| TE-02 | Firestore-backed per-IP daily limit on daily generation (found the old limiter was dead code, never called) | 2026-07-08 | (this commit)    |
+| TE-01 | Restrict daily generation trigger to authed users + today's date only                                       | 2026-07-08 | f11d6a7          |
+| TE-02 | Firestore-backed per-IP daily limit on daily generation (found the old limiter was dead code, never called) | 2026-07-08 | f11d6a7          |
 | —     | Project tracking system (this file, CHANGELOG, doc map, CLAUDE.md sync)                                     | 2026-07-08 | (this commit)    |
 | —     | Pain-point audit + remediation plan                                                                         | 2026-07-08 | (this commit)    |
 | —     | DECISIONS.md cross-machine decision log                                                                     | 2026-07-08 | 985347f          |
