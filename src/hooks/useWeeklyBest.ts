@@ -11,6 +11,16 @@ export function useWeeklyBest(tier: Tier) {
   // Use a ref for the in-flight guard so the callback has a stable identity
   const loadingRef = useRef(false);
 
+  const updateWeeklyBestIdea = useCallback((updatedIdea: Idea) => {
+    setWeeklyBest((prev) =>
+      prev.map((idea) =>
+        idea.id === updatedIdea.id
+          ? { ...updatedIdea, recurrenceCount: idea.recurrenceCount }
+          : idea
+      )
+    );
+  }, []);
+
   const fetchWeeklyBest = useCallback(async () => {
     if (loadingRef.current || tier === 'free') return;
     loadingRef.current = true;
@@ -72,5 +82,5 @@ export function useWeeklyBest(tier: Tier) {
     }
   }, []); // stable — uses ref for in-flight guard
 
-  return { weeklyBest, loading, error, fetched, fetchWeeklyBest };
+  return { weeklyBest, loading, error, fetched, fetchWeeklyBest, updateWeeklyBestIdea };
 }

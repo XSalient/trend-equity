@@ -6,9 +6,15 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/): **Added 
 
 ## Unreleased
 
-## 2026-07-21
+## 2026-07-21 (continued)
 
 ### Added
+
+- **TE-20:** `updateIdea` now syncs weekly best — when an idea is updated anywhere (daily feed, custom feed, or weekly best), the change is reflected across all lists.
+  - Added `updateWeeklyBestIdea()` callback to `useWeeklyBest` hook
+  - Created `handleUpdateIdea()` wrapper in `App.tsx` that calls both `updateIdea()` (from `useIdeas`) and `updateWeeklyBestIdea()` (from `useWeeklyBest`)
+  - Replaced all direct `updateIdea` prop assignments with `handleUpdateIdea` in IdeaFeed, SavedIdeas, WeeklyBest, and AnalyzeIdeaModal tabs
+  - Prevents stale idea state in weekly best tab when analysis results update an idea's properties
 
 - **TE-19:** Dead-UI fixes — multiple cosmetic improvements and bug fixes.
   - **Tailwind literal classes in PricingSection** (lines 372, 379): Fixed dynamic Tailwind classes by converting to conditional ternary expressions. Tailwind can't generate classes at runtime.

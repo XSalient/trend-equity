@@ -117,6 +117,7 @@ function MainApp() {
     error: errorWeekly,
     fetched: fetchedWeekly,
     fetchWeeklyBest,
+    updateWeeklyBestIdea,
   } = useWeeklyBest(tier);
   const [weeklyRadar, setWeeklyRadar] = useState<WeeklyTrendRadar | null>(null);
   const [futurecasting, setFuturecasting] = useState<Futurecasting | null>(null);
@@ -144,6 +145,15 @@ function MainApp() {
   }, [authError]);
 
   const today = new Date().toISOString().split('T')[0];
+
+  // Sync idea updates to both daily/custom feeds and the weekly best list (TE-20)
+  const handleUpdateIdea = useCallback(
+    (idea: Idea) => {
+      updateIdea(idea);
+      updateWeeklyBestIdea(idea);
+    },
+    [updateIdea, updateWeeklyBestIdea]
+  );
 
   // --- Tab Specific Actions ---
   // IMPORTANT: All hooks must be declared before any conditional return (React Rules of Hooks).
@@ -401,7 +411,7 @@ function MainApp() {
                 onExportCSV={() => exportListToCSV(dailyGen?.ideas || [], activeTab, today)}
                 onExportPDF={() => exportListToPDF(dailyGen?.ideas || [], activeTab, today)}
                 toggleSave={onToggleSaveLocal}
-                updateIdea={updateIdea}
+                updateIdea={handleUpdateIdea}
                 getFilteredIdeas={getFilteredIdeas}
                 exportToPDF={exportDocument}
                 setActiveTab={setActiveTab}
@@ -442,7 +452,7 @@ function MainApp() {
                 customSaves={customSaves}
                 toggleSave={onToggleSaveLocal}
                 toggleCustomSave={onSaveCustomIdeaLocal}
-                updateIdea={updateIdea}
+                updateIdea={handleUpdateIdea}
                 tier={tier}
                 exportToPDF={exportDocument}
                 loading={loading}
@@ -460,7 +470,7 @@ function MainApp() {
                 onFetch={fetchWeeklyBest}
                 userSaves={userSaves}
                 toggleSave={onToggleSaveLocal}
-                updateIdea={updateIdea}
+                updateIdea={handleUpdateIdea}
                 tier={tier}
                 exportToPDF={exportDocument}
                 user={user}
@@ -579,7 +589,7 @@ function MainApp() {
           onSaveCustomIdea={onSaveCustomIdeaLocal}
           customSavesCount={customSaves.length}
           analyzeIdeaHook={analyzeIdeaHook}
-          updateIdea={updateIdea}
+          updateIdea={handleUpdateIdea}
           exportToPDF={exportDocument}
         />
       </div>
