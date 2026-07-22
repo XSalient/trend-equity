@@ -45,6 +45,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(401).json({ error: 'Sign in to gather market evidence.' });
   }
 
+  if (tier === 'free') {
+    return res.status(403).json({
+      error: 'Market evidence requires a Pro or Builder plan.',
+      upgradeRequired: true,
+    });
+  }
+
   const { idea, date, refresh } = req.body;
 
   if (!idea || typeof idea !== 'object') {

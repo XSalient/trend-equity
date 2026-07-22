@@ -149,6 +149,11 @@ export function useIdeaActions(idea: Idea, onUpdateIdea?: (idea: Idea) => void) 
       onUpdateIdea?.({ ...ideaRef.current, evidence: result });
       return true;
     } catch (error: any) {
+      // Track upgrade requirement separately so UI can route to pricing
+      if (error?.upgradeRequired) {
+        setActionError(error.message);
+        return Object.assign(new Error(), { upgradeRequired: true });
+      }
       handleError(error, 'Evidence gathering failed. Please try again.');
       return false;
     } finally {

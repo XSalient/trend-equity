@@ -44,6 +44,7 @@ interface IdeaCardProps {
   handleLogin: () => void;
   userInput?: string;
   isAdmin?: boolean;
+  onUpgrade?: () => void;
 }
 
 export const IdeaCard: React.FC<IdeaCardProps> = ({
@@ -58,6 +59,7 @@ export const IdeaCard: React.FC<IdeaCardProps> = ({
   handleLogin,
   userInput,
   isAdmin,
+  onUpgrade,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [activeToolkit, setActiveToolkit] = useState<
@@ -271,30 +273,53 @@ export const IdeaCard: React.FC<IdeaCardProps> = ({
               {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
             </button>
 
-            <button
-              className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-xl transition-all border ${
-                evidenceResult
-                  ? 'bg-sky-500/10 border-sky-500/30 text-sky-400'
-                  : 'bg-zinc-800/50 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 border-zinc-700/50'
-              }`}
-              onClick={() => {
-                if (!user) {
-                  handleLogin();
-                } else if (evidenceResult) {
-                  setIsExpanded(true);
-                } else {
-                  handleGatherEvidence(false);
-                }
-              }}
-              disabled={isGatheringEvidence}
-            >
-              {isGatheringEvidence ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Search className="w-4 h-4" />
-              )}
-              {evidenceResult ? 'Evidence found' : 'Evidence'}
-            </button>
+            {isFree ? (
+              <div className="relative group/evidence">
+                <button
+                  className="flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-xl transition-all border bg-zinc-800/50 text-zinc-500 border-zinc-700/50 cursor-not-allowed opacity-50"
+                  disabled
+                >
+                  <Search className="w-4 h-4" />
+                  Evidence
+                </button>
+                <div className="absolute bottom-full mb-2 left-0 w-48 p-2 bg-zinc-800 text-xs text-zinc-300 rounded-lg opacity-0 invisible group-hover/evidence:opacity-100 group-hover/evidence:visible transition-all z-50 border border-zinc-700 shadow-xl pointer-events-none leading-relaxed">
+                  Market evidence requires a Pro plan.{' '}
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      trackEvent('upgrade_click', idea.id);
+                      onUpgrade?.();
+                    }}
+                    className="text-sky-400 hover:text-sky-300 font-semibold underline"
+                  >
+                    Upgrade →
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-xl transition-all border ${
+                  evidenceResult
+                    ? 'bg-sky-500/10 border-sky-500/30 text-sky-400'
+                    : 'bg-zinc-800/50 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 border-zinc-700/50'
+                }`}
+                onClick={() => {
+                  if (evidenceResult) {
+                    setIsExpanded(true);
+                  } else {
+                    handleGatherEvidence(false);
+                  }
+                }}
+                disabled={isGatheringEvidence}
+              >
+                {isGatheringEvidence ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Search className="w-4 h-4" />
+                )}
+                {evidenceResult ? 'Evidence found' : 'Evidence'}
+              </button>
+            )}
 
             {isBuilder && (
               <div className="flex items-center gap-2">
@@ -409,7 +434,7 @@ export const IdeaCard: React.FC<IdeaCardProps> = ({
                   tier={tier}
                   onUpgradeClick={() => {
                     trackEvent('upgrade_click', idea.id);
-                    // Tab navigation will be handled by parent (IdeaFeed/tabs)
+                    onUpgrade?.();
                   }}
                 />
 

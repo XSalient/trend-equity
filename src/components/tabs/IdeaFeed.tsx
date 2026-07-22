@@ -194,6 +194,7 @@ export const IdeaFeed: React.FC<IdeaFeedProps> = ({
                   user={user}
                   handleLogin={handleLogin}
                   isAdmin={isAdmin}
+                  onUpgrade={() => setActiveTab('pro')}
                 />
               ))}
 

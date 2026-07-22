@@ -68,7 +68,7 @@ Decision + full rationale: [Free-Tier Value Ladder (DECISIONS.md, 2026-07-10)](.
 | ID    | Task                                                                                                               | Status            | Owner  | Effort |
 | ----- | ------------------------------------------------------------------------------------------------------------------ | ----------------- | ------ | ------ |
 | TE-22 | Basic-vs-Full VC analysis: lock unfair advantage, revenue model & market dynamics behind a visible upsell for Free | done (2026-07-22) | Claude | M      |
-| TE-23 | Market Evidence becomes Pro+: server gate in `evidence.ts` + locked teaser button for Free                         | todo              | —      | S      |
+| TE-23 | Market Evidence becomes Pro+: server gate in `evidence.ts` + locked teaser button for Free                         | in progress       | Claude | S      |
 | TE-24 | CSV export becomes Pro+: gate the FilterBar export option, match the PDF-only Free promise                         | todo              | —      | S      |
 | TE-25 | Enforce Pro next-steps cap of 7 using the existing (currently dead) `TIER_LIMITS.roadmapSteps` constant            | todo              | —      | S      |
 | TE-26 | Comments tiering: Free read-only, Pro+ can post — rules + UI state with inline upgrade prompt                      | todo              | —      | M      |

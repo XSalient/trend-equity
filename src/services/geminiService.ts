@@ -141,6 +141,11 @@ export async function generateEvidence(idea: Idea, date?: string, refresh?: bool
   if (!response.ok) {
     const err = await response.json().catch(() => ({}));
     if (err._usage) _lastUsage['evidence'] = err._usage;
+    if (response.status === 403) {
+      throw Object.assign(new Error(err.error || 'Pro or Builder plan required.'), {
+        upgradeRequired: true,
+      });
+    }
     throw new Error(err.error || 'Failed to gather market evidence');
   }
   const data = await response.json();

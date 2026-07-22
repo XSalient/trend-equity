@@ -15,6 +15,7 @@ import {
   Wrench,
   Eye,
   Wand2,
+  Search,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { WaitlistModal } from './WaitlistModal';
@@ -40,6 +41,7 @@ const TIER_FEATURES: Record<string, { label: string; tiers: string[] }[]> = {
     { label: 'Notion / GDocs Templates', tiers: ['pro', 'builder'] },
     { label: 'Priority Email Digest', tiers: ['pro', 'builder'] },
     { label: 'Validation Toolkit', tiers: ['pro', 'builder'] },
+    { label: 'Market Evidence', tiers: ['pro', 'builder'] },
   ],
   builder: [
     { label: 'Up to 35 ideas / day', tiers: ['builder'] },
@@ -80,6 +82,10 @@ const TIER_SHOWCASE: Record<PlanKey, { icon: React.ReactNode; label: string; onC
       {
         icon: <Sparkles className="w-5 h-5 text-emerald-500 mx-auto" />,
         label: 'Keyword Custom Feed',
+      },
+      {
+        icon: <Search className="w-5 h-5 text-emerald-500 mx-auto" />,
+        label: 'Market Evidence',
       },
       {
         icon: <Wrench className="w-5 h-5 text-emerald-500 mx-auto" />,
