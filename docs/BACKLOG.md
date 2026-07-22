@@ -65,13 +65,13 @@ Full evidence and per-surface inventory: [2026-07-08 UI, Feature & Tier-Promise 
 
 Decision + full rationale: [Free-Tier Value Ladder (DECISIONS.md, 2026-07-10)](../DECISIONS.md). Sequencing: all of these gates are cosmetic until TE-12 (rules) and TE-13 (server tier guards) ship — implement TE-23…TE-26 on top of TE-13's `requireTier` helper.
 
-| ID    | Task                                                                                                               | Status | Owner | Effort |
-| ----- | ------------------------------------------------------------------------------------------------------------------ | ------ | ----- | ------ |
-| TE-22 | Basic-vs-Full VC analysis: lock unfair advantage, revenue model & market dynamics behind a visible upsell for Free | todo   | —     | M      |
-| TE-23 | Market Evidence becomes Pro+: server gate in `evidence.ts` + locked teaser button for Free                         | todo   | —     | S      |
-| TE-24 | CSV export becomes Pro+: gate the FilterBar export option, match the PDF-only Free promise                         | todo   | —     | S      |
-| TE-25 | Enforce Pro next-steps cap of 7 using the existing (currently dead) `TIER_LIMITS.roadmapSteps` constant            | todo   | —     | S      |
-| TE-26 | Comments tiering: Free read-only, Pro+ can post — rules + UI state with inline upgrade prompt                      | todo   | —     | M      |
+| ID    | Task                                                                                                               | Status            | Owner  | Effort |
+| ----- | ------------------------------------------------------------------------------------------------------------------ | ----------------- | ------ | ------ |
+| TE-22 | Basic-vs-Full VC analysis: lock unfair advantage, revenue model & market dynamics behind a visible upsell for Free | done (2026-07-22) | Claude | M      |
+| TE-23 | Market Evidence becomes Pro+: server gate in `evidence.ts` + locked teaser button for Free                         | todo              | —      | S      |
+| TE-24 | CSV export becomes Pro+: gate the FilterBar export option, match the PDF-only Free promise                         | todo              | —      | S      |
+| TE-25 | Enforce Pro next-steps cap of 7 using the existing (currently dead) `TIER_LIMITS.roadmapSteps` constant            | todo              | —      | S      |
+| TE-26 | Comments tiering: Free read-only, Pro+ can post — rules + UI state with inline upgrade prompt                      | todo              | —      | M      |
 
 **TE-22 user story:** As a free user browsing the feed, I want to see that each idea has an unfair-advantage read, a revenue model, and market dynamics waiting behind a lock, so I understand exactly what upgrading buys me — and as the owner, I want my strongest upsell shown on every single card instead of given away.
 Acceptance: Free sees headline, pitch, score, VC justification, trend sources, 3 next steps; the locked sections render as titled, blurred/locked panels with one "Unlock full analysis — Pro" CTA (not silently hidden — visible absence sells). Pro/Builder unchanged. PRD §3 already promises this split.
@@ -201,6 +201,7 @@ Sequencing note: do TE-04 before TE-06 — observability first tells us how bad 
 
 | ID    | Task                                                                                                                                                    | Shipped    | Commits          |
 | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- | ---------------- |
+| TE-22 | Basic-vs-Full VC analysis: lock unfair advantage, revenue model, market dynamics behind visible locked panels for Free tier                             | 2026-07-22 | (this commit)    |
 | TE-21 | Promise/copy reconciliation: saves wording, co-founder button gating, Weekly Radar tier, Twitter/X claims, Validation Toolkit tier, Email Digest status | 2026-07-22 | a602fef          |
 | TE-20 | `updateIdea` must sync Weekly Best list when ideas are updated across all feeds and tabs                                                                | 2026-07-21 | 14092b6          |
 | TE-19 | Dead-UI fixes: Tailwind literal classes, footer links, FilterBar stickiness, comment timestamps                                                         | 2026-07-21 | e9b267d          |

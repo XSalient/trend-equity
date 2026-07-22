@@ -404,7 +404,14 @@ export const IdeaCard: React.FC<IdeaCardProps> = ({
 
                 <IdeaCardActionSteps idea={idea} isFree={isFree} />
 
-                <IdeaCardAnalysis idea={idea} />
+                <IdeaCardAnalysis
+                  idea={idea}
+                  tier={tier}
+                  onUpgradeClick={() => {
+                    trackEvent('upgrade_click', idea.id);
+                    // Tab navigation will be handled by parent (IdeaFeed/tabs)
+                  }}
+                />
 
                 <IdeaCardToolkit
                   idea={idea}

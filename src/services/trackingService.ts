@@ -4,7 +4,7 @@
  * fallback). Tracking must never affect UX: all failures are swallowed.
  */
 
-export type TrackEventType = 'impression' | 'expand' | 'save' | 'export' | 'vet';
+export type TrackEventType = 'impression' | 'expand' | 'save' | 'export' | 'vet' | 'upgrade_click';
 
 interface TrackEvent {
   ideaId: string;

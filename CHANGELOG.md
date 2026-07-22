@@ -10,6 +10,11 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/): **Added 
 
 ### Changed
 
+- **TE-22:** Basic-vs-Full VC analysis — lock unfair advantage, revenue model, market dynamics behind Pro paywall.
+  - Created `LockedAnalysisSection` component showing blurred locked sections with upgrade CTA
+  - Free users see: VC Justification, Trend Sources (unlocked) + Unfair Advantage, Revenue Model, Market Dynamics as locked panels
+  - Pro/Builder see full content unchanged
+  - Added `upgrade_click` tracking event for upgrade flow analytics
 - **TE-21:** Promise/copy reconciliation — align UI promises with actual implementation.
   - **Saves wording** (PricingSection, PRD): Changed "5 Saves / Month" → "5 Saved Ideas" to clarify concurrent quota (not monthly rollover)
   - **Twitter/X signal claims removed** (PRD §4.1, App.tsx): Removed false claim about scanning "X (Twitter)". Actual sources: Google Trends, Product Hunt, Reddit, Hacker News, TechCrunch.
