@@ -7,6 +7,12 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
+    // Helper: check if current user is pro or builder tier
+    function isProOrBuilder() {
+      let userTier = get(/databases/$(database)/documents/users/$(request.auth.uid)).data.tier;
+      return userTier == 'pro' || userTier == 'builder';
+    }
+
     // ============ USER-OWNED COLLECTIONS ============
 
     // users/{uid} — user profile (tier, role, filters, settings)
@@ -80,10 +86,10 @@ service cloud.firestore {
       allow create, delete: if false;
     }
 
-    // comments/{commentId} — idea discussion thread
+    // comments/{commentId} — idea discussion thread (read: all auth users, create: pro+ only)
     match /comments/{commentId} {
       allow read: if request.auth != null;
-      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid && isProOrBuilder();
       allow update: if false;
       allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
     }

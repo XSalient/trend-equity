@@ -7,6 +7,7 @@ interface IdeaCommentsProps {
   ideaId: string;
   user: any;
   handleLogin: () => void;
+  tier?: 'free' | 'pro' | 'builder';
 }
 
 function getRelativeTime(timestamp: any): string {
@@ -24,7 +25,12 @@ function getRelativeTime(timestamp: any): string {
   return `${days}d AGO`;
 }
 
-export const IdeaComments: React.FC<IdeaCommentsProps> = ({ ideaId, user, handleLogin }) => {
+export const IdeaComments: React.FC<IdeaCommentsProps> = ({
+  ideaId,
+  user,
+  handleLogin,
+  tier = 'free',
+}) => {
   const [isOpen, setIsOpen] = useState(false);
   const [text, setText] = useState('');
   const { comments, loading, postComment, deleteComment } = useComments(ideaId);
@@ -68,13 +74,16 @@ export const IdeaComments: React.FC<IdeaCommentsProps> = ({ ideaId, user, handle
               <input
                 type="text"
                 placeholder={
-                  user
-                    ? 'Share your feedback or ask a question...'
-                    : 'Sign in to join the discussion'
+                  tier === 'free'
+                    ? 'Posting is a Pro feature'
+                    : user
+                      ? 'Share your feedback or ask a question...'
+                      : 'Sign in to join the discussion'
                 }
                 value={text}
                 onChange={(e) => setText(e.target.value)}
-                className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 pr-12 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-emerald-500/50 transition-all"
+                disabled={tier === 'free'}
+                className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 pr-12 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-emerald-500/50 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
               />
               <button
                 type="submit"

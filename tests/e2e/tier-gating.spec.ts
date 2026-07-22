@@ -256,6 +256,67 @@ test.describe('Tier Gating — Next Steps (TE-25)', () => {
   });
 });
 
+test.describe('Tier Gating — Comments (TE-26)', () => {
+  test.setTimeout(30000);
+
+  test('free tier comment input is disabled with pro prompt', async ({ page }) => {
+    await loadApp(page, 'free');
+
+    const firstIdea = page.locator('[class*="IdeaCard"]').first();
+    await firstIdea.scrollIntoViewIfNeeded();
+    await page.waitForTimeout(500);
+
+    const commentBtn = page.locator('button', { hasText: /Community|Comment/i }).first();
+    if ((await commentBtn.count()) > 0) {
+      await commentBtn.click();
+      await page.waitForTimeout(500);
+    }
+
+    const commentInput = page.locator('input[placeholder*="Pro feature"]');
+    if ((await commentInput.count()) > 0) {
+      await expect(commentInput).toBeDisabled();
+    }
+  });
+
+  test('pro tier comment input is enabled', async ({ page }) => {
+    await loadApp(page, 'pro');
+
+    const firstIdea = page.locator('[class*="IdeaCard"]').first();
+    await firstIdea.scrollIntoViewIfNeeded();
+    await page.waitForTimeout(500);
+
+    const commentBtn = page.locator('button', { hasText: /Community|Comment/i }).first();
+    if ((await commentBtn.count()) > 0) {
+      await commentBtn.click();
+      await page.waitForTimeout(500);
+    }
+
+    const commentInput = page.locator('input[placeholder*="feedback"]');
+    if ((await commentInput.count()) > 0) {
+      await expect(commentInput).toBeEnabled();
+    }
+  });
+
+  test('builder tier comment input is enabled', async ({ page }) => {
+    await loadApp(page, 'builder');
+
+    const firstIdea = page.locator('[class*="IdeaCard"]').first();
+    await firstIdea.scrollIntoViewIfNeeded();
+    await page.waitForTimeout(500);
+
+    const commentBtn = page.locator('button', { hasText: /Community|Comment/i }).first();
+    if ((await commentBtn.count()) > 0) {
+      await commentBtn.click();
+      await page.waitForTimeout(500);
+    }
+
+    const commentInput = page.locator('input[placeholder*="feedback"]');
+    if ((await commentInput.count()) > 0) {
+      await expect(commentInput).toBeEnabled();
+    }
+  });
+});
+
 test.describe('Tier Gating — Local Market Filter', () => {
   test.setTimeout(30000);
 

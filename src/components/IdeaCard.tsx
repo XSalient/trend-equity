@@ -527,7 +527,7 @@ export const IdeaCard: React.FC<IdeaCardProps> = ({
           </div>
         </div>
 
-        <IdeaComments ideaId={idea.id} user={user} handleLogin={handleLogin} />
+        <IdeaComments ideaId={idea.id} user={user} handleLogin={handleLogin} tier={tier} />
       </div>
     </motion.div>
   );
