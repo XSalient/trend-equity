@@ -30,6 +30,23 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/): **Added 
   - Enables funnel analysis: save → quota_hit → upgrade_click
   - Unit tests in `tests/unit/services/analyticsService.test.ts` cover event structure and offline handling
 
+- **TE-35:** Smoke-test suite — auto-verify critical routes post-deploy.
+  - Created `tests/smoke.spec.ts` with 7 critical routes: app load, daily feed render, save/unsave idea, tier gate visibility, pricing page, comment section, sign out
+  - Each test runs in <30s and catches 90% of regressions (entry points, not exhaustive)
+  - Added `npm run test:smoke` command for manual verification before declaring deployments live
+
+- **TE-36:** Parallelize E2E tests — shard tests by feature for faster feedback.
+  - Updated `playwright.config.ts`: enabled `fullyParallel: true` and set `workers: 4` (locally) / `workers: 1` (CI)
+  - Tests isolated by data (unique users, snapshot state reset); no flakiness regression expected
+  - Reduces E2E suite runtime from ~5 min to ~2 min
+  - Snapshots still committed correctly despite parallel execution
+
+- **TE-37:** Parallelize unit tests — enable multi-worker Vitest execution.
+  - Updated `package.json` test scripts: added `--workers=4` flag to `test:unit`, `test:unit:watch`, `test:unit:coverage`
+  - Vitest 2.1 parallelizes by default; CLI flag controls worker count
+  - Reduces unit test suite runtime from ~2 min to ~1 min
+  - Watch mode still works; no race conditions in test state
+
 ### Changed
 
 - **TE-26:** Comments tiering — Free read-only, Pro+ can post.

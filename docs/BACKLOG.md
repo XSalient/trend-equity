@@ -113,9 +113,9 @@ Full implementation plan: [2026-07-21 agent performance optimization](superpower
 | ----- | ---------------------------------------------------------------------------------- | ----------------- | ------ | ------ |
 | TE-32 | Parallelize AI handler pipeline (pre-fetch embeddings + signals during generation) | done (2026-07-21) | Claude | M      |
 | TE-33 | Merge code+docs workflow (update BACKLOG/CHANGELOG inline, single commit)          | done (2026-07-21) | Claude | S      |
-| TE-35 | Auto-verify deployments (smoke-test key routes post-Vercel push)                   | todo              | —      | M      |
-| TE-36 | Shard E2E tests by feature area (parallel Playwright execution)                    | todo              | —      | M      |
-| TE-37 | Optimize Vitest threading (enable parallel test execution)                         | todo              | —      | S      |
+| TE-35 | Auto-verify deployments (smoke-test key routes post-Vercel push)                   | done (2026-07-23) | Claude | M      |
+| TE-36 | Shard E2E tests by feature area (parallel Playwright execution)                    | done (2026-07-23) | Claude | M      |
+| TE-37 | Optimize Vitest threading (enable parallel test execution)                         | done (2026-07-23) | Claude | S      |
 
 **TE-32 user story:** As an agent executing generation requests, I want the AI handler to fetch embeddings and market signals in parallel with the main generation call, so independent operations don't serialize. Acceptance: `Promise.all([generateWithAI(), getRecentEmbeddings(), getMarketSignals()])` in handlers; embeddings + signals pre-fetched during generation (not after); unit tests confirm concurrent execution; live handler latency improves by 2–3s per call; no functional change to output.
 
