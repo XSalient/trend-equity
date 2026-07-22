@@ -2,10 +2,10 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: './tests/e2e',
-  fullyParallel: false, // sequential for visual stability
+  fullyParallel: true, // parallel E2E tests (tests isolated by data)
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : 1,
+  workers: process.env.CI ? 1 : 4, // 4 workers locally, 1 in CI for stability
   reporter: [['html', { outputFolder: 'playwright-report', open: 'never' }], ['list']],
 
   use: {

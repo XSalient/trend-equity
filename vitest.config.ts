@@ -8,6 +8,8 @@ export default defineConfig({
     include: ['tests/unit/**/*.test.{ts,tsx}'],
     setupFiles: ['tests/unit/setup.ts', 'tests/setup-dom.ts'],
     environmentMatchGlobs: [['tests/unit/components/**', 'jsdom']],
+    // Parallel execution enabled by default in Vitest 2.x
+    // Use --no-isolate flag or VITEST_WORKERS env var for control
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html', 'lcov'],
