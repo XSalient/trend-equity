@@ -10,6 +10,13 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/): **Added 
 
 ### Changed
 
+- **TE-23:** Market Evidence becomes Pro+ — server gate + locked teaser UI.
+  - `evidence.ts` handler: returns 403 with `upgradeRequired: true` for free tier
+  - `geminiService.generateEvidence()`: detects 403 and throws with `upgradeRequired` flag
+  - Evidence button shows disabled + locked state for free users with inline "Upgrade →" tooltip
+  - IdeaCard receives `onUpgrade` callback to navigate to pricing tab
+  - PricingSection: added "Market Evidence" to Pro tier features list and showcase icons
+  - Acceptance met: feature is gated, UI shows clear lock, pricing page documents it
 - **TE-22:** Basic-vs-Full VC analysis — lock unfair advantage, revenue model, market dynamics behind Pro paywall.
   - Created `LockedAnalysisSection` component showing blurred locked sections with upgrade CTA
   - Free users see: VC Justification, Trend Sources (unlocked) + Unfair Advantage, Revenue Model, Market Dynamics as locked panels

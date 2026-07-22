@@ -68,7 +68,7 @@ Decision + full rationale: [Free-Tier Value Ladder (DECISIONS.md, 2026-07-10)](.
 | ID    | Task                                                                                                               | Status            | Owner  | Effort |
 | ----- | ------------------------------------------------------------------------------------------------------------------ | ----------------- | ------ | ------ |
 | TE-22 | Basic-vs-Full VC analysis: lock unfair advantage, revenue model & market dynamics behind a visible upsell for Free | done (2026-07-22) | Claude | M      |
-| TE-23 | Market Evidence becomes Pro+: server gate in `evidence.ts` + locked teaser button for Free                         | in progress       | Claude | S      |
+| TE-23 | Market Evidence becomes Pro+: server gate in `evidence.ts` + locked teaser button for Free                         | done (2026-07-22) | Claude | S      |
 | TE-24 | CSV export becomes Pro+: gate the FilterBar export option, match the PDF-only Free promise                         | todo              | —      | S      |
 | TE-25 | Enforce Pro next-steps cap of 7 using the existing (currently dead) `TIER_LIMITS.roadmapSteps` constant            | todo              | —      | S      |
 | TE-26 | Comments tiering: Free read-only, Pro+ can post — rules + UI state with inline upgrade prompt                      | todo              | —      | M      |
@@ -201,6 +201,7 @@ Sequencing note: do TE-04 before TE-06 — observability first tells us how bad 
 
 | ID    | Task                                                                                                                                                    | Shipped    | Commits          |
 | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- | ---------------- |
+| TE-23 | Market Evidence: server 403 gate + locked teaser button UI for Free tier, added to Pro pricing showcase                                                 | 2026-07-22 | d920a11          |
 | TE-22 | Basic-vs-Full VC analysis: lock unfair advantage, revenue model, market dynamics behind visible locked panels for Free tier                             | 2026-07-22 | 9a35413          |
 | TE-21 | Promise/copy reconciliation: saves wording, co-founder button gating, Weekly Radar tier, Twitter/X claims, Validation Toolkit tier, Email Digest status | 2026-07-22 | a602fef          |
 | TE-20 | `updateIdea` must sync Weekly Best list when ideas are updated across all feeds and tabs                                                                | 2026-07-21 | 14092b6          |
