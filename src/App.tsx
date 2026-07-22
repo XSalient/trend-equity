@@ -409,7 +409,13 @@ function MainApp() {
                 setFilters={setFilters}
                 tier={tier}
                 isAdmin={isAdmin}
-                onExportCSV={() => exportListToCSV(dailyGen?.ideas || [], activeTab, today)}
+                onExportCSV={() => {
+                  if (tier === 'free') {
+                    setActiveTab('pro');
+                  } else {
+                    exportListToCSV(dailyGen?.ideas || [], activeTab, today);
+                  }
+                }}
                 onExportPDF={() => exportListToPDF(dailyGen?.ideas || [], activeTab, today)}
                 toggleSave={onToggleSaveLocal}
                 updateIdea={handleUpdateIdea}

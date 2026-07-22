@@ -6,6 +6,16 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/): **Added 
 
 ## Unreleased
 
+## 2026-07-23
+
+### Changed
+
+- **TE-24:** CSV export becomes Pro+ — server-side tier gate + client-side UI indication.
+  - `App.tsx`: `onExportCSV` handler now checks tier; Free users navigate to pricing tab instead of exporting
+  - `FilterBar.tsx`: Export dropdown shows "(Pro+)" suffix on CSV option for Free tier users
+  - PDF export remains unrestricted (Free tier gets PDF, Pro+ gets CSV+PDF)
+  - Acceptance met: CSV export is gated, Free users see clear indication and pricing upgrade path, PDF stays free
+
 ## 2026-07-22
 
 ### Changed

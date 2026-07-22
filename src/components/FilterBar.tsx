@@ -343,7 +343,10 @@ export function FilterBar({
             label="Export"
             icon={Download}
             options={[
-              { label: 'Export as CSV', onClick: () => onExportCSV?.() },
+              {
+                label: isFree ? 'Export as CSV (Pro+)' : 'Export as CSV',
+                onClick: () => onExportCSV?.(),
+              },
               { label: 'Export as PDF', onClick: () => onExportPDF?.() },
             ]}
           />
