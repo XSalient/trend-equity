@@ -427,7 +427,7 @@ export const IdeaCard: React.FC<IdeaCardProps> = ({
                   />
                 )}
 
-                <IdeaCardActionSteps idea={idea} isFree={isFree} />
+                <IdeaCardActionSteps idea={idea} tier={tier} />
 
                 <IdeaCardAnalysis
                   idea={idea}

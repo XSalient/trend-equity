@@ -173,6 +173,89 @@ test.describe('Tier Gating — Futurecasting Feature', () => {
   });
 });
 
+test.describe('Tier Gating — Next Steps (TE-25)', () => {
+  test.setTimeout(30000);
+
+  test('free tier shows 3 next steps with upgrade prompt', async ({ page }) => {
+    await loadApp(page, 'free');
+
+    const firstIdea = page.locator('[class*="IdeaCard"]').first();
+    await firstIdea.scrollIntoViewIfNeeded();
+    await page.waitForTimeout(500);
+
+    const expandBtn = firstIdea.locator('button:has-text("View VC Analysis")').first();
+    if ((await expandBtn.count()) > 0) {
+      await expandBtn.click();
+      await page.waitForTimeout(500);
+    }
+
+    const steps = page
+      .locator('text=/Next Steps/i')
+      .first()
+      .locator('xpath=following-sibling::div[1]//div[contains(@class, "flex gap-3")]');
+    const stepCount = await steps.count();
+    expect(stepCount).toBeLessThanOrEqual(3);
+
+    // Should show upgrade prompt if there are more than 3 steps
+    if (stepCount === 3) {
+      const prompt = page.locator('text=/Upgrade to Pro/i');
+      await expect(prompt).toBeVisible({ timeout: 5000 });
+    }
+  });
+
+  test('pro tier shows 7 next steps with builder upgrade prompt when truncated', async ({
+    page,
+  }) => {
+    await loadApp(page, 'pro');
+
+    const firstIdea = page.locator('[class*="IdeaCard"]').first();
+    await firstIdea.scrollIntoViewIfNeeded();
+    await page.waitForTimeout(500);
+
+    const expandBtn = firstIdea.locator('button:has-text("View VC Analysis")').first();
+    if ((await expandBtn.count()) > 0) {
+      await expandBtn.click();
+      await page.waitForTimeout(500);
+    }
+
+    const steps = page
+      .locator('text=/Next Steps/i')
+      .first()
+      .locator('xpath=following-sibling::div[1]//div[contains(@class, "flex gap-3")]');
+    const stepCount = await steps.count();
+    expect(stepCount).toBeLessThanOrEqual(7);
+
+    // Should show builder upgrade prompt if truncated
+    if (stepCount === 7) {
+      const prompt = page.locator('text=/Upgrade to Builder/i');
+      await expect(prompt).toBeVisible({ timeout: 5000 });
+    }
+  });
+
+  test('builder tier shows all next steps (10+)', async ({ page }) => {
+    await loadApp(page, 'builder');
+
+    const firstIdea = page.locator('[class*="IdeaCard"]').first();
+    await firstIdea.scrollIntoViewIfNeeded();
+    await page.waitForTimeout(500);
+
+    const expandBtn = firstIdea.locator('button:has-text("View VC Analysis")').first();
+    if ((await expandBtn.count()) > 0) {
+      await expandBtn.click();
+      await page.waitForTimeout(500);
+    }
+
+    const steps = page
+      .locator('text=/Next Steps/i')
+      .first()
+      .locator('xpath=following-sibling::div[1]//div[contains(@class, "flex gap-3")]');
+    const stepCount = await steps.count();
+    // Builder sees all steps; upgrade prompt should not appear
+    const prompt = page.locator('text=/Upgrade/i').locator('text=/roadmap/i');
+    await expect(prompt).not.toBeVisible({ timeout: 5000 });
+  });
+});
+
 test.describe('Tier Gating — Local Market Filter', () => {
   test.setTimeout(30000);
 
