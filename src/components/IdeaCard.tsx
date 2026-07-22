@@ -438,20 +438,22 @@ export const IdeaCard: React.FC<IdeaCardProps> = ({
 
         {/* Community & Collaboration Footer */}
         <div className="pt-3 border-t border-zinc-800/40 flex items-center justify-between flex-wrap gap-2">
-          <button
-            onClick={() => {
-              if (!onUpdateIdea) return;
-              onUpdateIdea({ ...idea, seekingPartner: !idea.seekingPartner });
-            }}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-medium transition-all ${
-              idea.seekingPartner
-                ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
-                : 'text-zinc-500 border border-zinc-800 hover:border-zinc-600 hover:text-zinc-300'
-            }`}
-          >
-            <Users className="w-3.5 h-3.5" />
-            {idea.seekingPartner ? 'Seeking co-founder' : 'Find co-founder'}
-          </button>
+          {tier === 'builder' && (
+            <button
+              onClick={() => {
+                if (!onUpdateIdea) return;
+                onUpdateIdea({ ...idea, seekingPartner: !idea.seekingPartner });
+              }}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-medium transition-all ${
+                idea.seekingPartner
+                  ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+                  : 'text-zinc-500 border border-zinc-800 hover:border-zinc-600 hover:text-zinc-300'
+              }`}
+            >
+              <Users className="w-3.5 h-3.5" />
+              {idea.seekingPartner ? 'Seeking co-founder' : 'Find co-founder'}
+            </button>
+          )}
 
           <div className="flex items-center gap-1.5">
             <button

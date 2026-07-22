@@ -57,7 +57,7 @@ Full evidence and per-surface inventory: [2026-07-08 UI, Feature & Tier-Promise 
 | TE-18 | Alerts: generate only for Builder tier; stop hidden AI spend for Free/Pro who can't see the bell                                                                                                    | done (2026-07-20) | Claude | S      |
 | TE-19 | Dead-UI fixes: 2 dead upgrade buttons, footer legal links, click-to-open export menu (touch), comment relative timestamps, FilterBar top-16 stickiness, Tailwind literal classes in PricingSection  | done (2026-07-21) | Claude | M      |
 | TE-20 | `updateIdea` must also sync the Weekly Best list (fold into TE-10 hook split)                                                                                                                       | done (2026-07-21) | Claude | S      |
-| TE-21 | Promise/copy reconciliation: saves wording, dead digest weekly toggle, co-founder button, X/Twitter signal claims, PRD digest + validation-toolkit tier corrections (next-steps cap moved to TE-25) | todo              | —      | M      |
+| TE-21 | Promise/copy reconciliation: saves wording, dead digest weekly toggle, co-founder button, X/Twitter signal claims, PRD digest + validation-toolkit tier corrections (next-steps cap moved to TE-25) | done (2026-07-22) | Claude | M      |
 
 **TE-18 note:** shipped as a side effect of TE-13 — `alerts.ts` now 403s below Builder tier, so `useAlerts`'s per-signed-in-user generation attempt can no longer trigger AI spend for Free/Pro (it just gets a harmless rejected call). The client still fires that doomed request rather than skipping it client-side; leaving that micro-optimization out of scope here.
 
@@ -199,30 +199,31 @@ Sequencing note: do TE-04 before TE-06 — observability first tells us how bad 
 
 ## Recently shipped
 
-| ID    | Task                                                                                                        | Shipped    | Commits          |
-| ----- | ----------------------------------------------------------------------------------------------------------- | ---------- | ---------------- |
-| TE-20 | `updateIdea` must sync Weekly Best list when ideas are updated across all feeds and tabs                    | 2026-07-21 | 14092b6          |
-| TE-19 | Dead-UI fixes: Tailwind literal classes, footer links, FilterBar stickiness, comment timestamps             | 2026-07-21 | e9b267d          |
-| TE-17 | Cron for daily generation: automatic trigger at 06:30 UTC (before digest cron), removes admin dependency    | 2026-07-21 | 2404943          |
-| TE-16 | Anonymous read path: daily feed marked public so logged-out visitors can see the product                    | 2026-07-21 | 9ceb051          |
-| TE-33 | Merge code+docs workflow: eliminate serialized doc steps, single commit with BACKLOG/CHANGELOG/DECISIONS    | 2026-07-21 | d985f05          |
-| TE-32 | Parallelize AI handler pipeline: pre-fetch embeddings in parallel with generation batches                   | 2026-07-21 | c63cf5c          |
-| TE-29 | Dedup observability: per-run drop count + 0.75–0.85 near-miss distribution in qualityStats                  | 2026-07-21 | 288f826          |
-| TE-34 | Pre-load memory manifest (hot files, key patterns, line ranges)                                             | 2026-07-21 | d6e7060          |
-| TE-28 | Tighten semantic dedup: lower threshold 0.85 → 0.80, embed headline+pitch+marketSize+revenueSkeleton        | 2026-07-21 | 9e96561          |
-| TE-27 | Extend dedup window to 14 days + enrich prompt with headline + pitch per recent idea                        | 2026-07-21 | b46310b          |
-| TE-15 | Anonymous lead capture: serverless endpoint accepts form submissions, stores in Firestore with server auth  | 2026-07-21 | adb53ef          |
-| TE-14 | Honest waitlist flow: replace fake tier upgrades with "Join Waitlist" modal, remove deceptive UI state      | 2026-07-21 | a6a6a14          |
-| TE-13 | Server-side auth + tier gates on all 8 previously-ungated generate endpoints                                | 2026-07-20 | b2bef09          |
-| TE-18 | Alerts stop generating (and spending AI budget) for Free/Pro — side effect of TE-13's Builder gate          | 2026-07-20 | b2bef09          |
-| TE-12 | Production Firestore rules: per-collection least-privilege security (prevent self-upgrade, quota tampering) | 2026-07-20 | 6fd7159          |
-| TE-01 | Restrict daily generation trigger to authed users + today's date only                                       | 2026-07-08 | f11d6a7          |
-| TE-02 | Firestore-backed per-IP daily limit on daily generation (found the old limiter was dead code, never called) | 2026-07-08 | f11d6a7          |
-| —     | Project tracking system (this file, CHANGELOG, doc map, CLAUDE.md sync)                                     | 2026-07-08 | (this commit)    |
-| —     | Pain-point audit + remediation plan                                                                         | 2026-07-08 | (this commit)    |
-| —     | DECISIONS.md cross-machine decision log                                                                     | 2026-07-08 | 985347f          |
-| —     | `/api/generate/*` consolidation into dispatch catch-all (Vercel Hobby 12-fn limit)                          | 2026-07-08 | 210be12, 85ab8dc |
-| —     | Custom requirement feed (Builder, 1 gen/24 h, peek/restore)                                                 | 2026-07-03 | 44ec85c, b5436d8 |
-| —     | Quality Engine Wave 1: critic pipeline, semantic dedup, evidence grounding, prediction tracking             | 2026-07-03 | 5608d81          |
-| —     | CI pipeline + component tests                                                                               | 2026-05-21 | 39f18be          |
-| —     | Self-learning prompt pipeline (AI critique + user reactions)                                                | 2026-05-20 | 491b7 series     |
+| ID    | Task                                                                                                                                                    | Shipped    | Commits          |
+| ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- | ---------------- |
+| TE-21 | Promise/copy reconciliation: saves wording, co-founder button gating, Weekly Radar tier, Twitter/X claims, Validation Toolkit tier, Email Digest status | 2026-07-22 | a602fef          |
+| TE-20 | `updateIdea` must sync Weekly Best list when ideas are updated across all feeds and tabs                                                                | 2026-07-21 | 14092b6          |
+| TE-19 | Dead-UI fixes: Tailwind literal classes, footer links, FilterBar stickiness, comment timestamps                                                         | 2026-07-21 | e9b267d          |
+| TE-17 | Cron for daily generation: automatic trigger at 06:30 UTC (before digest cron), removes admin dependency                                                | 2026-07-21 | 2404943          |
+| TE-16 | Anonymous read path: daily feed marked public so logged-out visitors can see the product                                                                | 2026-07-21 | 9ceb051          |
+| TE-33 | Merge code+docs workflow: eliminate serialized doc steps, single commit with BACKLOG/CHANGELOG/DECISIONS                                                | 2026-07-21 | d985f05          |
+| TE-32 | Parallelize AI handler pipeline: pre-fetch embeddings in parallel with generation batches                                                               | 2026-07-21 | c63cf5c          |
+| TE-29 | Dedup observability: per-run drop count + 0.75–0.85 near-miss distribution in qualityStats                                                              | 2026-07-21 | 288f826          |
+| TE-34 | Pre-load memory manifest (hot files, key patterns, line ranges)                                                                                         | 2026-07-21 | d6e7060          |
+| TE-28 | Tighten semantic dedup: lower threshold 0.85 → 0.80, embed headline+pitch+marketSize+revenueSkeleton                                                    | 2026-07-21 | 9e96561          |
+| TE-27 | Extend dedup window to 14 days + enrich prompt with headline + pitch per recent idea                                                                    | 2026-07-21 | b46310b          |
+| TE-15 | Anonymous lead capture: serverless endpoint accepts form submissions, stores in Firestore with server auth                                              | 2026-07-21 | adb53ef          |
+| TE-14 | Honest waitlist flow: replace fake tier upgrades with "Join Waitlist" modal, remove deceptive UI state                                                  | 2026-07-21 | a6a6a14          |
+| TE-13 | Server-side auth + tier gates on all 8 previously-ungated generate endpoints                                                                            | 2026-07-20 | b2bef09          |
+| TE-18 | Alerts stop generating (and spending AI budget) for Free/Pro — side effect of TE-13's Builder gate                                                      | 2026-07-20 | b2bef09          |
+| TE-12 | Production Firestore rules: per-collection least-privilege security (prevent self-upgrade, quota tampering)                                             | 2026-07-20 | 6fd7159          |
+| TE-01 | Restrict daily generation trigger to authed users + today's date only                                                                                   | 2026-07-08 | f11d6a7          |
+| TE-02 | Firestore-backed per-IP daily limit on daily generation (found the old limiter was dead code, never called)                                             | 2026-07-08 | f11d6a7          |
+| —     | Project tracking system (this file, CHANGELOG, doc map, CLAUDE.md sync)                                                                                 | 2026-07-08 | (this commit)    |
+| —     | Pain-point audit + remediation plan                                                                                                                     | 2026-07-08 | (this commit)    |
+| —     | DECISIONS.md cross-machine decision log                                                                                                                 | 2026-07-08 | 985347f          |
+| —     | `/api/generate/*` consolidation into dispatch catch-all (Vercel Hobby 12-fn limit)                                                                      | 2026-07-08 | 210be12, 85ab8dc |
+| —     | Custom requirement feed (Builder, 1 gen/24 h, peek/restore)                                                                                             | 2026-07-03 | 44ec85c, b5436d8 |
+| —     | Quality Engine Wave 1: critic pipeline, semantic dedup, evidence grounding, prediction tracking                                                         | 2026-07-03 | 5608d81          |
+| —     | CI pipeline + component tests                                                                                                                           | 2026-05-21 | 39f18be          |
+| —     | Self-learning prompt pipeline (AI critique + user reactions)                                                                                            | 2026-05-20 | 491b7 series     |

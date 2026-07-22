@@ -69,7 +69,7 @@ const TIER_SHOWCASE: Record<PlanKey, { icon: React.ReactNode; label: string; onC
   {
     free: [
       { icon: <Eye className="w-5 h-5 text-emerald-500 mx-auto" />, label: '10 Ideas Daily' },
-      { icon: <Bookmark className="w-5 h-5 text-emerald-500 mx-auto" />, label: '5 Saves / Month' },
+      { icon: <Bookmark className="w-5 h-5 text-emerald-500 mx-auto" />, label: '5 Saved Ideas' },
       { icon: <FileText className="w-5 h-5 text-emerald-500 mx-auto" />, label: 'PDF Export' },
     ],
     pro: [

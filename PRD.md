@@ -27,13 +27,14 @@ Trend Equity uses a tiered subscription model:
 | Feature                    | Free              | Pro                        | Builder                           | Enterprise (Validation)           |
 | :------------------------- | :---------------- | :------------------------- | :-------------------------------- | :------------------------------- |
 | **Daily Ideas**            | 10 ideas / day    | 25 ideas / day             | 35 ideas / day                    | Custom / Full Access             |
-| **Saves**                  | 5 saves / month   | Unlimited                  | Unlimited                         | Unlimited                        |
+| **Saves**                  | 5 saved ideas     | Unlimited                  | Unlimited                         | Unlimited                        |
 | **Custom Idea Analysis**   | —                 | 5 / month                  | 20 / month                        | Unlimited                        |
 | **Custom Requirement Feed** | Locked            | 1 keyword, 5 ideas / 24h   | Natural language, 5 ideas / 24h   | Custom thesis feeds             |
 | **Exporting**              | PDF Pitch Deck    | PDF, CSV, Notion/GDocs (clipboard) | PDF, CSV, Notion/GDocs (clipboard)  | Custom Data Integration (API)    |
 | **Analysis**               | Basic VC Analysis (pitch, justification, trend sources) | Full VC Analysis (+ unfair advantage, revenue model, market dynamics) | Full VC Analysis + Expert Vetting | Proprietary Thesis Alignment     |
 | **Market Evidence**        | Locked (teaser)   | ✓ Search-grounded evidence | ✓ Search-grounded evidence        | ✓ + Custom research              |
 | **Execution**              | 3 Next Steps      | 7 Next Steps               | Full 10+ Step Roadmap             | Full 10+ Step Roadmap            |
+| **Validation Toolkit**      | —                 | ✓                          | ✓                                 | ✓                                |
 | **Weekly Best**            | —                 | ✓                          | ✓                                 | ✓                                |
 | **Advanced Tools**         | Locked            | Email Digest *(planned)*   | Radar, Futurecasting, TE100, API  | Custom Alerts + Dashboard        |
 | **Community**              | Read-only         | Post & Reply               | Priority Threads                  | Private Slack/Discord Connect    |
@@ -46,7 +47,7 @@ Trend Equity uses a tiered subscription model:
 
 - A curated list of business opportunities refreshed every 24 hours.
 - Contextualized insights based on current dates and global trends.
-- **Signal Sources:** AI-driven scanning of Hacker News, Reddit, X (Twitter), and industry reports.
+- **Signal Sources:** AI-driven scanning of Google Trends, Product Hunt, Reddit, Hacker News, and TechCrunch.
 
 ### 4.2. Idea Cards
 
@@ -61,7 +62,7 @@ Trend Equity uses a tiered subscription model:
 - **Weekly Best (Pro/Builder):** Aggregated top-performing ideas based on user engagement and market signals.
 - **Weekly Trend Radar (Builder):** Macro analysis of emerging market shifts and opportunity areas.
 - **Futurecasting (Builder):** Long-term predictions for 2027, 2030, and 2035 horizons with rationale and impact analysis.
-- **Email Digest (Pro/Builder):** Daily or weekly summaries of high-signal opportunities. *(UI shipped; backend delivery in development.)*
+- **Email Digest (Pro/Builder):** Daily summaries of high-signal opportunities delivered at 8:00 AM. Weekly Trend Radar digests available to Builder tier.
 
 ### 4.3b. Custom Idea Analysis (Pro/Builder)
 
@@ -80,6 +81,13 @@ Trend Equity uses a tiered subscription model:
 - **Caching:** The first custom feed generated in a 24-hour window is cached per user and returned on repeat requests until the window expires.
 - **Result States:** The API must distinguish complete results (5 ideas), partial results (1-4 ideas), and empty results (0 ideas) so the UI can explain whether strong signal-backed matches were found.
 
+### 4.3d. Validation Toolkit (Pro/Builder)
+
+- **Purpose:** Frameworks and templates for testing demand before launch.
+- **Contents:** AI-generated landing page copy, interview scripts, and validation checklists.
+- **Pro:** Access to validation toolkit generation for analyzed ideas.
+- **Builder:** Same as Pro, with advanced customization options.
+
 ### 4.4. VC Analysis & Vetting
 
 - **VC Justification:** Why this idea is venture-backable.
@@ -95,7 +103,10 @@ Trend Equity uses a tiered subscription model:
 - **Persistence:** Customized plans are saved and cached for fast viewing in the "Saved" tab.
 - **Build with Me:** Automated generation of prompt packs and starter repository structures.
 - **TE100 & API Access:** Priority access to the top 100 trending ideas and programmatic API integration.
-- **Validation Toolkit:** Frameworks for testing demand, including landing page copy and interview scripts.
+- **Weekly Trend Radar:** Macro analysis of emerging market shifts and opportunity areas.
+- **Futurecasting Engine:** Long-term predictions for 2027, 2030, and 2035 horizons with rationale and impact analysis.
+- **Advanced Alerts:** Real-time notifications for system updates and trend shifts.
+- **Expert Vetting:** AI-driven expert assessment and pivot suggestions for each idea.
 
 ### 4.6. Exporting & Sharing
 

@@ -6,6 +6,20 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/): **Added 
 
 ## Unreleased
 
+## 2026-07-22
+
+### Changed
+
+- **TE-21:** Promise/copy reconciliation — align UI promises with actual implementation.
+  - **Saves wording** (PricingSection, PRD): Changed "5 Saves / Month" → "5 Saved Ideas" to clarify concurrent quota (not monthly rollover)
+  - **Twitter/X signal claims removed** (PRD §4.1, App.tsx): Removed false claim about scanning "X (Twitter)". Actual sources: Google Trends, Product Hunt, Reddit, Hacker News, TechCrunch.
+  - **Co-founder button gated to Builder** (IdeaCard): Hidden for Free/Pro tiers; feature is future roadmap (PRD §7)
+  - **Weekly Radar toggle gated to Builder** (EmailDigest): Hidden for Free/Pro; only Builder sees the toggle (matches tier promise)
+  - **Validation Toolkit tier corrected** (PRD §4.3d): Moved from "Builder-Specific" to "Pro/Builder Features" section; added to tier table with Pro+ access
+  - **Email Digest status updated** (PRD): Changed from "backend in development" to accurate status: daily digest ships at 8:00 AM, weekly radar available to Builder tier
+  - **Builder-Specific Features clarified** (PRD §4.5): Listed missing features (Weekly Trend Radar, Futurecasting, Advanced Alerts, Expert Vetting) that were promised in tier table but not documented in section
+  - All changes align marketing copy with implementation; no functional code changes except tier gates
+
 ## 2026-07-21 (continued)
 
 ### Added

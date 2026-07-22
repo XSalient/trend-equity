@@ -253,8 +253,8 @@ function MainApp() {
           Generating today's feed...
         </h2>
         <p className="mt-2 text-zinc-500 text-sm max-w-xs mx-auto">
-          Our AI is scanning real-time signals from Google, X, and Reddit to find today's top{' '}
-          {TIER_LIMITS[tier].dailyIdeas} opportunities.
+          Our AI is scanning real-time signals to find today's top {TIER_LIMITS[tier].dailyIdeas}{' '}
+          opportunities.
         </p>
       </div>
     );

@@ -70,25 +70,27 @@ export const EmailDigestTab: React.FC<EmailDigestTabProps> = ({ user }) => {
               </div>
             </button>
 
-            {/* Weekly Radar toggle */}
-            <button
-              onClick={() => setRadarOn((v) => !v)}
-              className="flex items-center justify-between p-4 bg-zinc-800/50 border border-white/5 rounded-xl text-left w-full hover:border-zinc-700/50 transition-colors"
-            >
-              <div>
-                <p className="text-xs font-bold text-white uppercase tracking-widest">
-                  Weekly Trend Radar
-                </p>
-                <p className="text-[10px] text-zinc-500">Every Sunday at 6:00 PM</p>
-              </div>
-              <div
-                className={`w-10 h-5 rounded-full relative transition-colors duration-200 ${radarOn ? 'bg-emerald-500' : 'bg-zinc-700'}`}
+            {/* Weekly Radar toggle (Builder only) */}
+            {user?.tier === 'builder' && (
+              <button
+                onClick={() => setRadarOn((v) => !v)}
+                className="flex items-center justify-between p-4 bg-zinc-800/50 border border-white/5 rounded-xl text-left w-full hover:border-zinc-700/50 transition-colors"
               >
+                <div>
+                  <p className="text-xs font-bold text-white uppercase tracking-widest">
+                    Weekly Trend Radar
+                  </p>
+                  <p className="text-[10px] text-zinc-500">Every Sunday at 6:00 PM</p>
+                </div>
                 <div
-                  className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow-lg transition-all duration-200 ${radarOn ? 'right-0.5' : 'left-0.5'}`}
-                />
-              </div>
-            </button>
+                  className={`w-10 h-5 rounded-full relative transition-colors duration-200 ${radarOn ? 'bg-emerald-500' : 'bg-zinc-700'}`}
+                >
+                  <div
+                    className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow-lg transition-all duration-200 ${radarOn ? 'right-0.5' : 'left-0.5'}`}
+                  />
+                </div>
+              </button>
+            )}
           </div>
 
           {/* Save button — shows sign-in gate when unauthenticated */}
