@@ -72,8 +72,8 @@ Decision + full rationale: [Free-Tier Value Ladder (DECISIONS.md, 2026-07-10)](.
 | TE-22 | Basic-vs-Full VC analysis: lock unfair advantage, revenue model & market dynamics behind a visible upsell for Free | done (2026-07-22) | Claude | M      |
 | TE-23 | Market Evidence becomes Pro+: server gate in `evidence.ts` + locked teaser button for Free                         | done (2026-07-22) | Claude | S      |
 | TE-24 | CSV export becomes Pro+: gate the FilterBar export option, match the PDF-only Free promise                         | done (2026-07-23) | Claude | S      |
-| TE-25 | Enforce Pro next-steps cap of 7 using the existing (currently dead) `TIER_LIMITS.roadmapSteps` constant            | todo              | —      | S      |
-| TE-26 | Comments tiering: Free read-only, Pro+ can post — rules + UI state with inline upgrade prompt                      | todo              | —      | M      |
+| TE-25 | Enforce Pro next-steps cap of 7 using the existing (currently dead) `TIER_LIMITS.roadmapSteps` constant            | done (2026-07-23) | Claude | S      |
+| TE-26 | Comments tiering: Free read-only, Pro+ can post — rules + UI state with inline upgrade prompt                      | done (2026-07-23) | Claude | M      |
 
 **TE-22 user story:** As a free user browsing the feed, I want to see that each idea has an unfair-advantage read, a revenue model, and market dynamics waiting behind a lock, so I understand exactly what upgrading buys me — and as the owner, I want my strongest upsell shown on every single card instead of given away.
 Acceptance: Free sees headline, pitch, score, VC justification, trend sources, 3 next steps; the locked sections render as titled, blurred/locked panels with one "Unlock full analysis — Pro" CTA (not silently hidden — visible absence sells). Pro/Builder unchanged. PRD §3 already promises this split.
@@ -203,7 +203,9 @@ Sequencing note: do TE-04 before TE-06 — observability first tells us how bad 
 
 | ID    | Task                                                                                                                                                    | Shipped    | Commits          |
 | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- | ---------------- |
-| TE-24 | CSV export becomes Pro+: tier gate routes Free to pricing tab, "(Pro+)" label in Export dropdown, PDF remains free                                      | 2026-07-23 | (pending)        |
+| TE-26 | Comments: Free read-only with inline "Pro feature" prompt, Pro+ can post, Firestore rules gate create by tier                                           | 2026-07-23 | c436d58          |
+| TE-25 | Pro next-steps cap of 7 (Free 3, Builder 10), sliced by TIER_LIMITS.roadmapSteps, with tier-specific upgrade messaging                                  | 2026-07-23 | f3a45f8          |
+| TE-24 | CSV export becomes Pro+: tier gate routes Free to pricing tab, "(Pro+)" label in Export dropdown, PDF remains free                                      | 2026-07-23 | 831afde          |
 | TE-23 | Market Evidence: server 403 gate + locked teaser button UI for Free tier, added to Pro pricing showcase                                                 | 2026-07-22 | d920a11          |
 | TE-22 | Basic-vs-Full VC analysis: lock unfair advantage, revenue model, market dynamics behind visible locked panels for Free tier                             | 2026-07-22 | 9a35413          |
 | TE-21 | Promise/copy reconciliation: saves wording, co-founder button gating, Weekly Radar tier, Twitter/X claims, Validation Toolkit tier, Email Digest status | 2026-07-22 | a602fef          |

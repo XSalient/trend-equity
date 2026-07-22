@@ -10,6 +10,21 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/): **Added 
 
 ### Changed
 
+- **TE-26:** Comments tiering — Free read-only, Pro+ can post.
+  - `IdeaComments.tsx`: Input disabled for Free tier with inline "Posting is a Pro feature" prompt
+  - Firestore rules: Added `isProOrBuilder()` helper; `comments/{commentId}.create` now requires tier check
+  - Existing free-authored comments remain readable by all tiers
+  - E2E tests verify Free sees disabled input, Pro/Builder see enabled input
+  - Acceptance met: Free users can read all comments but cannot post; server-side rules enforce tier gate
+
+- **TE-25:** Pro next-steps cap — tier-driven roadmap slicing.
+  - `IdeaCardActionSteps.tsx`: Refactored to accept `tier` prop and use `TIER_LIMITS.roadmapSteps` for slicing
+  - Free: 3 steps with "Upgrade to Pro" prompt when truncated
+  - Pro: 7 steps with "Upgrade to Builder for full roadmap" prompt when truncated
+  - Builder: all 10 steps, no upgrade prompt
+  - E2E tests verify step counts and upgrade messaging by tier
+  - Acceptance met: roadmap execution depth is now distinct per tier; dead constant warning resolved
+
 - **TE-24:** CSV export becomes Pro+ — server-side tier gate + client-side UI indication.
   - `App.tsx`: `onExportCSV` handler now checks tier; Free users navigate to pricing tab instead of exporting
   - `FilterBar.tsx`: Export dropdown shows "(Pro+)" suffix on CSV option for Free tier users
