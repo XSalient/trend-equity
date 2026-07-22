@@ -8,6 +8,28 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/): **Added 
 
 ## 2026-07-23
 
+### Added
+
+- **TE-04:** Signal observability — per-run source counts and degradation flag in `qualityStats`.
+  - Modified `api/_lib/signals.ts`: Added `getMarketSignals()` function that returns both signals and sourceCount (number of sources with data)
+  - Modified `api/_handlers/daily.ts`: Calls `getMarketSignals()` instead of `fetchLiveSignals()`; writes `qualityStats.signals = { sourceCount, degraded }` flag set to true when sourceCount = 0
+  - Added admin console warning when all signal sources fail or return empty
+  - Visible in Firestore `daily_generations` doc for manual inspection and analytics
+  - Enables measurement of signal health across runs (foundation for TE-05/06 hardening work)
+
+- **TE-09:** Product analytics — event logging service and 5 core events for funnel analysis.
+  - Created new `src/services/analyticsService.ts`: `logEvent(name, context?)` service with batch writes to Firestore `user_analytics` collection
+  - Handles offline state: events queue when offline, flush when online with debounce
+  - Integrated 5 core events:
+    - `tab_view`: logs when user switches tabs (in App.tsx useEffect, fired on activeTab change)
+    - `idea_save`: logs on successful Firestore save (in useIdeas.ts, fired after addDoc succeeds, not on quota failure)
+    - `quota_hit`: logs when user hits monthly save limit (in useIdeas.ts toggleSave, before onUpgradeNeeded callback)
+    - `upgrade_click`: logs when user clicks to upgrade to Builder tier (in App.tsx onUpgradeToBuilder)
+    - `evidence_view`: logs when IdeaCardEvidence component renders (in IdeaCardEvidence.tsx useEffect)
+  - Events batch to Firestore with timestamp, uid, context, and date
+  - Enables funnel analysis: save → quota_hit → upgrade_click
+  - Unit tests in `tests/unit/services/analyticsService.test.ts` cover event structure and offline handling
+
 ### Changed
 
 - **TE-26:** Comments tiering — Free read-only, Pro+ can post.

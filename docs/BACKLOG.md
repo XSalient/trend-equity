@@ -151,12 +151,9 @@ Sequencing: TE-29 done — now measure the near-miss distribution to ground the 
 
 | ID    | Task                                                                                                                              | Status | Owner | Effort |
 | ----- | --------------------------------------------------------------------------------------------------------------------------------- | ------ | ----- | ------ |
-| TE-04 | Signal observability: per-source counts in `qualityStats`, `signalsDegraded` flag, admin alert at zero                            | todo   | —     | S      |
 | TE-05 | Signal citation verification: match `trendSources` against the signal snapshot, `signalVerified` flag (measure-first, don't drop) | todo   | —     | M      |
 | TE-06 | Resilient signal fetching: Reddit RSS fallback, Firestore-shared 1 h cache, real failure logging                                  | todo   | —     | M      |
 | TE-07 | Generation lock hardening: 10-min TTL, runId ownership check, unlock in `finally`                                                 | todo   | —     | S      |
-
-**TE-04 user story:** As the product owner, I want every generation to record how many live signals it used — and an alert at zero — so I know my core differentiator actually ran.
 
 **TE-05 user story:** As a user evaluating an idea, I want its cited trend sources to provably match signals that existed at generation time, so grounding is verifiable, not model self-assertion.
 
@@ -164,14 +161,15 @@ Sequencing: TE-29 done — now measure the near-miss distribution to ground the 
 
 **TE-07 user story:** As the product owner, I want exactly one generation run per day regardless of request races, so a slow run can never double AI spend.
 
-Sequencing note: do TE-04 before TE-06 — observability first tells us how bad the Reddit problem actually is.
+Sequencing note: TE-04 (now shipped) provided observability; use its data to inform TE-06 — how bad is the Reddit problem actually?
 
 ## Later — P2: prove the business
 
-| ID    | Task                                                                                                                        | Status | Owner | Effort |
-| ----- | --------------------------------------------------------------------------------------------------------------------------- | ------ | ----- | ------ |
-| TE-08 | Stripe monetization: checkout + webhook as sole writer of `users/{uid}.tier`; Pro/Builder monthly only                      | todo   | —     | L      |
-| TE-09 | Product analytics: `logEvent()` service + 5 events (`tab_view`, `idea_save`, `quota_hit`, `upgrade_click`, `evidence_view`) | todo   | —     | M      |
+| ID    | Task                                                                                                                        | Status            | Owner  | Effort |
+| ----- | --------------------------------------------------------------------------------------------------------------------------- | ----------------- | ------ | ------ |
+| TE-04 | Signal observability: per-source counts in `qualityStats`, `signalsDegraded` flag, admin alert at zero                      | done (2026-07-23) | Claude | S      |
+| TE-09 | Product analytics: `logEvent()` service + 5 events (`tab_view`, `idea_save`, `quota_hit`, `upgrade_click`, `evidence_view`) | done (2026-07-23) | Claude | M      |
+| TE-08 | Stripe monetization: checkout + webhook as sole writer of `users/{uid}.tier`; Pro/Builder monthly only                      | todo              | —      | L      |
 
 **TE-08 user story:** As a free user who hit my quota, I want to upgrade to Pro with a card in under a minute — and as the owner, I finally learn whether anyone pays, which gates the entire Wave 2 roadmap.
 ⚠ Expand into its own plan before executing; needs a new top-level function for the webhook — verify the Vercel Hobby 12-function count first.
@@ -203,6 +201,8 @@ Sequencing note: do TE-04 before TE-06 — observability first tells us how bad 
 
 | ID    | Task                                                                                                                                                    | Shipped    | Commits          |
 | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- | ---------------- |
+| TE-09 | Product analytics: `logEvent()` service + batch writes to `user_analytics`, tracks 5 core events for funnel analysis                                    | 2026-07-23 | (this commit)    |
+| TE-04 | Signal observability: `qualityStats.signals` tracks per-run sourceCount + degraded flag, admin alert at zero sources                                    | 2026-07-23 | (this commit)    |
 | TE-26 | Comments: Free read-only with inline "Pro feature" prompt, Pro+ can post, Firestore rules gate create by tier                                           | 2026-07-23 | c436d58          |
 | TE-25 | Pro next-steps cap of 7 (Free 3, Builder 10), sliced by TIER_LIMITS.roadmapSteps, with tier-specific upgrade messaging                                  | 2026-07-23 | f3a45f8          |
 | TE-24 | CSV export becomes Pro+: tier gate routes Free to pricing tab, "(Pro+)" label in Export dropdown, PDF remains free                                      | 2026-07-23 | 831afde          |
