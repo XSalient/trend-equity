@@ -145,36 +145,40 @@ export function useIdeas(user: User | null, tier: Tier, authReady: boolean, isAd
         }
       }
 
-      // 2. Try Firestore
+      // 2. Fetch via API endpoint (handles auth, returns cached if available)
+      // The API endpoint's singleton check (daily.ts:63-67) returns existing doc immediately,
+      // avoiding the Firestore permission-denied error that occurred when reading unauthenticated.
       try {
-        const docRef = doc(db, 'daily_generations', today);
-        const docSnap = await getDoc(docRef);
+        const result = await generateDailyIdeas();
+        const data: DailyGeneration = {
+          date: today,
+          intro: result.intro,
+          ideas: (result.ideas || []).map((idea: any) => ({
+            ...idea,
+            id: `${today}-${stableId(idea.headline)}`,
+          })),
+          disclaimer: result.disclaimer,
+          generatedAt: result.generatedAt || new Date().toISOString(),
+        };
 
-        if (docSnap.exists()) {
-          const data = docSnap.data() as DailyGeneration;
-          // Stale mock doc from before mock removal — discard and regenerate
-          if (data._isMock) {
-            localStorage.removeItem(CACHE_KEY);
-            setDailyGen(null);
-          } else {
-            setDailyGen(data);
-            setCachedFeed(data);
-          }
-        } else {
-          // Document doesn't exist yet — this is a valid state (awaiting curation)
-          setDailyGen(null);
-        }
+        setDailyGen(data);
+        setCachedFeed(data);
       } catch (err: any) {
         console.error('Fetch Error:', err);
         const msg = err?.message || '';
-        if (msg.includes('permission-denied') || msg.includes('permissions')) {
+
+        // "Sign in to load today's feed" is expected when unauthenticated.
+        // Don't show an error; let the "Curation in Progress" state take over.
+        if (msg.includes('Sign in')) {
+          setDailyGen(null);
+        } else if (msg.includes('permission-denied') || msg.includes('permissions')) {
           setError('Access denied. Please ensure you are signed in.');
         } else if (msg.includes('Quota exceeded')) {
           setError('Daily quota reached. Please try again tomorrow.');
         } else if (msg.includes('offline')) {
           setError('You appear to be offline.');
         } else {
-          setError("Failed to load today's ideas.");
+          setError(msg || "Failed to load today's ideas.");
         }
       } finally {
         setLoading(false);
