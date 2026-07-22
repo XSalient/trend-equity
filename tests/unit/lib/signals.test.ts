@@ -267,3 +267,97 @@ describe('formatSignalsForPrompt', () => {
     expect(result).toContain('PRIMARY');
   });
 });
+
+describe('getMarketSignals', () => {
+  beforeEach(async () => {
+    vi.resetModules();
+    vi.clearAllMocks();
+    vi.stubGlobal('fetch', mockFetch);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('returns sourceCount of 5 when all sources have data', async () => {
+    mockFetch
+      .mockResolvedValueOnce(mockResponse(rssXml(['Trend 1']))) // Google Trends
+      .mockResolvedValueOnce(mockResponse(rssXml(['PH 1']))) // Product Hunt
+      .mockResolvedValueOnce({
+        ok: true,
+        text: vi.fn(),
+        json: vi
+          .fn()
+          .mockResolvedValue(
+            JSON.parse(redditJson([{ title: 'Reddit', ups: 100, subreddit: 'SaaS' }]))
+          ),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        text: vi.fn(),
+        json: vi.fn().mockResolvedValue(JSON.parse(hnJson([{ title: 'HN', points: 150 }]))),
+      })
+      .mockResolvedValueOnce(mockResponse(rssXml(['TC 1']))); // TechCrunch
+
+    const { getMarketSignals } = await import('../../../api/_lib/signals');
+    const { sourceCount } = await getMarketSignals();
+
+    expect(sourceCount).toBe(5);
+  });
+
+  it('returns sourceCount of 1 when only one source has data', async () => {
+    mockFetch
+      .mockResolvedValueOnce(mockResponse(rssXml(['Trend 1']))) // Google Trends — has data
+      .mockResolvedValueOnce(mockResponse(rssXml([]))) // Product Hunt — no data
+      .mockResolvedValueOnce({
+        ok: true,
+        text: vi.fn(),
+        json: vi.fn().mockResolvedValue({ data: { children: [] } }), // Reddit — no data
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        text: vi.fn(),
+        json: vi.fn().mockResolvedValue({ hits: [] }), // HN — no data
+      })
+      .mockResolvedValueOnce(mockResponse(rssXml([]))); // TechCrunch — no data
+
+    const { getMarketSignals } = await import('../../../api/_lib/signals');
+    const { sourceCount } = await getMarketSignals();
+
+    expect(sourceCount).toBe(1);
+  });
+
+  it('returns sourceCount of 0 when all sources fail or return empty', async () => {
+    mockFetch.mockRejectedValue(new Error('Network down'));
+
+    const { getMarketSignals } = await import('../../../api/_lib/signals');
+    const { sourceCount } = await getMarketSignals();
+
+    expect(sourceCount).toBe(0);
+  });
+
+  it('returns signals and sourceCount together', async () => {
+    mockFetch
+      .mockResolvedValueOnce(mockResponse(rssXml(['Trend A', 'Trend B']))) // Google Trends
+      .mockResolvedValueOnce(mockResponse(rssXml(['PH 1']))) // Product Hunt
+      .mockResolvedValueOnce({
+        ok: true,
+        text: vi.fn(),
+        json: vi.fn().mockResolvedValue({ data: { children: [] } }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        text: vi.fn(),
+        json: vi.fn().mockResolvedValue({ hits: [] }),
+      })
+      .mockResolvedValueOnce(mockResponse(rssXml(['TC 1']))); // TechCrunch
+
+    const { getMarketSignals } = await import('../../../api/_lib/signals');
+    const result = await getMarketSignals();
+
+    expect(result.signals).toBeDefined();
+    expect(result.signals.googleTrends.length).toBeGreaterThan(0);
+    expect(result.signals.productHuntLaunches.length).toBeGreaterThan(0);
+    expect(result.sourceCount).toBe(3);
+  });
+});

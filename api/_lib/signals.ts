@@ -144,6 +144,11 @@ async function fetchTechCrunch(): Promise<string[]> {
 let _cache: { data: LiveSignals; expiresAt: number } | null = null;
 const SIGNAL_TTL_MS = 60 * 60 * 1000; // 1 hour
 
+export interface SignalMetrics {
+  signals: LiveSignals;
+  sourceCount: number;
+}
+
 export async function fetchLiveSignals(): Promise<LiveSignals> {
   if (_cache && Date.now() < _cache.expiresAt) {
     return { ..._cache.data, sourcesCached: true };
@@ -209,6 +214,19 @@ export async function fetchLiveSignals(): Promise<LiveSignals> {
     `[signals] Fetched: Google=${signals.googleTrends.length}, PH=${signals.productHuntLaunches.length}, Reddit=${signals.redditHotThreads.length}, HN=${signals.hnDiscussions.length}, TC=${signals.techCrunchFunding.length}`
   );
   return signals;
+}
+
+export async function getMarketSignals(): Promise<SignalMetrics> {
+  const signals = await fetchLiveSignals();
+  const sourceCount = [
+    signals.googleTrends,
+    signals.productHuntLaunches,
+    signals.redditHotThreads,
+    signals.hnDiscussions,
+    signals.techCrunchFunding,
+  ].filter((s) => s.length > 0).length;
+
+  return { signals, sourceCount };
 }
 
 // ── Prompt formatter ──────────────────────────────────────────────────────────

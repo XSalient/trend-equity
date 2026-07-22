@@ -28,6 +28,7 @@ import {
   getTimeUntilNextGeneration,
   TimeRemaining,
 } from '../utils/timeUtils';
+import { logEvent } from '../services/analyticsService';
 
 /** Deterministic djb2 hash of a string — used to give ideas stable IDs from their headline. */
 
@@ -308,6 +309,7 @@ export function useIdeas(user: User | null, tier: Tier, authReady: boolean, isAd
     if (saveType === 'feed') {
       const saveLimit = TIER_LIMITS[tier]?.monthlySaves ?? Infinity;
       if (isFinite(saveLimit) && feedSaves.length >= saveLimit) {
+        logEvent('quota_hit', { type: 'monthlySaves', tier, limit: saveLimit });
         onUpgradeNeeded();
         return;
       }
@@ -330,6 +332,7 @@ export function useIdeas(user: User | null, tier: Tier, authReady: boolean, isAd
             userInput,
           })
         );
+        logEvent('idea_save', { ideaId: idea.id, headline: idea.headline, type: saveType });
       }
     } catch (err: any) {
       console.error('Save Error:', err);

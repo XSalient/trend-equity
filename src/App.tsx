@@ -40,6 +40,7 @@ import {
   setCurrentIdToken,
 } from './services/geminiService';
 import { exportDocument, exportListToCSV, exportListToPDF } from './utils/exportUtils';
+import { logEvent } from './services/analyticsService';
 
 export default function App() {
   if (window.location.pathname === '/enterprise') {
@@ -207,6 +208,13 @@ function MainApp() {
     fetchFuturecasting,
   ]);
 
+  // TE-09: Log tab_view events for analytics
+  useEffect(() => {
+    if (authReady && user) {
+      logEvent('tab_view', { tab: activeTab });
+    }
+  }, [activeTab, authReady, user]);
+
   // FIX (U-4): Show a minimal loading screen while Firebase resolves auth state
   // to prevent a flash of "free tier" UI for paying users.
   // Must be AFTER all hooks above.
@@ -226,7 +234,10 @@ function MainApp() {
     toggleSave(idea, TIER_LIMITS, handleLogin, () => setActiveTab('pro'), 'custom', userInput);
   };
 
-  const onUpgradeToBuilder = () => upgradeToBuilder(handleLogin);
+  const onUpgradeToBuilder = () => {
+    logEvent('upgrade_click', { fromTier: tier, toTier: 'builder' });
+    upgradeToBuilder(handleLogin);
+  };
 
   const getDynamicIntro = () => {
     const count = TIER_LIMITS[tier].dailyIdeas;

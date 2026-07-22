@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Search, RefreshCw, ExternalLink } from 'lucide-react';
 import { Idea } from '../../types';
+import { logEvent } from '../../services/analyticsService';
 
 interface IdeaCardEvidenceProps {
   evidence: NonNullable<Idea['evidence']>;
@@ -15,6 +16,15 @@ export const IdeaCardEvidence: React.FC<IdeaCardEvidenceProps> = ({
   onRefresh,
   isRefreshing,
 }) => {
+  // TE-09: Log evidence_view event
+  useEffect(() => {
+    logEvent('evidence_view', {
+      evidenceScore: evidence.evidenceScore,
+      sourceCount: evidence.sources.length,
+      competitorCount: evidence.competitors.length,
+    });
+  }, [evidence.evidenceScore, evidence.sources.length, evidence.competitors.length]);
+
   return (
     <div className="p-5 bg-sky-500/5 border border-sky-500/20 rounded-2xl space-y-4 mb-6">
       <div className="flex items-center justify-between">

@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import AI from '../_lib/ai-provider';
 const { generateWithAI, dailyResponseSchema, getToday, normalizeAIResponse } = AI;
-import { fetchLiveSignals, formatSignalsForPrompt } from '../_lib/signals';
+import { getMarketSignals, formatSignalsForPrompt } from '../_lib/signals';
 import { getRecentIdeaHeadlines } from '../_lib/cache';
 import { getAdminDb } from '../_lib/admin';
 import { getAuthContext } from '../_lib/auth';
@@ -118,11 +118,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     await runSelfImprovement(db, !!refresh);
     const { systemPrompt, qualityBlock, version } = await getDynamicPrompt(db);
 
-    const [signals, recentHeadlines] = await Promise.all([
-      fetchLiveSignals(),
+    const [signalMetrics, recentHeadlines] = await Promise.all([
+      getMarketSignals(),
       getRecentIdeaHeadlines(today),
     ]);
-    const signalContext = formatSignalsForPrompt(signals);
+    const signalContext = formatSignalsForPrompt(signalMetrics.signals);
 
     const dedupeBlock =
       recentHeadlines.length > 0
@@ -237,11 +237,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     };
 
     // 7. Persist and Unlock
+    const isDegraded = signalMetrics.sourceCount === 0;
+    if (isDegraded) {
+      console.warn('[daily] ADMIN ALERT: Signal degradation — zero sources returned');
+    }
+
     const finalData = {
       ...data,
       promptVersion: version,
       qualityStats: {
         ...stats,
+        signals: {
+          sourceCount: signalMetrics.sourceCount,
+          degraded: isDegraded,
+        },
         semanticDupesDropped: droppedHeadlines.length,
         dedup: {
           dropped: droppedHeadlines.length,
