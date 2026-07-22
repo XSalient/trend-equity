@@ -83,6 +83,7 @@ function MainApp() {
     toggleCustomFeedView,
     triggerGeneration,
     fetchDaily,
+    timeUntilGeneration,
   } = useIdeas(user, tier, authReady, isAdmin);
 
   const analyzeIdeaHook = useAnalyzeIdea(user, tier, authReady);
@@ -421,6 +422,7 @@ function MainApp() {
                 error={ideasError}
                 user={user}
                 handleLogin={handleLogin}
+                timeUntilGeneration={timeUntilGeneration}
               />
             ) : activeTab === 'radar' ? (
               <WeeklyRadarTab

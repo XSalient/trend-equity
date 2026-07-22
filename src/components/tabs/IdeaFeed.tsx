@@ -5,6 +5,7 @@ import { IdeaCard } from '../IdeaCard';
 import { FilterBar } from '../FilterBar';
 import { CUSTOM_FEED_DAILY_LIMIT, DAILY_FEATURED_IDEAS, TIER_LIMITS } from '../../constants';
 import { IdeaFeedSkeleton } from '../layout/SkeletonLoaders';
+import { TimeRemaining, formatTimeRemaining } from '../../utils/timeUtils';
 
 interface IdeaFeedProps {
   dailyGen: DailyGeneration | null;
@@ -32,6 +33,7 @@ interface IdeaFeedProps {
   error?: string | null;
   user: any;
   handleLogin: () => void;
+  timeUntilGeneration?: TimeRemaining | null;
 }
 
 export const IdeaFeed: React.FC<IdeaFeedProps> = ({
@@ -60,6 +62,7 @@ export const IdeaFeed: React.FC<IdeaFeedProps> = ({
   error = null,
   user,
   handleLogin,
+  timeUntilGeneration,
 }) => {
   const [showExtras, setShowExtras] = React.useState(false);
   const isCustomFeed = !!customFeed && customFeedVisible;
@@ -113,12 +116,14 @@ export const IdeaFeed: React.FC<IdeaFeedProps> = ({
 
             <div className="space-y-2">
               <h3 className="text-xl font-bold text-white tracking-tight">
-                {isAdmin ? "Generate Today's Insights" : 'Curation in Progress'}
+                {isAdmin ? "Generate Today's Insights" : 'Daily Feed Coming'}
               </h3>
               <p className="text-zinc-500 text-sm max-w-sm mx-auto leading-relaxed">
                 {isAdmin
                   ? "Trigger the VC engine to scan today's high-signal trends and populate the global feed for all users."
-                  : "Our VC engine is scanning real-time signals from the last 24 hours to identify today's highest conviction opportunities. Check back shortly."}
+                  : timeUntilGeneration
+                    ? `Today's curated ideas will be ready ${formatTimeRemaining(timeUntilGeneration)}. Check back then to see the latest high-signal opportunities.`
+                    : "Our VC engine is scanning real-time signals from the last 24 hours to identify today's highest conviction opportunities. Check back shortly."}
               </p>
             </div>
           </div>
@@ -139,8 +144,8 @@ export const IdeaFeed: React.FC<IdeaFeedProps> = ({
               </button>
             ) : (
               <div className="inline-flex items-center gap-2 px-4 py-2 bg-zinc-800/30 text-zinc-500 text-xs font-bold uppercase tracking-widest rounded-full border border-zinc-800/50">
-                <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping" />
-                SCANNING LIVE SIGNALS
+                <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+                {timeUntilGeneration?.hasTime ? 'READY SOON' : 'SCANNING LIVE SIGNALS'}
               </div>
             )}
 

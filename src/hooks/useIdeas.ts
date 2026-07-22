@@ -23,6 +23,11 @@ import {
   setCurrentIdToken,
 } from '../services/geminiService';
 import { handleFirestoreError, OperationType } from '../utils/errorUtils';
+import {
+  parseDailyGenerationTime,
+  getTimeUntilNextGeneration,
+  TimeRemaining,
+} from '../utils/timeUtils';
 
 /** Deterministic djb2 hash of a string — used to give ideas stable IDs from their headline. */
 
@@ -56,6 +61,7 @@ export function useIdeas(user: User | null, tier: Tier, authReady: boolean, isAd
   const [customFeedVisible, setCustomFeedVisible] = useState(false);
   const [customFeedLoading, setCustomFeedLoading] = useState(false);
   const [customFeedError, setCustomFeedError] = useState<string | null>(null);
+  const [timeUntilGeneration, setTimeUntilGeneration] = useState<TimeRemaining | null>(null);
   const [filters, setFilters] = useState<FilterState>({
     industries: [],
     productTypes: [],
@@ -168,9 +174,12 @@ export function useIdeas(user: User | null, tier: Tier, authReady: boolean, isAd
         const msg = err?.message || '';
 
         // "Sign in to load today's feed" is expected when unauthenticated.
-        // Don't show an error; let the "Curation in Progress" state take over.
+        // Calculate time until next generation instead of showing an error.
         if (msg.includes('Sign in')) {
           setDailyGen(null);
+          const genTime = parseDailyGenerationTime(import.meta.env.VITE_DAILY_GENERATION_TIME);
+          const timeRemaining = getTimeUntilNextGeneration(genTime.hours, genTime.minutes);
+          setTimeUntilGeneration(timeRemaining);
         } else if (msg.includes('permission-denied') || msg.includes('permissions')) {
           setError('Access denied. Please ensure you are signed in.');
         } else if (msg.includes('Quota exceeded')) {
@@ -605,5 +614,6 @@ export function useIdeas(user: User | null, tier: Tier, authReady: boolean, isAd
     toggleCustomFeedView,
     triggerGeneration,
     fetchDaily,
+    timeUntilGeneration,
   };
 }
