@@ -65,6 +65,8 @@ Full evidence and per-surface inventory: [2026-07-08 UI, Feature & Tier-Promise 
 
 Decision + full rationale: [Free-Tier Value Ladder (DECISIONS.md, 2026-07-10)](../DECISIONS.md). Sequencing: all of these gates are cosmetic until TE-12 (rules) and TE-13 (server tier guards) ship — implement TE-23…TE-26 on top of TE-13's `requireTier` helper.
 
+**Vibe-coding sprint plan for all remaining items:** [2026-07-23 vibe-coding 15-item sprint](superpowers/plans/2026-07-23-vibe-coding-15-item-sprint.md) — parallel flows, ruthless scoping, no ceremony.
+
 | ID    | Task                                                                                                               | Status            | Owner  | Effort |
 | ----- | ------------------------------------------------------------------------------------------------------------------ | ----------------- | ------ | ------ |
 | TE-22 | Basic-vs-Full VC analysis: lock unfair advantage, revenue model & market dynamics behind a visible upsell for Free | done (2026-07-22) | Claude | M      |
