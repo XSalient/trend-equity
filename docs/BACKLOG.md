@@ -201,7 +201,7 @@ Sequencing note: do TE-04 before TE-06 — observability first tells us how bad 
 
 | ID    | Task                                                                                                                                                    | Shipped    | Commits          |
 | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- | ---------------- |
-| TE-22 | Basic-vs-Full VC analysis: lock unfair advantage, revenue model, market dynamics behind visible locked panels for Free tier                             | 2026-07-22 | (this commit)    |
+| TE-22 | Basic-vs-Full VC analysis: lock unfair advantage, revenue model, market dynamics behind visible locked panels for Free tier                             | 2026-07-22 | 9a35413          |
 | TE-21 | Promise/copy reconciliation: saves wording, co-founder button gating, Weekly Radar tier, Twitter/X claims, Validation Toolkit tier, Email Digest status | 2026-07-22 | a602fef          |
 | TE-20 | `updateIdea` must sync Weekly Best list when ideas are updated across all feeds and tabs                                                                | 2026-07-21 | 14092b6          |
 | TE-19 | Dead-UI fixes: Tailwind literal classes, footer links, FilterBar stickiness, comment timestamps                                                         | 2026-07-21 | e9b267d          |
