@@ -56,13 +56,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: 'Invalid tier' });
     }
 
-    // If user is already on a higher or equal tier, reject
-    const tierRank = { free: 0, pro: 1, builder: 2 };
-    if (tierRank[authCtx.tier] >= tierRank[tier]) {
-      return res.status(400).json({ error: 'User already has this tier or higher' });
+    // Validate Stripe configuration
+    const priceId = STRIPE_PRICES[tier as 'pro' | 'builder'];
+    if (priceId.includes('placeholder')) {
+      console.error(
+        'CRITICAL: Stripe price IDs not configured. Set STRIPE_PRICE_PRO and STRIPE_PRICE_BUILDER env vars.'
+      );
+      return res.status(500).json({
+        error: 'Payment system not configured. Contact support.',
+        debug: 'Missing Stripe price IDs - STRIPE_PRICE_PRO or STRIPE_PRICE_BUILDER not set',
+      });
     }
 
-    const priceId = STRIPE_PRICES[tier];
+    // If user is already on a higher or equal tier, reject
+    const tierRank: Record<string, number> = { free: 0, pro: 1, builder: 2 };
+    if (tierRank[authCtx.tier] >= tierRank[tier as string]) {
+      return res.status(400).json({ error: 'User already has this tier or higher' });
+    }
 
     // Create Stripe checkout session
     const baseUrl = process.env.VERCEL_URL
@@ -89,6 +99,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(200).json({ url: session.url });
   } catch (error) {
     console.error('Checkout error:', error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+
+    // Return more detailed error info in development
+    if (process.env.NODE_ENV === 'development' || process.env.VERCEL_ENV === 'preview') {
+      return res.status(500).json({
+        error: 'Failed to create checkout session',
+        details: errorMessage,
+      });
+    }
+
+    // Check for specific Stripe errors
+    if (errorMessage.includes('No such price')) {
+      return res.status(500).json({
+        error: 'Payment configuration error. Invalid price ID configured.',
+      });
+    }
+
     return res.status(500).json({ error: 'Failed to create checkout session' });
   }
 }

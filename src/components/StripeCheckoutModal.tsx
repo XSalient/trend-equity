@@ -64,7 +64,9 @@ export const StripeCheckoutModal: React.FC<StripeCheckoutModalProps> = ({
 
       if (!response.ok) {
         const data = await response.json();
-        setError(data.error || 'Failed to create checkout session');
+        const errorMsg = data.debug || data.error || 'Failed to create checkout session';
+        setError(errorMsg);
+        console.error('Checkout failed:', { status: response.status, ...data });
         setLoading(false);
         return;
       }
