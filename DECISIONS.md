@@ -209,3 +209,45 @@ If the Wave 2 evidence layer is prioritized, consider adding a single AI-estimat
 **Status:** In progress. Defer multi-signal ML pipeline until Stripe proves customers will pay for premium intelligence features.
 
 **Next phase:** Stripe integration (Wave 2).
+
+---
+
+## TE-08: Stripe Monetization — Phase 1 In Progress (2026-07-23)
+
+**Decision:** Implement Stripe checkout flow as sole tier writer. Phase 1 delivers checkout + webhook foundation. Phase 2 adds subscription expiry downgrade logic.
+
+**Architecture:**
+
+- **Checkout endpoint** (`/api/checkout.ts`): Authenticated users (free/pro) request checkout session → Stripe creates session → return URL → redirect to Stripe checkout page
+- **Webhook** (`/api/webhook/stripe.ts`): Stripe posts `checkout.session.completed` event → verify signature → atomic Firestore transaction: `users/{uid}.tier = pro|builder`, `proEndDate = now + 30 days`
+- **UI** (`StripeCheckoutModal`): Modal shows pricing side-by-side → user selects tier → clicks button → checkout handler → redirect to Stripe
+- **Security**: Firebase token required on checkout endpoint; Stripe signature verification on webhook; Firestore transaction ensures single tier write per session
+
+**Pricing:** Pro $9/month, Builder $19/month (recurring). Must configure Stripe price IDs in .env before deploying.
+
+**Phase 1 (Shipped 2026-07-23):**
+
+- Checkout endpoint (create session, return URL, rate limiting)
+- Webhook handler (event processing, atomic tier updates)
+- StripeCheckoutModal component (pricing display, checkout trigger)
+- PricingSection integration (replace waitlist with checkout)
+- Unit tests (7 checkout, 4 webhook scenarios)
+
+**Phase 2 (Planned):**
+
+- Subscription expiry: cron/endpoint to downgrade `proEndDate < now` → tier = free
+- Refund handling: webhook listener for charge disputes
+- Subscription management: allow users to cancel/upgrade within app
+
+**Vercel Functions:** 8 total (safe under 12-function Hobby limit). Added: checkout + webhook/stripe.
+
+**Required Setup (before deploy):**
+
+1. Create Stripe products: Pro ($9/mo), Builder ($19/mo)
+2. Set env vars: STRIPE_SECRET_KEY, STRIPE_PRICE_PRO, STRIPE_PRICE_BUILDER, STRIPE_WEBHOOK_SECRET
+3. Register webhook endpoint in Stripe Dashboard (checkout.session.completed event)
+
+**Testing:**
+
+- Local: Use Stripe test keys, test card 4242 4242 4242 4242
+- Stripe CLI: `stripe listen --forward-to localhost:3001/api/webhook/stripe` for local webhook testing

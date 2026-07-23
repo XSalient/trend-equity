@@ -165,14 +165,18 @@ Sequencing note: TE-04 (now shipped) provided observability; use its data to inf
 
 ## Later — P2: prove the business
 
-| ID    | Task                                                                                                                        | Status            | Owner  | Effort |
-| ----- | --------------------------------------------------------------------------------------------------------------------------- | ----------------- | ------ | ------ |
-| TE-04 | Signal observability: per-source counts in `qualityStats`, `signalsDegraded` flag, admin alert at zero                      | done (2026-07-23) | Claude | S      |
-| TE-09 | Product analytics: `logEvent()` service + 5 events (`tab_view`, `idea_save`, `quota_hit`, `upgrade_click`, `evidence_view`) | done (2026-07-23) | Claude | M      |
-| TE-08 | Stripe monetization: checkout + webhook as sole writer of `users/{uid}.tier`; Pro/Builder monthly only                      | in progress       | Claude | L      |
+| ID     | Task                                                                                                                                                | Status            | Owner  | Effort |
+| ------ | --------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------- | ------ | ------ |
+| TE-04  | Signal observability: per-source counts in `qualityStats`, `signalsDegraded` flag, admin alert at zero                                              | done (2026-07-23) | Claude | S      |
+| TE-09  | Product analytics: `logEvent()` service + 5 events (`tab_view`, `idea_save`, `quota_hit`, `upgrade_click`, `evidence_view`)                         | done (2026-07-23) | Claude | M      |
+| TE-08  | Stripe monetization Phase 1: checkout endpoint + webhook as sole writer of `users/{uid}.tier`; Pro/Builder monthly only; live Stripe checkout modal | in progress       | Claude | L      |
+| TE-08b | Stripe monetization Phase 2: subscription expiry handler (downgrade Pro → Free at 30d), refund/dispute handling, user subscription management UI    | todo              | —      | M      |
 
 **TE-08 user story:** As a free user who hit my quota, I want to upgrade to Pro with a card in under a minute — and as the owner, I finally learn whether anyone pays, which gates the entire Wave 2 roadmap.
-⚠ Expand into its own plan before executing; needs a new top-level function for the webhook — verify the Vercel Hobby 12-function count first.
+
+**TE-08 Phase 1 (shipped 2026-07-23):** Checkout endpoint + live Stripe modal with real pricing ($9 Pro, $19 Builder). Stripe webhook atomically updates `users/{uid}.tier` and `proEndDate`. UI shows "UPGRADE NOW" buttons that redirect to Stripe checkout.
+
+**TE-08 Phase 2 (planned):** Subscription expiry handler (downgrade Pro → Free at 30d), refund/dispute handling, user subscription management UI.
 
 **TE-09 user story:** As the product owner, I want to see which tabs get used and where users hit walls, so I can prioritize from evidence instead of intuition. Runs well in parallel with TE-08 — `quota_hit`/`upgrade_click` are the Stripe conversion funnel.
 
