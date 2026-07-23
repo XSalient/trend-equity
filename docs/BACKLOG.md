@@ -169,7 +169,7 @@ Sequencing note: TE-04 (now shipped) provided observability; use its data to inf
 | ----- | --------------------------------------------------------------------------------------------------------------------------- | ----------------- | ------ | ------ |
 | TE-04 | Signal observability: per-source counts in `qualityStats`, `signalsDegraded` flag, admin alert at zero                      | done (2026-07-23) | Claude | S      |
 | TE-09 | Product analytics: `logEvent()` service + 5 events (`tab_view`, `idea_save`, `quota_hit`, `upgrade_click`, `evidence_view`) | done (2026-07-23) | Claude | M      |
-| TE-08 | Stripe monetization: checkout + webhook as sole writer of `users/{uid}.tier`; Pro/Builder monthly only                      | todo              | —      | L      |
+| TE-08 | Stripe monetization: checkout + webhook as sole writer of `users/{uid}.tier`; Pro/Builder monthly only                      | in progress       | Claude | L      |
 
 **TE-08 user story:** As a free user who hit my quota, I want to upgrade to Pro with a card in under a minute — and as the owner, I finally learn whether anyone pays, which gates the entire Wave 2 roadmap.
 ⚠ Expand into its own plan before executing; needs a new top-level function for the webhook — verify the Vercel Hobby 12-function count first.

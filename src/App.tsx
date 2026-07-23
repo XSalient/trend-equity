@@ -54,6 +54,7 @@ function MainApp() {
   const { user, authReady, handleLogin, handleLogout, error: authError } = useAuth();
   const { tier, isAdmin, handleUpgrade, handleDowngrade, upgradeToBuilder, tierNotification } =
     useTier(user);
+  const [firebaseToken, setFirebaseToken] = useState<string | undefined>();
   const {
     alerts,
     showAlerts,
@@ -95,18 +96,26 @@ function MainApp() {
     if (user) {
       user
         .getIdToken()
-        .then(setCurrentIdToken)
-        .catch(() => setCurrentIdToken(null));
+        .then((token) => {
+          setCurrentIdToken(token);
+          setFirebaseToken(token);
+        })
+        .catch(() => {
+          setCurrentIdToken(null);
+          setFirebaseToken(undefined);
+        });
       const interval = setInterval(
         async () => {
           const token = await user.getIdToken(true);
           setCurrentIdToken(token);
+          setFirebaseToken(token);
         },
         50 * 60 * 1000
       );
       return () => clearInterval(interval);
     } else {
       setCurrentIdToken(null);
+      setFirebaseToken(undefined);
     }
   }, [user]);
 
@@ -498,6 +507,7 @@ function MainApp() {
             ) : (
               <PricingSection
                 currentPlan={tier}
+                firebaseToken={firebaseToken}
                 onUpgrade={handleUpgrade}
                 onDowngrade={handleDowngrade}
                 onOpenTE100={() => setShowTE100(true)}

@@ -18,10 +18,11 @@ import {
   Search,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { WaitlistModal } from './WaitlistModal';
+import { StripeCheckoutModal } from './StripeCheckoutModal';
 
 interface PricingSectionProps {
   currentPlan: 'free' | 'pro' | 'builder';
+  firebaseToken?: string;
   onUpgrade: (plan: 'pro' | 'builder') => void;
   onDowngrade: (plan: 'free' | 'pro') => void;
   onOpenTE100?: () => void;
@@ -116,14 +117,15 @@ const TIER_SHOWCASE: Record<PlanKey, { icon: React.ReactNode; label: string; onC
 
 export const PricingSection: React.FC<PricingSectionProps> = ({
   currentPlan,
+  firebaseToken,
   onUpgrade,
   onDowngrade,
   onOpenTE100,
   onOpenApiAccess,
 }) => {
   const [pendingDowngrade, setPendingDowngrade] = useState<'free' | 'pro' | null>(null);
-  const [waitlistOpen, setWaitlistOpen] = useState(false);
-  const [waitlistTier, setWaitlistTier] = useState<'pro' | 'builder'>('pro');
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [checkoutTier, setCheckoutTier] = useState<'pro' | 'builder'>('pro');
   const validPlans: PlanKey[] = ['free', 'pro', 'builder'];
   const safePlan: PlanKey = validPlans.includes(currentPlan) ? currentPlan : 'free';
   const [selectedTier, setSelectedTier] = useState<PlanKey>(safePlan);
@@ -251,8 +253,8 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
             onClick={(e) => {
               e.stopPropagation();
               if (currentPlan === 'free') {
-                setWaitlistTier('pro');
-                setWaitlistOpen(true);
+                setCheckoutTier('pro');
+                setCheckoutOpen(true);
               }
               if (currentPlan === 'builder') handleDowngradeClick('pro');
             }}
@@ -268,7 +270,7 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
               ? 'CURRENT PLAN'
               : currentPlan === 'builder'
                 ? 'DOWNGRADE'
-                : 'JOIN WAITLIST'}
+                : 'UPGRADE NOW'}
           </button>
         </div>
 
@@ -317,8 +319,8 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
             onClick={(e) => {
               e.stopPropagation();
               if (currentPlan !== 'builder') {
-                setWaitlistTier('builder');
-                setWaitlistOpen(true);
+                setCheckoutTier('builder');
+                setCheckoutOpen(true);
               }
             }}
             disabled={currentPlan === 'builder'}
@@ -328,7 +330,7 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
                 : 'bg-amber-600 hover:bg-amber-500 text-white shadow-lg shadow-amber-900/20'
             }`}
           >
-            {currentPlan === 'builder' ? 'CURRENT PLAN' : 'JOIN WAITLIST'}
+            {currentPlan === 'builder' ? 'CURRENT PLAN' : 'UPGRADE NOW'}
           </button>
         </div>
       </div>
@@ -422,11 +424,12 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
         </motion.div>
       </AnimatePresence>
 
-      {/* Waitlist Modal */}
-      <WaitlistModal
-        isOpen={waitlistOpen}
-        onClose={() => setWaitlistOpen(false)}
-        tier={waitlistTier}
+      {/* Stripe Checkout Modal */}
+      <StripeCheckoutModal
+        isOpen={checkoutOpen}
+        onClose={() => setCheckoutOpen(false)}
+        userTier={currentPlan}
+        firebaseToken={firebaseToken}
       />
 
       {/* Downgrade Confirmation Modal */}
