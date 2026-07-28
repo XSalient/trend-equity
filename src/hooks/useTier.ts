@@ -5,9 +5,33 @@ import { db } from '../firebase';
 import { Tier } from '../types';
 import { handleFirestoreError, OperationType } from '../utils/errorUtils';
 
+/**
+ * TE-38: read-only view of the Stripe subscription, mirrored from the
+ * `users/{uid}` doc. Everything here is written server-side (webhook /
+ * checkout return leg) — the client never mutates any of it.
+ */
+export interface SubscriptionInfo {
+  /** End of the paid period (renewal date, or expiry if cancelAtPeriodEnd). */
+  proEndDate: Date | null;
+  /** True when the user cancelled in the portal but the period hasn't ended. */
+  cancelAtPeriodEnd: boolean;
+  /** Raw Stripe subscription status: active | past_due | canceled | … */
+  status: string | null;
+  /** True once a Stripe customer exists — gates the "Manage billing" button. */
+  hasBillingAccount: boolean;
+}
+
+const EMPTY_SUBSCRIPTION: SubscriptionInfo = {
+  proEndDate: null,
+  cancelAtPeriodEnd: false,
+  status: null,
+  hasBillingAccount: false,
+};
+
 export function useTier(user: User | null) {
   const [tier, setTier] = useState<Tier>('free');
   const [isAdmin, setIsAdmin] = useState(false);
+  const [subscription, setSubscription] = useState<SubscriptionInfo>(EMPTY_SUBSCRIPTION);
   const [tierNotification, setTierNotification] = useState<string | null>(null);
 
   const notify = (msg: string) => {
@@ -41,10 +65,19 @@ export function useTier(user: User | null) {
             const data = docSnap.data();
             setTier((data.tier as Tier) || 'free');
             setIsAdmin(data.role === 'admin');
+            const end = data.proEndDate;
+            setSubscription({
+              proEndDate:
+                end && typeof end.toDate === 'function' ? end.toDate() : end ? new Date(end) : null,
+              cancelAtPeriodEnd: data.cancelAtPeriodEnd === true,
+              status: (data.subscriptionStatus as string) ?? null,
+              hasBillingAccount: Boolean(data.stripeCustomerId),
+            });
           } else {
             // User doc doesn't exist yet (new user) — default to free tier
             setTier('free');
             setIsAdmin(false);
+            setSubscription(EMPTY_SUBSCRIPTION);
           }
         },
         (err: any) => {
@@ -53,6 +86,7 @@ export function useTier(user: User | null) {
             console.warn('[TIER] User doc not accessible, defaulting to free tier');
             setTier('free');
             setIsAdmin(false);
+            setSubscription(EMPTY_SUBSCRIPTION);
           } else {
             handleFirestoreError(err, OperationType.GET, `users/${user.uid}`);
           }
@@ -63,6 +97,7 @@ export function useTier(user: User | null) {
 
     setTier('free');
     setIsAdmin(false);
+    setSubscription(EMPTY_SUBSCRIPTION);
   }, [user]);
 
   /**
@@ -97,6 +132,7 @@ export function useTier(user: User | null) {
   return {
     tier,
     isAdmin,
+    subscription,
     setTier,
     handleUpgrade,
     handleDowngrade,
