@@ -8,10 +8,12 @@ vi.mock('../../../api/_lib/stripe', async () => {
   return {
     StripeConfigError: actual.StripeConfigError,
     getPeriodEnd: actual.getPeriodEnd,
+    tierForPriceId: actual.tierForPriceId,
     getStripe: vi.fn(),
     provisionSubscription: vi.fn(),
     extendSubscription: vi.fn(),
     downgradeToFree: vi.fn(),
+    updateSubscriptionState: vi.fn(),
     resolveUid: vi.fn(),
   };
 });
@@ -22,6 +24,7 @@ import {
   provisionSubscription,
   extendSubscription,
   downgradeToFree,
+  updateSubscriptionState,
   resolveUid,
 } from '../../../api/_lib/stripe';
 
@@ -175,6 +178,49 @@ describe('POST /api/webhook/stripe', () => {
     await handler(mockReq as VercelRequest, mockRes as VercelResponse);
 
     expect(downgradeToFree).toHaveBeenCalledWith('user123');
+    expect(mockRes.status).toHaveBeenCalledWith(200);
+  });
+
+  it('mirrors subscription.updated onto the user doc (plan switch + cancel flag)', async () => {
+    process.env.STRIPE_PRICE_BUILDER = 'price_builder_456';
+    (resolveUid as any).mockResolvedValue('user123');
+    stripeClient.webhooks.constructEvent.mockReturnValue({
+      type: 'customer.subscription.updated',
+      data: {
+        object: {
+          customer: 'cus_123',
+          status: 'active',
+          cancel_at_period_end: true,
+          metadata: { uid: 'user123' },
+          items: { data: [{ price: { id: 'price_builder_456' }, current_period_end: 1799999999 }] },
+        },
+      },
+    });
+
+    await handler(mockReq as VercelRequest, mockRes as VercelResponse);
+
+    expect(updateSubscriptionState).toHaveBeenCalledWith({
+      uid: 'user123',
+      tier: 'builder',
+      status: 'active',
+      cancelAtPeriodEnd: true,
+      currentPeriodEnd: 1799999999,
+    });
+    expect(mockRes.status).toHaveBeenCalledWith(200);
+  });
+
+  it('acks subscription.updated without writing when the uid cannot be resolved', async () => {
+    (resolveUid as any).mockResolvedValue(null);
+    stripeClient.webhooks.constructEvent.mockReturnValue({
+      type: 'customer.subscription.updated',
+      data: {
+        object: { customer: 'cus_123', status: 'active', metadata: {}, items: { data: [] } },
+      },
+    });
+
+    await handler(mockReq as VercelRequest, mockRes as VercelResponse);
+
+    expect(updateSubscriptionState).not.toHaveBeenCalled();
     expect(mockRes.status).toHaveBeenCalledWith(200);
   });
 

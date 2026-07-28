@@ -93,6 +93,78 @@ describe('api/_lib/stripe configuration guards', () => {
     });
   });
 
+  describe('tierForPriceId', () => {
+    it('maps configured price ids to tiers', async () => {
+      process.env.STRIPE_PRICE_PRO = 'price_pro_123';
+      process.env.STRIPE_PRICE_BUILDER = 'price_builder_456';
+      const { tierForPriceId } = await load();
+      expect(tierForPriceId('price_pro_123')).toBe('pro');
+      expect(tierForPriceId('price_builder_456')).toBe('builder');
+      expect(tierForPriceId('price_unknown')).toBeNull();
+      expect(tierForPriceId(undefined)).toBeNull();
+      expect(tierForPriceId(null)).toBeNull();
+    });
+
+    it('returns null when the price env vars are unset', async () => {
+      const { tierForPriceId } = await load();
+      expect(tierForPriceId('price_pro_123')).toBeNull();
+    });
+  });
+
+  describe('updateSubscriptionState', () => {
+    const setupDb = async () => {
+      const set = vi.fn().mockResolvedValue(undefined);
+      const doc = vi.fn(() => ({ set }));
+      const collection = vi.fn(() => ({ doc }));
+      const { getAdminDb } = await import('../../../api/_lib/admin');
+      (getAdminDb as any).mockReturnValue({ collection });
+      return { set, doc, collection };
+    };
+
+    it('mirrors status, cancel flag and period end onto the user doc', async () => {
+      const { set, doc, collection } = await setupDb();
+      const { updateSubscriptionState } = await load();
+
+      await updateSubscriptionState({
+        uid: 'user123',
+        tier: 'builder',
+        status: 'active',
+        cancelAtPeriodEnd: true,
+        currentPeriodEnd: 1800000000,
+      });
+
+      expect(collection).toHaveBeenCalledWith('users');
+      expect(doc).toHaveBeenCalledWith('user123');
+      const [payload, options] = set.mock.calls[0];
+      expect(options).toEqual({ merge: true });
+      expect(payload).toMatchObject({
+        tier: 'builder',
+        subscriptionStatus: 'active',
+        cancelAtPeriodEnd: true,
+        proEndDate: new Date(1800000000 * 1000),
+      });
+    });
+
+    // Deletion and the proEndDate backstop own downgrades — an `updated` event
+    // must never be able to strip paid access.
+    it('never writes tier when the price maps to no known tier', async () => {
+      const { set } = await setupDb();
+      const { updateSubscriptionState } = await load();
+
+      await updateSubscriptionState({
+        uid: 'user123',
+        tier: null,
+        status: 'past_due',
+        cancelAtPeriodEnd: false,
+      });
+
+      const [payload] = set.mock.calls[0];
+      expect(payload).not.toHaveProperty('tier');
+      expect(payload).not.toHaveProperty('proEndDate');
+      expect(payload.subscriptionStatus).toBe('past_due');
+    });
+  });
+
   describe('getPeriodEnd', () => {
     it('reads the legacy top-level field', async () => {
       const { getPeriodEnd } = await load();

@@ -170,6 +170,41 @@ export async function provisionSubscription(params: ProvisionParams): Promise<Pr
   });
 }
 
+/** Maps a Stripe price id back to a tier — how portal plan-switches resolve. */
+export function tierForPriceId(priceId: string | null | undefined): PaidTier | null {
+  if (!priceId) return null;
+  if (priceId === process.env.STRIPE_PRICE_PRO?.trim()) return 'pro';
+  if (priceId === process.env.STRIPE_PRICE_BUILDER?.trim()) return 'builder';
+  return null;
+}
+
+export interface SubscriptionStateParams {
+  uid: string;
+  /** Written only when the subscription's price maps to a known tier. */
+  tier?: PaidTier | null;
+  status: string;
+  cancelAtPeriodEnd: boolean;
+  currentPeriodEnd?: number | null;
+}
+
+/**
+ * Mirrors a `customer.subscription.updated` event onto the user doc.
+ * Deliberately never sets tier to free — deletion/backstop own that, because
+ * a dunning or proration update must not strip access the user paid for.
+ */
+export async function updateSubscriptionState(params: SubscriptionStateParams): Promise<void> {
+  const { uid, tier, status, cancelAtPeriodEnd, currentPeriodEnd } = params;
+  const db = getAdminDb();
+  const update: Record<string, unknown> = {
+    subscriptionStatus: status,
+    cancelAtPeriodEnd,
+    updatedAt: new Date(),
+  };
+  if (tier) update.tier = tier;
+  if (currentPeriodEnd) update.proEndDate = new Date(currentPeriodEnd * 1000);
+  await db.collection('users').doc(uid).set(update, { merge: true });
+}
+
 /**
  * Reads a subscription's period end across API-version shapes: recent versions
  * moved `current_period_end` from the subscription onto its items.

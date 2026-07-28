@@ -5,6 +5,8 @@ import {
   provisionSubscription,
   extendSubscription,
   downgradeToFree,
+  updateSubscriptionState,
+  tierForPriceId,
   resolveUid,
   getPeriodEnd,
   StripeConfigError,
@@ -66,6 +68,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return await onCheckoutCompleted(event.data.object as Stripe.Checkout.Session, res);
       case 'invoice.payment_succeeded':
         return await onInvoicePaid(stripe, event.data.object as Stripe.Invoice, res);
+      case 'customer.subscription.updated':
+        return await onSubscriptionUpdated(stripe, event.data.object as Stripe.Subscription, res);
       case 'customer.subscription.deleted':
         return await onSubscriptionDeleted(stripe, event.data.object as Stripe.Subscription, res);
       default:
@@ -127,6 +131,40 @@ async function onInvoicePaid(stripe: Stripe, invoice: Stripe.Invoice, res: Verce
 
   await extendSubscription(uid, periodEnd);
   console.log(`✓ Renewed subscription for user ${uid}`);
+  return res.status(200).json({ received: true });
+}
+
+/**
+ * Portal plan-switches, cancel-at-period-end flags and status changes land
+ * here. Never drops tier to free — `customer.subscription.deleted` and the
+ * proEndDate backstop own the end of paid access.
+ */
+async function onSubscriptionUpdated(
+  stripe: Stripe,
+  subscription: Stripe.Subscription,
+  res: VercelResponse
+) {
+  const customerId =
+    typeof subscription.customer === 'string' ? subscription.customer : subscription.customer?.id;
+
+  const uid = await resolveUid(stripe, {
+    metadataUid: subscription.metadata?.uid,
+    customerId,
+  });
+  if (!uid) {
+    return res.status(200).json({ received: true, skipped: 'uid not resolvable' });
+  }
+
+  const priceId = subscription.items?.data?.[0]?.price?.id;
+  await updateSubscriptionState({
+    uid,
+    tier: tierForPriceId(priceId),
+    status: subscription.status,
+    cancelAtPeriodEnd: subscription.cancel_at_period_end === true,
+    currentPeriodEnd: getPeriodEnd(subscription),
+  });
+
+  console.log(`✓ Subscription state synced for user ${uid} (${subscription.status})`);
   return res.status(200).json({ received: true });
 }
 
