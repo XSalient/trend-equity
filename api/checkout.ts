@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getAuthContext } from './_lib/auth';
+import { getAdminDb } from './_lib/admin';
 import {
   getStripe,
   getPriceId,
@@ -56,6 +57,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (TIER_RANK[authCtx.tier] >= TIER_RANK[tier as string]) {
       return res.status(400).json({ error: 'User already has this tier or higher' });
+    }
+
+    // A live subscription must be changed in the Customer Portal — a second
+    // Checkout would create a second Stripe subscription and double-bill.
+    // downgradeToFree() nulls stripeSubscriptionId, so lapsed users can
+    // re-subscribe through Checkout normally.
+    const userSnap = await getAdminDb().collection('users').doc(authCtx.uid).get();
+    if (userSnap.data()?.stripeSubscriptionId) {
+      return res.status(409).json({
+        error: 'You already have an active subscription. Use “Manage billing” to change plans.',
+        usePortal: true,
+      });
     }
 
     const stripe = getStripe();

@@ -18,6 +18,10 @@ vi.mock('../../../api/_lib/stripe', async () => {
   };
 });
 
+vi.mock('../../../api/_lib/admin', () => ({
+  getAdminDb: vi.fn(),
+}));
+
 import handler from '../../../api/checkout';
 import { getAuthContext } from '../../../api/_lib/auth';
 import {
@@ -26,6 +30,7 @@ import {
   provisionSubscription,
   StripeConfigError,
 } from '../../../api/_lib/stripe';
+import { getAdminDb } from '../../../api/_lib/admin';
 
 describe('/api/checkout', () => {
   let mockReq: Partial<VercelRequest>;
@@ -34,8 +39,20 @@ describe('/api/checkout', () => {
 
   const authedFree = { uid: 'user123', tier: 'free', isAdmin: false, email: 'buyer@example.com' };
 
+  /** Stubs the users/{uid} read the 409 portal guard performs. */
+  const mockUserDoc = (data: Record<string, unknown> | undefined) => {
+    (getAdminDb as any).mockReturnValue({
+      collection: vi.fn(() => ({
+        doc: vi.fn(() => ({
+          get: vi.fn().mockResolvedValue({ exists: !!data, data: () => data }),
+        })),
+      })),
+    });
+  };
+
   beforeEach(() => {
     vi.clearAllMocks();
+    mockUserDoc({});
 
     mockReq = {
       method: 'POST',
@@ -91,6 +108,28 @@ describe('/api/checkout', () => {
       mockReq.body = { tier: 'pro' };
       await handler(mockReq as VercelRequest, mockRes as VercelResponse);
       expect(mockRes.status).toHaveBeenCalledWith(400);
+    });
+
+    // A second Checkout for a live subscriber creates a second Stripe
+    // subscription and double-bills — plan changes belong in the portal.
+    it('returns 409 with usePortal for a user who already has an active subscription', async () => {
+      (getAuthContext as any).mockResolvedValue({ ...authedFree, tier: 'pro' });
+      mockUserDoc({ tier: 'pro', stripeSubscriptionId: 'sub_123' });
+      mockReq.body = { tier: 'builder' };
+      await handler(mockReq as VercelRequest, mockRes as VercelResponse);
+      expect(mockRes.status).toHaveBeenCalledWith(409);
+      expect(mockRes.json).toHaveBeenCalledWith(expect.objectContaining({ usePortal: true }));
+      expect(stripeClient.checkout.sessions.create).not.toHaveBeenCalled();
+    });
+
+    // downgradeToFree() nulls stripeSubscriptionId, so a lapsed user must be
+    // able to buy again through Checkout normally.
+    it('allows checkout for a lapsed user whose subscription id was cleared', async () => {
+      (getAuthContext as any).mockResolvedValue(authedFree);
+      mockUserDoc({ tier: 'free', stripeSubscriptionId: null });
+      await handler(mockReq as VercelRequest, mockRes as VercelResponse);
+      expect(mockRes.status).toHaveBeenCalledWith(200);
+      expect(stripeClient.checkout.sessions.create).toHaveBeenCalled();
     });
 
     // Regression: customer_email was previously set to the Firebase uid, which
