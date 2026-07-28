@@ -53,8 +53,7 @@ export default function App() {
 
 function MainApp() {
   const { user, authReady, handleLogin, handleLogout, error: authError } = useAuth();
-  const { tier, isAdmin, handleUpgrade, handleDowngrade, upgradeToBuilder, tierNotification } =
-    useTier(user);
+  const { tier, isAdmin, subscription } = useTier(user);
   const [firebaseToken, setFirebaseToken] = useState<string | undefined>();
   // TE-08: confirms the Stripe session when the user returns from checkout.
   const { checkoutStatus, checkoutMessage } = useCheckout(firebaseToken);
@@ -248,7 +247,13 @@ function MainApp() {
 
   const onUpgradeToBuilder = () => {
     logEvent('upgrade_click', { fromTier: tier, toTier: 'builder' });
-    upgradeToBuilder(handleLogin);
+    if (!user) {
+      handleLogin();
+      return;
+    }
+    // Real upgrades happen via Stripe Checkout on the pricing tab — the client
+    // never mutates tier itself (TE-38).
+    setActiveTab('pro');
   };
 
   const getDynamicIntro = () => {
@@ -331,13 +336,6 @@ function MainApp() {
               }`}
             >
               {checkoutMessage}
-            </div>
-          )}
-
-          {/* FIX (U-2): Tier notification toast — replaces alert() */}
-          {tierNotification && (
-            <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-full shadow-xl animate-fade-in">
-              {tierNotification}
             </div>
           )}
 
@@ -527,8 +525,7 @@ function MainApp() {
               <PricingSection
                 currentPlan={tier}
                 firebaseToken={firebaseToken}
-                onUpgrade={handleUpgrade}
-                onDowngrade={handleDowngrade}
+                subscription={subscription}
                 onOpenTE100={() => setShowTE100(true)}
                 onOpenApiAccess={() => setShowApiAccess(true)}
               />

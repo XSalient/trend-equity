@@ -19,12 +19,13 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { StripeCheckoutModal } from './StripeCheckoutModal';
+import type { SubscriptionInfo } from '../hooks/useTier';
 
 interface PricingSectionProps {
   currentPlan: 'free' | 'pro' | 'builder';
   firebaseToken?: string;
-  onUpgrade: (plan: 'pro' | 'builder') => void;
-  onDowngrade: (plan: 'free' | 'pro') => void;
+  /** Server-truth subscription state (TE-38) — display only. */
+  subscription?: SubscriptionInfo;
   onOpenTE100?: () => void;
   onOpenApiAccess?: () => void;
 }
@@ -118,8 +119,7 @@ const TIER_SHOWCASE: Record<PlanKey, { icon: React.ReactNode; label: string; onC
 export const PricingSection: React.FC<PricingSectionProps> = ({
   currentPlan,
   firebaseToken,
-  onUpgrade,
-  onDowngrade,
+  subscription,
   onOpenTE100,
   onOpenApiAccess,
 }) => {
@@ -136,11 +136,10 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
     setPendingDowngrade(targetPlan);
   };
 
+  // TE-39 (Task 5) wires this to the Stripe Customer Portal — the only place a
+  // downgrade or plan switch can actually happen.
   const confirmDowngrade = () => {
-    if (pendingDowngrade) {
-      onDowngrade(pendingDowngrade);
-      setPendingDowngrade(null);
-    }
+    setPendingDowngrade(null);
   };
 
   const handleShowcaseClick = (item: { onClick?: string }) => {

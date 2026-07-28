@@ -32,12 +32,6 @@ export function useTier(user: User | null) {
   const [tier, setTier] = useState<Tier>('free');
   const [isAdmin, setIsAdmin] = useState(false);
   const [subscription, setSubscription] = useState<SubscriptionInfo>(EMPTY_SUBSCRIPTION);
-  const [tierNotification, setTierNotification] = useState<string | null>(null);
-
-  const notify = (msg: string) => {
-    setTierNotification(msg);
-    setTimeout(() => setTierNotification(null), 4000);
-  };
 
   useEffect(() => {
     // FIX (S-3): mockTier & mockAdmin URL param is ONLY active in development/test mode.
@@ -100,43 +94,16 @@ export function useTier(user: User | null) {
     setSubscription(EMPTY_SUBSCRIPTION);
   }, [user]);
 
-  /**
-   * TE-14: Removed fake upgrade functionality.
-   * Tier changes are NOT persisted to Firestore from the client.
-   * Tier should only be changed server-side after verified payment (e.g., Stripe webhook).
-   * Users join waitlist instead of fake upgrading.
-   */
-  const handleUpgrade = async (plan: Tier) => {
-    // TE-14: No longer used — waitlist modal handles tier interest instead
-    console.warn('[useTier] handleUpgrade called but should be replaced by waitlist modal');
-  };
-
-  const handleDowngrade = async (plan: Tier) => {
-    setTier(plan);
-    notify(`Downgraded to ${plan.toUpperCase()}.`);
-  };
-
-  /**
-   * TE-14: upgradeToBuilder no longer fakes an upgrade.
-   * Tier changes only happen server-side after verified payment (Stripe webhook).
-   */
-  const upgradeToBuilder = async (onLoginNeeded: () => void) => {
-    if (!user) {
-      onLoginNeeded();
-      return;
-    }
-    // TE-14: No longer changes tier client-side. Waitlist modal handles tier interest.
-    notify('Join the waitlist to get Builder tier when payments launch.');
-  };
-
+  // TE-38: this hook deliberately exposes NO tier mutators. `users/{uid}.tier`
+  // is written only by server-side Stripe paths (see docs/PAYMENTS.md); the
+  // client renders the Firestore snapshot and nothing else. The old
+  // handleUpgrade/handleDowngrade/upgradeToBuilder trio faked local tier state
+  // and desynced the UI from server truth — that was the "user already has this
+  // tier or higher" bug. Cancels and plan switches go through the Stripe
+  // Customer Portal (POST /api/portal); upgrades go through Checkout.
   return {
     tier,
     isAdmin,
     subscription,
-    setTier,
-    handleUpgrade,
-    handleDowngrade,
-    upgradeToBuilder,
-    tierNotification,
   };
 }
