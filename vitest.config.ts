@@ -8,8 +8,11 @@ export default defineConfig({
     include: ['tests/unit/**/*.test.{ts,tsx}'],
     setupFiles: ['tests/unit/setup.ts', 'tests/setup-dom.ts'],
     environmentMatchGlobs: [['tests/unit/components/**', 'jsdom']],
-    // Parallel execution enabled by default in Vitest 2.x
-    // Use --no-isolate flag or VITEST_WORKERS env var for control
+    // Parallel execution is on by default in Vitest 2.x. The `forks` pool
+    // (tinypool + child_process) crashes with "Worker exited unexpectedly" on
+    // Node 25, which hangs the whole run — so the npm scripts pass
+    // `--pool=threads`. The old `--workers=4` flag does not exist in Vitest 2
+    // and made `npm run test:unit` fail immediately.
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html', 'lcov'],
