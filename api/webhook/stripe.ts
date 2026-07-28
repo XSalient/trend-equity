@@ -12,6 +12,7 @@ import {
   StripeConfigError,
   type PaidTier,
 } from '../_lib/stripe';
+import { getAdminDb } from '../_lib/admin';
 import { getRawBody } from './_lib/body-parser';
 
 /**
@@ -68,6 +69,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return await onCheckoutCompleted(event.data.object as Stripe.Checkout.Session, res);
       case 'invoice.payment_succeeded':
         return await onInvoicePaid(stripe, event.data.object as Stripe.Invoice, res);
+      case 'invoice.payment_failed':
+        return await onInvoicePaymentFailed(stripe, event.data.object as Stripe.Invoice, res);
       case 'customer.subscription.updated':
         return await onSubscriptionUpdated(stripe, event.data.object as Stripe.Subscription, res);
       case 'customer.subscription.deleted':
@@ -131,6 +134,48 @@ async function onInvoicePaid(stripe: Stripe, invoice: Stripe.Invoice, res: Verce
 
   await extendSubscription(uid, periodEnd);
   console.log(`✓ Renewed subscription for user ${uid}`);
+  return res.status(200).json({ received: true });
+}
+
+/**
+ * A renewal charge failed. Stripe now runs its dunning retries — we do NOT
+ * drop the tier here (subscription.deleted / the proEndDate backstop own
+ * that). We flag the account and tell the user how to fix their card.
+ */
+async function onInvoicePaymentFailed(
+  stripe: Stripe,
+  invoice: Stripe.Invoice,
+  res: VercelResponse
+) {
+  const subscriptionId = readInvoiceSubscriptionId(invoice);
+  const customerId = typeof invoice.customer === 'string' ? invoice.customer : invoice.customer?.id;
+
+  const uid = await resolveUid(stripe, { subscriptionId, customerId });
+  if (!uid) {
+    return res.status(200).json({ received: true, skipped: 'uid not resolvable' });
+  }
+
+  const db = getAdminDb();
+  const userRef = db.collection('users').doc(uid);
+  // Alert doc id embeds the invoice id → dunning retries don't stack alerts.
+  const alertRef = db.collection('user_alerts').doc(`payment_failed_${invoice.id}`);
+
+  await db.runTransaction(async (tx) => {
+    const existing = await tx.get(alertRef);
+    if (existing.exists) return;
+    tx.set(userRef, { subscriptionStatus: 'past_due', updatedAt: new Date() }, { merge: true });
+    tx.set(alertRef, {
+      userId: uid,
+      title: 'Payment failed',
+      message:
+        'Your last subscription payment failed. Update your payment method in Manage billing to keep your plan.',
+      type: 'error',
+      timestamp: new Date(),
+      isRead: false,
+    });
+  });
+
+  console.log(`⚠ Payment failed for user ${uid} (invoice ${invoice.id})`);
   return res.status(200).json({ received: true });
 }
 

@@ -18,7 +18,12 @@ vi.mock('../../../api/_lib/stripe', async () => {
   };
 });
 
+vi.mock('../../../api/_lib/admin', () => ({
+  getAdminDb: vi.fn(),
+}));
+
 import handler, { config } from '../../../api/webhook/stripe';
+import { getAdminDb } from '../../../api/_lib/admin';
 import {
   getStripe,
   provisionSubscription,
@@ -57,6 +62,14 @@ describe('POST /api/webhook/stripe', () => {
     };
 
     (getStripe as any).mockReturnValue(stripeClient);
+
+    // Default Firestore stub so the handlers that touch it don't explode.
+    (getAdminDb as any).mockReturnValue({
+      collection: vi.fn(() => ({ doc: vi.fn(() => ({ id: 'ref' })) })),
+      runTransaction: vi.fn(async (fn: any) =>
+        fn({ get: vi.fn().mockResolvedValue({ exists: false }), set: vi.fn() })
+      ),
+    });
   });
 
   // Regression: Vercel parses bodies by default, which destroys the signed bytes.
@@ -221,6 +234,51 @@ describe('POST /api/webhook/stripe', () => {
     await handler(mockReq as VercelRequest, mockRes as VercelResponse);
 
     expect(updateSubscriptionState).not.toHaveBeenCalled();
+    expect(mockRes.status).toHaveBeenCalledWith(200);
+  });
+
+  it('acks invoice.payment_failed and marks the user past_due with an alert', async () => {
+    (resolveUid as any).mockResolvedValue('user123');
+    const txSet = vi.fn();
+    const txGet = vi.fn().mockResolvedValue({ exists: false });
+    (getAdminDb as any).mockReturnValue({
+      collection: vi.fn(() => ({ doc: vi.fn(() => ({ id: 'ref' })) })),
+      runTransaction: vi.fn(async (fn: any) => fn({ get: txGet, set: txSet })),
+    });
+    stripeClient.webhooks.constructEvent.mockReturnValue({
+      type: 'invoice.payment_failed',
+      data: { object: { id: 'in_123', customer: 'cus_123', subscription: 'sub_123' } },
+    });
+
+    await handler(mockReq as VercelRequest, mockRes as VercelResponse);
+
+    expect(txSet).toHaveBeenCalledTimes(2); // user doc + alert doc
+    const userPayload = txSet.mock.calls[0][1];
+    expect(userPayload).toMatchObject({ subscriptionStatus: 'past_due' });
+    // Dunning must never drop the tier — Stripe retries may still recover it.
+    expect(userPayload).not.toHaveProperty('tier');
+    expect(mockRes.status).toHaveBeenCalledWith(200);
+  });
+
+  // Stripe retries dunning invoices; the alert doc id embeds the invoice id so
+  // the user isn't spammed with one alert per retry.
+  it('does not restack the alert when the same failed invoice replays', async () => {
+    (resolveUid as any).mockResolvedValue('user123');
+    const txSet = vi.fn();
+    (getAdminDb as any).mockReturnValue({
+      collection: vi.fn(() => ({ doc: vi.fn(() => ({ id: 'ref' })) })),
+      runTransaction: vi.fn(async (fn: any) =>
+        fn({ get: vi.fn().mockResolvedValue({ exists: true }), set: txSet })
+      ),
+    });
+    stripeClient.webhooks.constructEvent.mockReturnValue({
+      type: 'invoice.payment_failed',
+      data: { object: { id: 'in_123', customer: 'cus_123', subscription: 'sub_123' } },
+    });
+
+    await handler(mockReq as VercelRequest, mockRes as VercelResponse);
+
+    expect(txSet).not.toHaveBeenCalled();
     expect(mockRes.status).toHaveBeenCalledWith(200);
   });
 
