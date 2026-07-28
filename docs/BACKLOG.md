@@ -169,14 +169,14 @@ Sequencing note: TE-04 (now shipped) provided observability; use its data to inf
 | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------- | ------ | ------ |
 | TE-04  | Signal observability: per-source counts in `qualityStats`, `signalsDegraded` flag, admin alert at zero                                              | done (2026-07-23) | Claude | S      |
 | TE-09  | Product analytics: `logEvent()` service + 5 events (`tab_view`, `idea_save`, `quota_hit`, `upgrade_click`, `evidence_view`)                         | done (2026-07-23) | Claude | M      |
-| TE-08  | Stripe monetization Phase 1: checkout endpoint + webhook as sole writer of `users/{uid}.tier`; Pro/Builder monthly only; live Stripe checkout modal | in progress       | Claude | L      |
+| TE-08  | Stripe monetization Phase 1: checkout endpoint + webhook as sole writer of `users/{uid}.tier`; Pro/Builder monthly only; live Stripe checkout modal | done (2026-07-28)  | Claude | L      |
 | TE-08b | ~~Stripe Phase 2 placeholder~~ — superseded by the TE-38…TE-42 lifecycle stories below (2026-07-29 audit)                                           | superseded        | —      | —      |
 
 **TE-08 user story:** As a free user who hit my quota, I want to upgrade to Pro with a card in under a minute — and as the owner, I finally learn whether anyone pays, which gates the entire Wave 2 roadmap.
 
 **TE-08 Phase 1 (shipped 2026-07-23):** Checkout endpoint + live Stripe modal with real pricing ($9 Pro, $19 Builder). Stripe webhook atomically updates `users/{uid}.tier` and `proEndDate`. UI shows "UPGRADE NOW" buttons that redirect to Stripe checkout.
 
-**TE-08 Phase 1 repair (2026-07-28):** The shipped flow never completed a payment. Five defects fixed — uid sent as `customer_email`, `/api/checkout` unmounted in local dev, webhook raw body consumed before signature verification, renewal/cancel `metadata.uid` never populated, and stub env values passing validation. Added `api/_lib/stripe.ts` (idempotent provisioning) and a session-verify return path so checkout completes without a registered webhook. See CHANGELOG. **Blocked on:** `STRIPE_SECRET_KEY` (sandbox) is absent from `.env`, Doppler and Vercel — end-to-end payment cannot be verified until it is set.
+**TE-08 Phase 1 repair (2026-07-28, shipped 2026-07-29 6f12809):** The shipped flow never completed a payment. Five defects fixed — uid sent as `customer_email`, `/api/checkout` unmounted in local dev, webhook raw body consumed before signature verification, renewal/cancel `metadata.uid` never populated, and stub env values passing validation. Added `api/_lib/stripe.ts` (idempotent provisioning) and a session-verify return path so checkout completes without a registered webhook. See CHANGELOG. **Blocked on:** `STRIPE_SECRET_KEY` (sandbox) is absent from `.env`, Doppler and Vercel — end-to-end payment cannot be verified until it is set.
 
 **TE-08 Phase 2 (planned):** Superseded by TE-38…TE-42 below — see the [subscription lifecycle section](#now--p2-stripe-subscription-lifecycle-te-08-phase-2).
 
@@ -184,13 +184,13 @@ Sequencing note: TE-04 (now shipped) provided observability; use its data to inf
 
 Source: 2026-07-29 lifecycle audit — root cause of the "user already has this tier or higher" bug was the client-only `handleDowngrade` in `useTier.ts` desyncing UI tier from Firestore. Decision record: [DECISIONS.md 2026-07-29](../DECISIONS.md). Canonical lifecycle reference: [docs/PAYMENTS.md](PAYMENTS.md). Detailed implementation plan (task-by-task, TDD): [2026-07-29 Stripe subscription lifecycle](superpowers/plans/2026-07-29-stripe-subscription-lifecycle.md). Sequencing: TE-38 → TE-39 → TE-40 → TE-41 → TE-42 (plan Tasks 1–10 map onto the stories in order). Like Phase 1, live verification is **blocked on `STRIPE_SECRET_KEY`** being set.
 
-| ID    | Task                                                                                                                                                      | Status | Owner | Effort |
-| ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ | ----- | ------ |
-| TE-38 | Server-truth tier UI: delete client-side tier mutations (`handleDowngrade` bug class); expose `SubscriptionInfo` (proEndDate, cancelAtPeriodEnd, status)   | todo   | —     | S      |
-| TE-39 | Stripe Customer Portal: `POST /api/portal` + pricing-tab wiring (cancel, plan switch, invoices, cards); 409 checkout guard against double subscriptions    | todo   | —     | M      |
-| TE-40 | Lifecycle webhooks: `customer.subscription.updated` (plan switch, cancel-at-period-end, status) + `invoice.payment_failed` (past_due flag + user alert)    | todo   | —     | M      |
-| TE-41 | Expiry backstop: `getAuthContext` resolves paid tier as free after `proEndDate` + 3-day grace (missed-webhook safety net; manual grants never expire)      | todo   | —     | S      |
-| TE-42 | Billing accuracy: provision with Stripe's real `current_period_end`; renewal audit rows in `stripe_transactions` (invoice-id keyed, `type` field)          | todo   | —     | S      |
+| ID    | Task                                                                                                                                                     | Status | Owner | Effort |
+| ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ | ----- | ------ |
+| TE-38 | Server-truth tier UI: delete client-side tier mutations (`handleDowngrade` bug class); expose `SubscriptionInfo` (proEndDate, cancelAtPeriodEnd, status) | todo   | —     | S      |
+| TE-39 | Stripe Customer Portal: `POST /api/portal` + pricing-tab wiring (cancel, plan switch, invoices, cards); 409 checkout guard against double subscriptions  | todo   | —     | M      |
+| TE-40 | Lifecycle webhooks: `customer.subscription.updated` (plan switch, cancel-at-period-end, status) + `invoice.payment_failed` (past_due flag + user alert)  | todo   | —     | M      |
+| TE-41 | Expiry backstop: `getAuthContext` resolves paid tier as free after `proEndDate` + 3-day grace (missed-webhook safety net; manual grants never expire)    | todo   | —     | S      |
+| TE-42 | Billing accuracy: provision with Stripe's real `current_period_end`; renewal audit rows in `stripe_transactions` (invoice-id keyed, `type` field)        | todo   | —     | S      |
 
 **TE-38 user story:** As a subscriber, I want the plan shown in the app to always match what the server will enforce — including my renewal or expiry date — so I never see a "downgrade" that didn't happen or get blocked from an upgrade I'm entitled to.
 
