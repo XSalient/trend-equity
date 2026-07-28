@@ -74,6 +74,10 @@ if (process.env.DEV_MOCK === 'true' && process.env.NODE_ENV === 'production') {
 const app = express();
 const port = process.env.PORT || 3001;
 
+// Stripe signs the raw request bytes, so this route must be mounted with a raw
+// body parser *before* express.json() — otherwise signature verification fails.
+app.use('/api/webhook/stripe', express.raw({ type: '*/*' }));
+
 app.use(express.json());
 
 // --- Rate Limiting ---
@@ -122,7 +126,9 @@ function setCached(key: string, result: any): void {
 app.post('/api/generate/daily', async (req, res) => {
   const auth = await getAuthFromRequest(req);
   console.log('[SERVER] Daily Generation Triggered. Auth success:', !!auth, 'Tier:', auth?.tier);
-  if (!auth) return res.status(401).json({ error: 'Authentication required.' });
+  // Message must match api/_handlers/daily.ts — useIdeas.ts keys off the "Sign in"
+  // wording to render the countdown empty state instead of a hard error banner.
+  if (!auth) return res.status(401).json({ error: "Sign in to load today's feed." });
 
   const { uid, tier } = auth;
   const { buildDailyUsageResponse } = await getUsageModule();
@@ -338,6 +344,10 @@ async function mountVercelRoutes() {
     { method: 'post', path: '/api/generate/validation', file: './api/_handlers/validation.ts' },
     { method: 'post', path: '/api/generate/vetting', file: './api/_handlers/vetting.ts' },
     { method: 'post', path: '/api/track', file: './api/track.ts' },
+    // Stripe (TE-08) — same handlers Vercel runs in production.
+    { method: 'post', path: '/api/checkout', file: './api/checkout.ts' },
+    { method: 'get', path: '/api/checkout', file: './api/checkout.ts' },
+    { method: 'post', path: '/api/webhook/stripe', file: './api/webhook/stripe.ts' },
   ];
 
   for (const route of routes) {

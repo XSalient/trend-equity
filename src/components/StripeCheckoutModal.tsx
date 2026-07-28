@@ -49,6 +49,12 @@ export const StripeCheckoutModal: React.FC<StripeCheckoutModalProps> = ({
   const [error, setError] = useState<string | null>(null);
 
   const handleCheckout = async (tier: 'pro' | 'builder') => {
+    // Without a token the request 401s; say so rather than showing "Network error".
+    if (!firebaseToken) {
+      setError('Please sign in again before upgrading — your session has expired.');
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
@@ -62,16 +68,22 @@ export const StripeCheckoutModal: React.FC<StripeCheckoutModalProps> = ({
         body: JSON.stringify({ tier }),
       });
 
-      if (!response.ok) {
-        const data = await response.json();
-        const errorMsg = data.debug || data.error || 'Failed to create checkout session';
+      // A missing route or an SPA fallback returns HTML, which would blow up
+      // response.json() and surface as a misleading "Network error".
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok || !data) {
+        const errorMsg =
+          data?.debug ||
+          data?.error ||
+          `Checkout failed (HTTP ${response.status}). The payment endpoint did not return a valid response.`;
         setError(errorMsg);
-        console.error('Checkout failed:', { status: response.status, ...data });
+        console.error('Checkout failed:', { status: response.status, data });
         setLoading(false);
         return;
       }
 
-      const { url } = await response.json();
+      const { url } = data;
 
       if (!url) {
         setError('No checkout URL returned from server');

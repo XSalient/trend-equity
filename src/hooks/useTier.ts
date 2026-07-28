@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { User } from 'firebase/auth';
-import { doc, getDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
 import { Tier } from '../types';
 import { handleFirestoreError, OperationType } from '../utils/errorUtils';
@@ -30,9 +30,13 @@ export function useTier(user: User | null) {
     }
 
     if (user) {
+      // TE-08: subscribe rather than read once — the tier is written server-side
+      // by the Stripe webhook / checkout confirmation, so the UI has to pick up
+      // the upgrade without a page reload.
       const userRef = doc(db, 'users', user.uid);
-      getDoc(userRef)
-        .then((docSnap) => {
+      const unsubscribe = onSnapshot(
+        userRef,
+        (docSnap) => {
           if (docSnap.exists()) {
             const data = docSnap.data();
             setTier((data.tier as Tier) || 'free');
@@ -42,8 +46,8 @@ export function useTier(user: User | null) {
             setTier('free');
             setIsAdmin(false);
           }
-        })
-        .catch((err: any) => {
+        },
+        (err: any) => {
           // Permission denied (common for new users before server setup) — gracefully default to free
           if (err?.code === 'permission-denied') {
             console.warn('[TIER] User doc not accessible, defaulting to free tier');
@@ -52,11 +56,13 @@ export function useTier(user: User | null) {
           } else {
             handleFirestoreError(err, OperationType.GET, `users/${user.uid}`);
           }
-        });
-    } else {
-      setTier('free');
-      setIsAdmin(false);
+        }
+      );
+      return unsubscribe;
     }
+
+    setTier('free');
+    setIsAdmin(false);
   }, [user]);
 
   /**

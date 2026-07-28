@@ -1,45 +1,43 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { Stripe } from 'stripe';
 import { getAuthContext } from './_lib/auth';
+import {
+  getStripe,
+  getPriceId,
+  getAppUrl,
+  provisionSubscription,
+  StripeConfigError,
+  type PaidTier,
+} from './_lib/stripe';
 
 /**
  * STRIPE SETUP GUIDE (TE-08)
  *
- * Before deploying, configure Stripe prices:
+ * Required environment variables (locally in `.env`, in Vercel for deploys):
  *
- * 1. Create Products in Stripe Dashboard (https://dashboard.stripe.com/products)
- *    - Product 1: Name "Pro", Monthly price $9 USD, recurring
- *    - Product 2: Name "Builder", Monthly price $19 USD, recurring
- *    - Copy the Price IDs (format: price_1xxx...xxx)
+ *   STRIPE_SECRET_KEY=sk_test_…       https://dashboard.stripe.com/test/apikeys
+ *   STRIPE_PRICE_PRO=price_…          Pro, $9/month recurring
+ *   STRIPE_PRICE_BUILDER=price_…      Builder, $19/month recurring
+ *   STRIPE_WEBHOOK_SECRET=whsec_…     https://dashboard.stripe.com/test/webhooks
+ *   APP_URL=https://your-domain       origin Stripe redirects back to
  *
- * 2. Set environment variables:
- *    STRIPE_SECRET_KEY=sk_test_...           (test key, replace with live key in prod)
- *    STRIPE_PRICE_PRO=price_1xxx...xxx       (Pro monthly price ID)
- *    STRIPE_PRICE_BUILDER=price_1yyy...yyy   (Builder monthly price ID)
+ * Webhook endpoint: POST {APP_URL}/api/webhook/stripe
+ * Events: checkout.session.completed, invoice.payment_succeeded,
+ *         customer.subscription.deleted
  *
- * 3. Register Webhook in Stripe Dashboard:
- *    - Settings → Webhooks → Add endpoint
- *    - Endpoint URL: https://your-domain.vercel.app/api/webhook/stripe
- *    - Events: checkout.session.completed, charge.succeeded, customer.subscription.deleted
- *    - Copy the Signing Secret
- *    - Set STRIPE_WEBHOOK_SECRET environment variable
+ * Local webhook forwarding:
+ *   stripe listen --forward-to localhost:3001/api/webhook/stripe
  *
- * 4. Test locally:
- *    - Use test keys (pk_test_... and sk_test_...)
- *    - Use Stripe test card: 4242 4242 4242 4242 (any exp/CVC)
- *    - Stripe CLI can forward webhooks: stripe listen --forward-to localhost:3001/api/webhook/stripe
+ * Test card: 4242 4242 4242 4242, any future expiry / CVC / postcode.
+ *
+ * Note: the webhook is the source of truth, but GET /api/checkout?session_id=…
+ * provisions the same upgrade on return from Stripe, so checkout still works
+ * end-to-end before a webhook endpoint is registered.
  */
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
-  apiVersion: '2026-06-24.dahlia',
-});
-
-const STRIPE_PRICES: Record<string, string> = {
-  pro: process.env.STRIPE_PRICE_PRO || 'price_pro_monthly_placeholder',
-  builder: process.env.STRIPE_PRICE_BUILDER || 'price_builder_monthly_placeholder',
-};
+const TIER_RANK: Record<string, number> = { free: 0, pro: 1, builder: 2 };
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (req.method === 'GET') return verifySession(req, res);
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -50,72 +48,127 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const { tier } = req.body;
+    const { tier } = req.body ?? {};
 
     if (!tier || !['pro', 'builder'].includes(tier)) {
       return res.status(400).json({ error: 'Invalid tier' });
     }
 
-    // Validate Stripe configuration
-    const priceId = STRIPE_PRICES[tier as 'pro' | 'builder'];
-    if (priceId.includes('placeholder')) {
-      console.error(
-        'CRITICAL: Stripe price IDs not configured. Set STRIPE_PRICE_PRO and STRIPE_PRICE_BUILDER env vars.'
-      );
-      return res.status(500).json({
-        error: 'Payment system not configured. Contact support.',
-        debug: 'Missing Stripe price IDs - STRIPE_PRICE_PRO or STRIPE_PRICE_BUILDER not set',
-      });
-    }
-
-    // If user is already on a higher or equal tier, reject
-    const tierRank: Record<string, number> = { free: 0, pro: 1, builder: 2 };
-    if (tierRank[authCtx.tier] >= tierRank[tier as string]) {
+    if (TIER_RANK[authCtx.tier] >= TIER_RANK[tier as string]) {
       return res.status(400).json({ error: 'User already has this tier or higher' });
     }
 
-    // Create Stripe checkout session
-    const baseUrl = process.env.VERCEL_URL
-      ? `https://${process.env.VERCEL_URL}`
-      : 'http://localhost:3000';
+    const stripe = getStripe();
+    const priceId = getPriceId(tier as PaidTier);
+    const appUrl = getAppUrl();
+
     const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card'],
-      line_items: [
-        {
-          price: priceId,
-          quantity: 1,
-        },
-      ],
       mode: 'subscription',
-      success_url: `${baseUrl}?checkout=success&sessionId={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${baseUrl}?tab=pro`,
-      customer_email: authCtx.uid, // Use uid as customer identifier
-      metadata: {
-        uid: authCtx.uid,
-        tier,
-      },
+      line_items: [{ price: priceId, quantity: 1 }],
+      success_url: `${appUrl}/?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${appUrl}/?tab=pro&checkout=cancelled`,
+      // A Firebase uid is not an email — passing it here made Stripe reject
+      // every session with "Invalid email address". The uid belongs in
+      // client_reference_id / metadata; only a real address goes in customer_email.
+      ...(authCtx.email ? { customer_email: authCtx.email } : {}),
+      client_reference_id: authCtx.uid,
+      metadata: { uid: authCtx.uid, tier },
+      // Copied onto the Subscription so renewal/cancellation events can be
+      // traced back to the user (they do not inherit session metadata).
+      subscription_data: { metadata: { uid: authCtx.uid, tier } },
     });
+
+    if (!session.url) {
+      console.error('[checkout] Stripe returned a session with no URL:', session.id);
+      return res.status(502).json({ error: 'Stripe did not return a checkout URL' });
+    }
 
     return res.status(200).json({ url: session.url });
   } catch (error) {
-    console.error('Checkout error:', error);
-    const errorMessage = error instanceof Error ? error.message : String(error);
-
-    // Return more detailed error info in development
-    if (process.env.NODE_ENV === 'development' || process.env.VERCEL_ENV === 'preview') {
-      return res.status(500).json({
-        error: 'Failed to create checkout session',
-        details: errorMessage,
-      });
-    }
-
-    // Check for specific Stripe errors
-    if (errorMessage.includes('No such price')) {
-      return res.status(500).json({
-        error: 'Payment configuration error. Invalid price ID configured.',
-      });
-    }
-
-    return res.status(500).json({ error: 'Failed to create checkout session' });
+    return handleStripeError(error, res, 'Failed to create checkout session');
   }
+}
+
+/**
+ * Confirms a completed Checkout Session on return from Stripe and provisions
+ * the tier immediately, without waiting for the webhook to land. Idempotent —
+ * `provisionSubscription` dedups on the session id.
+ */
+async function verifySession(req: VercelRequest, res: VercelResponse) {
+  try {
+    const authCtx = await getAuthContext(req);
+    if (!authCtx) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const sessionId = typeof req.query.session_id === 'string' ? req.query.session_id : null;
+    if (!sessionId?.startsWith('cs_')) {
+      return res.status(400).json({ error: 'Invalid session_id' });
+    }
+
+    const stripe = getStripe();
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
+
+    // The session must belong to the caller — otherwise anyone holding a
+    // session id could grant themselves a tier.
+    const sessionUid = session.metadata?.uid ?? session.client_reference_id;
+    if (sessionUid !== authCtx.uid) {
+      return res.status(403).json({ error: 'Session does not belong to this user' });
+    }
+
+    if (session.payment_status !== 'paid') {
+      return res.status(200).json({ status: session.payment_status, tier: authCtx.tier });
+    }
+
+    const tier = session.metadata?.tier as PaidTier | undefined;
+    if (!tier || !['pro', 'builder'].includes(tier)) {
+      console.error('[checkout] Paid session missing tier metadata:', sessionId);
+      return res.status(500).json({ error: 'Session is missing tier metadata' });
+    }
+
+    const subscriptionId =
+      typeof session.subscription === 'string' ? session.subscription : session.subscription?.id;
+
+    const result = await provisionSubscription({
+      uid: authCtx.uid,
+      tier,
+      sessionId,
+      customerId: typeof session.customer === 'string' ? session.customer : session.customer?.id,
+      subscriptionId,
+      amountTotal: session.amount_total,
+      currency: session.currency,
+    });
+
+    return res.status(200).json({ status: 'paid', tier: result.tier, applied: result.applied });
+  } catch (error) {
+    return handleStripeError(error, res, 'Failed to verify checkout session');
+  }
+}
+
+function handleStripeError(error: unknown, res: VercelResponse, fallback: string) {
+  const message = error instanceof Error ? error.message : String(error);
+
+  if (error instanceof StripeConfigError) {
+    console.error('[checkout] Stripe not configured:', message);
+    return res.status(503).json({
+      error: 'Payments are not configured yet. Please contact support.',
+      debug: message,
+    });
+  }
+
+  console.error('[checkout]', message);
+
+  if (message.includes('No such price')) {
+    return res.status(503).json({
+      error: 'Payment configuration error: the configured Stripe price does not exist.',
+      debug: message,
+    });
+  }
+
+  const exposeDetails =
+    process.env.NODE_ENV !== 'production' || process.env.VERCEL_ENV === 'preview';
+
+  return res
+    .status(500)
+    .json(exposeDetails ? { error: fallback, details: message } : { error: fallback });
 }

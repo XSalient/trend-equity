@@ -18,7 +18,7 @@ const envPath = path.join(__dirname, '../.env');
 console.log('\n📋 Stripe Configuration Verifier\n');
 
 // Load .env
-let env = {};
+const env = {};
 if (fs.existsSync(envPath)) {
   const envContent = fs.readFileSync(envPath, 'utf-8');
   envContent.split('\n').forEach((line) => {

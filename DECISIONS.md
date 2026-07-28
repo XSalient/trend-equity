@@ -251,3 +251,43 @@ If the Wave 2 evidence layer is prioritized, consider adding a single AI-estimat
 
 - Local: Use Stripe test keys, test card 4242 4242 4242 4242
 - Stripe CLI: `stripe listen --forward-to localhost:3001/api/webhook/stripe` for local webhook testing
+
+---
+
+## TE-08: Provisioning is idempotent and dual-path (2026-07-28)
+
+**Context:** Phase 1 shipped with the webhook as the sole tier writer. In practice the webhook could not work — its signature check ran against a body that had already been consumed — and no webhook endpoint was registered, so no payment ever granted a tier.
+
+**Decision:** Keep the webhook as the source of truth, but add a second provisioning path: `GET /api/checkout?session_id=…`, called when the user returns from Stripe. Both paths call one function, `provisionSubscription()`, which dedups on the Stripe session id.
+
+**Rationale:**
+
+- Checkout works before a webhook endpoint exists — important for sandbox testing and for the first production deploy.
+- The return path gives immediate UI feedback; the webhook covers users who close the tab, plus renewals and cancellations.
+- A single idempotent writer means the two paths racing is a no-op, not a double grant.
+
+**Security:** The verify path retrieves the session from Stripe and requires `session.metadata.uid === authCtx.uid`, so a leaked session id cannot be redeemed by another account. Tier is still never read from the client.
+
+**Consequences:** `stripe_transactions/{sessionId}` is now the idempotency ledger (previously `{uid}_{timestamp}`, which could not dedup). Tier writes use `set(merge: true)` so a user with no Firestore document can still be upgraded.
+
+**Rejected:** trusting the `?checkout=success` query parameter alone — it is client-controlled and would let anyone self-upgrade.
+
+---
+
+## TE-08 Phase 2: Subscription Lifecycle Architecture — Adopted (2026-07-29)
+
+**Context:** A lifecycle audit (triggered by a live bug: a "downgraded" Builder test user got `"User already has this tier or higher"` on re-upgrade) found the root cause plus five architectural gaps. Root cause: `handleDowngrade` in `useTier.ts` was client-side-only `setTier()` — Firestore still said `builder`, and the server correctly blocked the checkout. Gaps: no real cancel/downgrade path; paid↔paid switches broken (Builder→Pro hard-blocked, Pro→Builder would create a second subscription and double-bill); `proEndDate` written but never enforced or displayed; `proEndDate` always "now + 30d" instead of Stripe's real period end; `invoice.payment_failed` / `customer.subscription.updated` unhandled.
+
+**Decisions:**
+
+1. **Client tier mutation is deleted, permanently.** `handleUpgrade` / `handleDowngrade` / `upgradeToBuilder` are removed from `useTier`. Tier flows one way: Stripe → server → Firestore → `onSnapshot` → UI. This extends TE-14's rule (no fake upgrades) to downgrades.
+2. **Stripe Customer Portal is the only cancel / plan-switch / billing-management surface** (`POST /api/portal`, 9th Vercel function, budget 9/12). We do not rebuild invoices, card forms, or cancel dialogs in-app. Checkout is only for free → paid; a live subscriber hitting checkout gets a 409 + portal redirect (prevents double subscriptions).
+3. **Downgrades take effect at period end, never immediately.** Portal cancel sets `cancel_at_period_end`; the user keeps what they paid for until `proEndDate` (anchored to the subscription start date); `customer.subscription.deleted` then triggers `downgradeToFree()`. `customer.subscription.updated` mirrors `cancelAtPeriodEnd`/status/plan-switches onto the user doc but never writes `tier: 'free'`.
+4. **Failed renewals warn, they don't revoke.** `invoice.payment_failed` → `subscriptionStatus: 'past_due'` + a `user_alerts` doc (dedup on invoice id). Stripe dunning gets its chance; access ends via deletion or the backstop.
+5. **`proEndDate` + 3-day grace is enforced in `getAuthContext`** as the missed-webhook backstop — no cron (both Vercel Hobby cron slots are already taken by generation + digest; the auth path reads the user doc anyway, so the check is free). Manual admin grants (no `proEndDate`) never expire.
+6. **`stripe_transactions` is the internal audit ledger, not the user-facing history.** Checkout rows (id = session id, `type: 'checkout'`) and renewal rows (id = invoice id, `type: 'renewal'`); doc ids double as idempotency keys. Users see invoices/receipts in the portal.
+7. **Provisioning uses Stripe's real `current_period_end`** (retrieved from the subscription at checkout time) instead of the hardcoded 30-day fallback.
+
+**Rejected:** custom in-app billing UI (portal does it better, for free); a cron-based expiry sweep (no cron slots; per-request check is sufficient); immediate downgrades or refund-on-cancel (industry norm is period-end); handling refund/dispute webhooks now (deferred until there are real customers — manual dashboard handling suffices).
+
+**Docs:** canonical lifecycle reference in [`docs/PAYMENTS.md`](docs/PAYMENTS.md); implementation plan in [`docs/superpowers/plans/2026-07-29-stripe-subscription-lifecycle.md`](docs/superpowers/plans/2026-07-29-stripe-subscription-lifecycle.md); stories TE-38…TE-42 in the backlog (supersede the old TE-08b placeholder).

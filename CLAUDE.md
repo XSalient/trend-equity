@@ -74,6 +74,17 @@ Shared backend utilities live in `api/_lib/`:
 - **Tier:** Stored in Firestore `users/{uid}.tier`. The server always re-reads this from Firestore on each request — the client never sends tier in the request body.
 - **Tier values:** `free` | `pro` | `builder`
 
+### Payments & Subscription Lifecycle (TE-08)
+
+Canonical reference: `docs/PAYMENTS.md` — read it before touching anything billing-related. Non-negotiable rules:
+
+- **`users/{uid}.tier` is written only by server-side Stripe paths** (`provisionSubscription`, `updateSubscriptionState`, `downgradeToFree` in `api/_lib/stripe.ts`) plus manual admin grants. Never add client-side tier mutation — the UI renders the Firestore snapshot (`useTier`) and nothing else. This rule caused a production-visible bug when violated (client-only `handleDowngrade`, 2026-07-29).
+- **Checkout (`api/checkout.ts`) is free → paid only.** Cancels, pro↔builder switches, card updates, and invoice history all go through the Stripe Customer Portal (`api/portal.ts`). Never create a Checkout session for a user with a live `stripeSubscriptionId` — that double-bills.
+- **Downgrades happen at period end**, driven by webhook events (`customer.subscription.deleted` → free; `customer.subscription.updated` → status/plan mirror). `invoice.payment_failed` warns (`past_due` + alert) but never drops tier.
+- **Every Stripe-driven write is idempotent**, keyed on a Stripe object id (checkout session id, invoice id) in `stripe_transactions`. Webhook returns 200 for permanently-unprocessable events, 5xx only for transient failures.
+- **Expiry backstop:** `resolveEffectiveTier` in `api/_lib/auth.ts` lapses paid tiers 3 days after `proEndDate`; manual grants (no `proEndDate`) never expire. No cron — both Hobby cron slots are taken.
+- **Function budget:** top-level `api/**/*.ts` files each cost one of Vercel Hobby's 12 functions (9/12 used after `api/portal.ts`). Check before adding any.
+
 ### Firestore Collections
 
 | Collection                                                               | Purpose                                                                                            |
@@ -89,6 +100,7 @@ Shared backend utilities live in `api/_lib/`:
 | `idea_predictions/{date}_{ideaId}`                                       | server-only publish-time score snapshots for prediction-accuracy grading (reviewed after 6 months) |
 | `api_cache/{key}`                                                        | 24 h server-side cache of AI results                                                               |
 | `api_usage/{uid}_{feature}_{period}`                                     | daily + monthly quota counters                                                                     |
+| `stripe_transactions/{sessionId\|invoiceId}`                             | append-only payment audit ledger + idempotency keys (checkout + renewal rows) — see `docs/PAYMENTS.md` |
 | `daily_generations_history/{runId}`                                      | full run snapshots incl. rejected candidates (optimizer training signal)                           |
 | `idea_embeddings/{date}`                                                 | published idea vectors for semantic dedup                                                          |
 | `prompt_history`, `config`, `app_config`, `idea_reactions`, `idea_stats` | self-learning prompt loop + tier feature config                                                    |

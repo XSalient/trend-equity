@@ -1,6 +1,13 @@
 # Quick Fix: "Network error" on Upgrade
 
-**TL;DR:** Your Stripe environment variables aren't configured.
+**TL;DR:** Set `STRIPE_SECRET_KEY` (and the price IDs) in `.env`, then restart `npm run dev`.
+
+> **Historical note (2026-07-28):** the "Network error" this page originally
+> described was _not_ caused by env vars. `/api/checkout` was never mounted in
+> `server.ts`, so local dev returned a 404 HTML page and the modal's
+> `response.json()` threw. That route is mounted now, and the modal reports the
+> real HTTP status. Missing env vars now surface as an explicit
+> "Payments are not configured yet" 503 rather than a generic failure.
 
 ## 🚀 Fix in 3 Minutes
 

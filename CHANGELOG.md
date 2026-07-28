@@ -6,6 +6,32 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/): **Added 
 
 ## Unreleased
 
+### Docs
+
+- **TE-08 Phase 2 planned (2026-07-29):** Subscription-lifecycle audit found the root cause of the "user already has this tier or higher" bug (client-only `handleDowngrade` desyncing UI tier from Firestore) plus five gaps: no cancel path, broken paid↔paid switches (double-billing risk), unenforced/undisplayed `proEndDate`, inaccurate billing dates, and unhandled `invoice.payment_failed` / `customer.subscription.updated`. Added stories TE-38…TE-42 (supersede TE-08b), a decision record (DECISIONS.md 2026-07-29), the canonical lifecycle reference `docs/PAYMENTS.md`, CLAUDE.md payment rules, and the task-by-task plan `docs/superpowers/plans/2026-07-29-stripe-subscription-lifecycle.md`.
+
+### Fixed
+
+- **TE-08 Stripe checkout was broken end-to-end.** Five independent defects, each sufficient on its own:
+  - `customer_email` was set to the Firebase uid, so Stripe rejected every session with "Invalid email address". Now sends the verified email claim (added to `AuthContext`) and puts the uid in `client_reference_id`/metadata.
+  - `server.ts` never mounted `/api/checkout` or `/api/webhook/stripe`, so local dev 404'd and the modal reported "Network error" (previously misdiagnosed as missing env vars in `docs/QUICK_FIX_STRIPE.md`).
+  - The webhook read the raw body off the request stream after Vercel/Express had already consumed it, so signature verification always failed and the tier was never written. Body parsing is now disabled for the route (`config.api.bodyParser = false`, `express.raw()` locally) and the parser reads pre-buffered bytes.
+  - Renewal and cancellation handlers read `metadata.uid` from Charge/Subscription objects, which never carry session metadata. Checkout now copies `uid`/`tier` onto `subscription_data.metadata`, and `resolveUid()` walks subscription → customer → Firestore.
+  - Config validation only rejected the literal string `placeholder`, so the `.env` stubs `sk_test_`/`price_` were passed to Stripe. Now validated by shape and surfaced as a 503 with an actionable message.
+
+### Added
+
+- `api/_lib/stripe.ts` — single Stripe client, price/app-URL resolution, and idempotent tier provisioning (deduped on the Stripe session id) shared by the checkout endpoint and the webhook.
+- `GET /api/checkout?session_id=…` — verifies a completed session on return from Stripe and provisions the tier immediately, so checkout works before a webhook endpoint is registered. Ownership-checked so a session id cannot be replayed by another user.
+- Post-checkout confirmation flow (`useCheckout`) with a status toast, replacing a dead hook that loaded Stripe.js for a redirect flow that never used it.
+- Unit coverage for all five regressions (`tests/unit/api/stripe-lib.test.ts` plus rewritten checkout/webhook suites).
+
+### Changed
+
+- `useTier` subscribes to `users/{uid}` via `onSnapshot` instead of a one-shot `getDoc`, so a server-side upgrade appears without a page reload.
+- Webhook returns 200 for permanently unprocessable events (missing metadata, unresolvable uid) so Stripe stops retrying; 5xx is reserved for transient failures.
+- Tier writes use `set(..., { merge: true })` — `update()` threw for users with no `users/{uid}` document, turning a successful payment into an unrecoverable error.
+
 ## 2026-07-23
 
 ### Added

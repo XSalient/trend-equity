@@ -13,6 +13,8 @@ export interface AuthContext {
   uid: string;
   tier: 'free' | 'pro' | 'builder';
   isAdmin: boolean;
+  /** Verified email claim, when the identity provider supplied one. */
+  email?: string;
 }
 
 /**
@@ -54,10 +56,11 @@ export async function getAuthContext(req: VercelRequest): Promise<AuthContext | 
         : 'free';
       const role = userDoc.exists ? userDoc.data()?.role : null;
       const isAdmin = role === 'admin';
-      return { uid: decoded.uid, tier, isAdmin };
+      const email = decoded.email ?? userDoc.data()?.email ?? undefined;
+      return { uid: decoded.uid, tier, isAdmin, email };
     } catch {
       // Firestore lookup failed — default to free tier (fail-open on tier, not auth)
-      return { uid: decoded.uid, tier: 'free', isAdmin: false };
+      return { uid: decoded.uid, tier: 'free', isAdmin: false, email: decoded.email ?? undefined };
     }
   } catch {
     // Invalid or expired token

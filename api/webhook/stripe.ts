@@ -1,143 +1,172 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { Stripe } from 'stripe';
-import { getAdminDb, getAdminAuth } from '../_lib/admin';
+import type { Stripe } from 'stripe';
+import {
+  getStripe,
+  provisionSubscription,
+  extendSubscription,
+  downgradeToFree,
+  resolveUid,
+  getPeriodEnd,
+  StripeConfigError,
+  type PaidTier,
+} from '../_lib/stripe';
 import { getRawBody } from './_lib/body-parser';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
-  apiVersion: '2026-06-24.dahlia',
-});
+/**
+ * Vercel parses request bodies by default, which consumes the stream and
+ * destroys the exact bytes Stripe signed. Signature verification cannot work
+ * without this.
+ */
+export const config = {
+  api: { bodyParser: false },
+};
 
-const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || '';
-
+/**
+ * Stripe retries any non-2xx response. Client errors we can never recover from
+ * (unknown user, missing metadata) return 200 with a note so Stripe stops
+ * retrying; only transient failures return 5xx.
+ */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  const signature = req.headers['stripe-signature'] as string | undefined;
+  if (!signature) {
+    return res.status(400).json({ error: 'Missing signature' });
+  }
+
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET?.trim();
+  if (!webhookSecret || !webhookSecret.startsWith('whsec_')) {
+    console.error('[webhook] STRIPE_WEBHOOK_SECRET is missing or malformed');
+    return res.status(503).json({ error: 'Webhook not configured' });
+  }
+
+  let stripe: Stripe;
   try {
-    // Get raw body for signature verification
+    stripe = getStripe();
+  } catch (err) {
+    const message = err instanceof StripeConfigError ? err.message : String(err);
+    console.error('[webhook] Stripe not configured:', message);
+    return res.status(503).json({ error: 'Webhook not configured' });
+  }
+
+  let event: Stripe.Event;
+  try {
     const body = await getRawBody(req);
-    const signature = req.headers['stripe-signature'] as string;
+    event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
+  } catch (err) {
+    console.error('[webhook] Signature verification failed:', (err as Error).message);
+    return res.status(400).json({ error: 'Invalid signature' });
+  }
 
-    if (!signature) {
-      return res.status(400).json({ error: 'Missing signature' });
+  try {
+    switch (event.type) {
+      case 'checkout.session.completed':
+        return await onCheckoutCompleted(event.data.object as Stripe.Checkout.Session, res);
+      case 'invoice.payment_succeeded':
+        return await onInvoicePaid(stripe, event.data.object as Stripe.Invoice, res);
+      case 'customer.subscription.deleted':
+        return await onSubscriptionDeleted(stripe, event.data.object as Stripe.Subscription, res);
+      default:
+        return res.status(200).json({ received: true, ignored: event.type });
     }
-
-    // Verify Stripe signature
-    let event: Stripe.Event;
-    try {
-      event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
-    } catch (err) {
-      console.error('Webhook signature verification failed:', err);
-      return res.status(400).json({ error: 'Invalid signature' });
-    }
-
-    // Handle checkout.session.completed event
-    if (event.type === 'checkout.session.completed') {
-      const session = event.data.object as Stripe.Checkout.Session;
-
-      // Extract user info from metadata
-      const uid = session.metadata?.uid;
-      const tier = session.metadata?.tier as 'pro' | 'builder';
-
-      if (!uid || !tier) {
-        console.error('Missing metadata in session:', session.id);
-        return res.status(400).json({ error: 'Missing metadata' });
-      }
-
-      if (!['pro', 'builder'].includes(tier)) {
-        console.error('Invalid tier in metadata:', tier);
-        return res.status(400).json({ error: 'Invalid tier' });
-      }
-
-      // Atomic Firestore transaction: update tier + proEndDate
-      const db = getAdminDb();
-      await db.runTransaction(async (transaction) => {
-        const userRef = db.collection('users').doc(uid);
-        const userSnap = await transaction.get(userRef);
-
-        // Double-check user exists
-        if (!userSnap.exists) {
-          throw new Error(`User ${uid} not found`);
-        }
-
-        // Calculate proEndDate (30 days from now)
-        const proEndDate = new Date();
-        proEndDate.setDate(proEndDate.getDate() + 30);
-
-        // Update user tier + proEndDate + stripe customer ID
-        transaction.update(userRef, {
-          tier,
-          proEndDate: proEndDate,
-          stripeCustomerId: session.customer as string,
-          stripeSessionId: session.id,
-          updatedAt: new Date(),
-        });
-
-        // Log the transaction for audit trail (optional)
-        const auditRef = db.collection('stripe_transactions').doc(`${uid}_${Date.now()}`);
-        transaction.set(auditRef, {
-          uid,
-          tier,
-          stripeSessionId: session.id,
-          amount: session.amount_total,
-          currency: session.currency,
-          completedAt: new Date(),
-        });
-      });
-
-      console.log(`✓ Upgraded user ${uid} to ${tier} tier`);
-      return res.status(200).json({ received: true });
-    }
-
-    // Handle subscription renewal (charge.succeeded)
-    if (event.type === 'charge.succeeded') {
-      const charge = event.data.object as Stripe.Charge;
-      const uid = charge.metadata?.uid;
-
-      if (uid) {
-        // Extend proEndDate by 30 days
-        const db = getAdminDb();
-        const userRef = db.collection('users').doc(uid);
-        const userSnap = await userRef.get();
-
-        if (userSnap.exists) {
-          const currentEndDate = userSnap.data()?.proEndDate?.toDate() || new Date();
-          const newEndDate = new Date(currentEndDate);
-          newEndDate.setDate(newEndDate.getDate() + 30);
-
-          await userRef.update({
-            proEndDate: newEndDate,
-            updatedAt: new Date(),
-          });
-
-          console.log(`✓ Renewed subscription for user ${uid}`);
-        }
-      }
-    }
-
-    // Handle customer.subscription.deleted (cancellation)
-    if (event.type === 'customer.subscription.deleted') {
-      const subscription = event.data.object as Stripe.Subscription;
-      const uid = subscription.metadata?.uid;
-
-      if (uid) {
-        // Downgrade to free
-        const db = getAdminDb();
-        await db.collection('users').doc(uid).update({
-          tier: 'free',
-          proEndDate: null,
-          updatedAt: new Date(),
-        });
-
-        console.log(`✓ Downgraded user ${uid} to free tier (subscription cancelled)`);
-      }
-    }
-
-    // Silently accept other events
-    return res.status(200).json({ received: true });
   } catch (error) {
-    console.error('Webhook error:', error);
+    // Transient (Firestore/Stripe outage) — let Stripe retry.
+    console.error('[webhook] Processing failed for', event.type, (error as Error).message);
     return res.status(500).json({ error: 'Webhook processing failed' });
   }
+}
+
+async function onCheckoutCompleted(session: Stripe.Checkout.Session, res: VercelResponse) {
+  const uid = session.metadata?.uid ?? session.client_reference_id ?? undefined;
+  const tier = session.metadata?.tier as PaidTier | undefined;
+
+  if (!uid || !tier || !['pro', 'builder'].includes(tier)) {
+    console.error('[webhook] Session missing uid/tier metadata:', session.id);
+    return res.status(200).json({ received: true, skipped: 'missing metadata' });
+  }
+
+  if (session.payment_status !== 'paid') {
+    return res.status(200).json({ received: true, skipped: session.payment_status });
+  }
+
+  const result = await provisionSubscription({
+    uid,
+    tier,
+    sessionId: session.id,
+    customerId: typeof session.customer === 'string' ? session.customer : session.customer?.id,
+    subscriptionId:
+      typeof session.subscription === 'string' ? session.subscription : session.subscription?.id,
+    amountTotal: session.amount_total,
+    currency: session.currency,
+  });
+
+  console.log(
+    result.applied
+      ? `✓ Upgraded user ${uid} to ${tier} tier`
+      : `· Session ${session.id} already applied for ${uid}`
+  );
+  return res.status(200).json({ received: true });
+}
+
+async function onInvoicePaid(stripe: Stripe, invoice: Stripe.Invoice, res: VercelResponse) {
+  const subscriptionId = readInvoiceSubscriptionId(invoice);
+  const customerId = typeof invoice.customer === 'string' ? invoice.customer : invoice.customer?.id;
+
+  const uid = await resolveUid(stripe, { subscriptionId, customerId });
+  if (!uid) {
+    return res.status(200).json({ received: true, skipped: 'uid not resolvable' });
+  }
+
+  let periodEnd: number | null = null;
+  if (subscriptionId) {
+    const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+    periodEnd = getPeriodEnd(subscription);
+  }
+
+  await extendSubscription(uid, periodEnd);
+  console.log(`✓ Renewed subscription for user ${uid}`);
+  return res.status(200).json({ received: true });
+}
+
+async function onSubscriptionDeleted(
+  stripe: Stripe,
+  subscription: Stripe.Subscription,
+  res: VercelResponse
+) {
+  const customerId =
+    typeof subscription.customer === 'string' ? subscription.customer : subscription.customer?.id;
+
+  const uid = await resolveUid(stripe, {
+    metadataUid: subscription.metadata?.uid,
+    customerId,
+  });
+
+  if (!uid) {
+    return res.status(200).json({ received: true, skipped: 'uid not resolvable' });
+  }
+
+  await downgradeToFree(uid);
+  console.log(`✓ Downgraded user ${uid} to free tier (subscription cancelled)`);
+  return res.status(200).json({ received: true });
+}
+
+/**
+ * `Invoice.subscription` was relocated to `parent.subscription_details` in
+ * recent API versions; read whichever this account's version returns.
+ */
+function readInvoiceSubscriptionId(invoice: Stripe.Invoice): string | null {
+  const legacy = (invoice as unknown as { subscription?: string | { id: string } }).subscription;
+  if (typeof legacy === 'string') return legacy;
+  if (legacy?.id) return legacy.id;
+
+  const parent = (
+    invoice as unknown as {
+      parent?: { subscription_details?: { subscription?: string | { id: string } } };
+    }
+  ).parent;
+  const nested = parent?.subscription_details?.subscription;
+  if (typeof nested === 'string') return nested;
+  return nested?.id ?? null;
 }

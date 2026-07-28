@@ -9,6 +9,7 @@ import { WeeklyTrendRadar, Futurecasting, Idea } from './types';
 // --- Hooks ---
 import { useAuth } from './hooks/useAuth';
 import { useTier } from './hooks/useTier';
+import { useCheckout } from './hooks/useCheckout';
 import { useAlerts } from './hooks/useAlerts';
 import { useIdeas } from './hooks/useIdeas';
 import { useWeeklyBest } from './hooks/useWeeklyBest';
@@ -55,6 +56,8 @@ function MainApp() {
   const { tier, isAdmin, handleUpgrade, handleDowngrade, upgradeToBuilder, tierNotification } =
     useTier(user);
   const [firebaseToken, setFirebaseToken] = useState<string | undefined>();
+  // TE-08: confirms the Stripe session when the user returns from checkout.
+  const { checkoutStatus, checkoutMessage } = useCheckout(firebaseToken);
   const {
     alerts,
     showAlerts,
@@ -314,6 +317,22 @@ function MainApp() {
             <span className="text-emerald-500">Top {TIER_LIMITS[tier].dailyIdeas}</span>{' '}
             Opportunities
           </h2>
+
+          {/* TE-08: Stripe checkout return toast */}
+          {checkoutMessage && (
+            <div
+              role="status"
+              className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2 text-white text-sm font-medium rounded-full shadow-xl animate-fade-in ${
+                checkoutStatus === 'success'
+                  ? 'bg-emerald-600'
+                  : checkoutStatus === 'error'
+                    ? 'bg-red-600'
+                    : 'bg-zinc-700'
+              }`}
+            >
+              {checkoutMessage}
+            </div>
+          )}
 
           {/* FIX (U-2): Tier notification toast — replaces alert() */}
           {tierNotification && (
