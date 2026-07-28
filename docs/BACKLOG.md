@@ -187,7 +187,7 @@ Source: 2026-07-29 lifecycle audit — root cause of the "user already has this 
 | ID    | Task                                                                                                                                                     | Status      | Owner | Effort |
 | ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- | ----- | ------ |
 | TE-38 | Server-truth tier UI: delete client-side tier mutations (`handleDowngrade` bug class); expose `SubscriptionInfo` (proEndDate, cancelAtPeriodEnd, status) | in progress | —     | S      |
-| TE-39 | Stripe Customer Portal: `POST /api/portal` + pricing-tab wiring (cancel, plan switch, invoices, cards); 409 checkout guard against double subscriptions  | todo        | —     | M      |
+| TE-39 | Stripe Customer Portal: `POST /api/portal` + pricing-tab wiring (cancel, plan switch, invoices, cards); 409 checkout guard against double subscriptions  | in progress | —     | M      |
 | TE-40 | Lifecycle webhooks: `customer.subscription.updated` (plan switch, cancel-at-period-end, status) + `invoice.payment_failed` (past_due flag + user alert)  | todo        | —     | M      |
 | TE-41 | Expiry backstop: `getAuthContext` resolves paid tier as free after `proEndDate` + 3-day grace (missed-webhook safety net; manual grants never expire)    | todo        | —     | S      |
 | TE-42 | Billing accuracy: provision with Stripe's real `current_period_end`; renewal audit rows in `stripe_transactions` (invoice-id keyed, `type` field)        | todo        | —     | S      |

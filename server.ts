@@ -347,6 +347,7 @@ async function mountVercelRoutes() {
     // Stripe (TE-08) — same handlers Vercel runs in production.
     { method: 'post', path: '/api/checkout', file: './api/checkout.ts' },
     { method: 'get', path: '/api/checkout', file: './api/checkout.ts' },
+    { method: 'post', path: '/api/portal', file: './api/portal.ts' },
     { method: 'post', path: '/api/webhook/stripe', file: './api/webhook/stripe.ts' },
   ];
 
