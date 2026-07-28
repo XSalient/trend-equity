@@ -129,18 +129,60 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
   const validPlans: PlanKey[] = ['free', 'pro', 'builder'];
   const safePlan: PlanKey = validPlans.includes(currentPlan) ? currentPlan : 'free';
   const [selectedTier, setSelectedTier] = useState<PlanKey>(safePlan);
+  const [portalBusy, setPortalBusy] = useState(false);
+  const [portalError, setPortalError] = useState<string | null>(null);
 
   const featuresLost = pendingDowngrade ? getFeaturesLost(currentPlan, pendingDowngrade) : [];
+
+  /**
+   * TE-39: hands off to the Stripe-hosted Customer Portal. Every cancel, plan
+   * switch, card update and invoice lookup happens there — the resulting
+   * changes come back through the webhook, which is the only writer of tier.
+   */
+  const openPortal = async () => {
+    if (!firebaseToken || portalBusy) return;
+    setPortalBusy(true);
+    setPortalError(null);
+    try {
+      const res = await fetch('/api/portal', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${firebaseToken}` },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.url) {
+        window.location.href = data.url;
+        return;
+      }
+      setPortalError(data.error ?? 'Could not open the billing portal. Please try again.');
+    } catch {
+      setPortalError('Could not open the billing portal. Please try again.');
+    } finally {
+      setPortalBusy(false);
+    }
+  };
 
   const handleDowngradeClick = (targetPlan: 'free' | 'pro') => {
     setPendingDowngrade(targetPlan);
   };
 
-  // TE-39 (Task 5) wires this to the Stripe Customer Portal — the only place a
-  // downgrade or plan switch can actually happen.
+  // The "features you'll lose" modal is retention UX only — the actual
+  // downgrade is performed by the user inside the Stripe portal.
   const confirmDowngrade = () => {
     setPendingDowngrade(null);
+    void openPortal();
   };
+
+  const renewalLine =
+    subscription?.proEndDate && currentPlan !== 'free' ? (
+      <p className="text-[10px] text-zinc-500">
+        {subscription.cancelAtPeriodEnd
+          ? `Ends ${subscription.proEndDate.toLocaleDateString()}`
+          : `Renews ${subscription.proEndDate.toLocaleDateString()}`}
+        {subscription.status === 'past_due' && (
+          <span className="text-red-400 font-bold"> · payment issue</span>
+        )}
+      </p>
+    ) : null;
 
   const handleShowcaseClick = (item: { onClick?: string }) => {
     if (item.onClick === 'te100') onOpenTE100?.();
@@ -221,6 +263,7 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
               <p className="text-3xl font-black">
                 $9<span className="text-sm text-zinc-500">/mo</span>
               </p>
+              {currentPlan === 'pro' && renewalLine}
             </div>
             {currentPlan === 'pro' && (
               <span className="text-[9px] font-bold uppercase tracking-widest text-emerald-500 bg-emerald-500/10 px-2 py-1 rounded-full">
@@ -284,6 +327,7 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
               <p className="text-3xl font-black">
                 $19<span className="text-sm text-zinc-500">/mo</span>
               </p>
+              {currentPlan === 'builder' && renewalLine}
             </div>
             {currentPlan === 'builder' && (
               <span className="text-[9px] font-bold uppercase tracking-widest text-amber-500 bg-amber-500/10 px-2 py-1 rounded-full">
@@ -317,10 +361,13 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
           <button
             onClick={(e) => {
               e.stopPropagation();
-              if (currentPlan !== 'builder') {
+              // free → new subscription via Checkout; pro → plan switch in the
+              // portal (a second Checkout would double-bill).
+              if (currentPlan === 'free') {
                 setCheckoutTier('builder');
                 setCheckoutOpen(true);
               }
+              if (currentPlan === 'pro') void openPortal();
             }}
             disabled={currentPlan === 'builder'}
             className={`w-full py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${
@@ -333,6 +380,23 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Billing management — Stripe hosts invoices, cards, cancellation */}
+      {subscription?.hasBillingAccount && (
+        <div className="text-center space-y-2">
+          <button
+            onClick={() => void openPortal()}
+            disabled={portalBusy}
+            className="px-6 py-2 rounded-xl text-xs font-bold uppercase tracking-widest bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition-all disabled:opacity-50"
+          >
+            {portalBusy ? 'Opening…' : 'Manage billing'}
+          </button>
+          <p className="text-[10px] text-zinc-600">
+            Invoices, payment methods, plan changes &amp; cancellation — via Stripe
+          </p>
+          {portalError && <p className="text-[10px] text-red-400">{portalError}</p>}
+        </div>
+      )}
 
       {/* Enterprise Upgrade Option */}
       <div
