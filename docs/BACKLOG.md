@@ -247,7 +247,7 @@ All five stories (TE-38…TE-42) shipped 2026-07-29 — rows are in [Recently sh
 
 | ID    | Task                                                                                                                                                    | Shipped    | Commits                   |
 | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- | ------------------------- |
-| TE-44 | Signed-out plan identity: no "current plan" claim without an account; single `PROCEED` CTA per card with post-sign-in checkout resume                   | 2026-07-29 | (this commit)             |
+| TE-44 | Signed-out plan identity: no "current plan" claim without an account; single `PROCEED` CTA per card with post-sign-in checkout resume                   | 2026-07-29 | 308f7ec                   |
 | TE-43 | Sign-out data isolation: clear saves, filters, custom feed, latest idea, Weekly Best and gated tabs when the account or tier goes away                  | 2026-07-29 | bb295a5                   |
 | TE-38 | Server-truth tier UI: deleted client-side tier mutations (the `handleDowngrade` bug class); `useTier` exposes read-only `SubscriptionInfo`              | 2026-07-29 | c6a75da, e33feeb          |
 | TE-39 | Stripe Customer Portal: `POST /api/portal`, pricing-tab wiring (cancel, plan switch, invoices, cards) + 409 checkout guard against double subscriptions | 2026-07-29 | 5616578, 318a328, a77b2b6 |
