@@ -25,6 +25,10 @@ import { getAdminDb } from './_lib/admin';
  * `targetTier` is a routing hint only. It can never grant anything: the tier
  * still comes from Firestore via the webhook, and an unusable hint degrades to
  * the portal homepage rather than failing the request.
+ *
+ * TE-48: a hint we *can* build but Stripe then refuses is the opposite case —
+ * see `isFlowRejection` below. That is a deployment fault, and it is reported
+ * as one.
  */
 
 const KNOWN_TIERS = ['free', 'pro', 'builder'] as const;
@@ -33,6 +37,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
+
+  // Hoisted so the catch can tell a refused deep link apart from a bare
+  // session failing — the two have different causes and different fixes.
+  let flowData: Stripe.BillingPortal.SessionCreateParams.FlowData | null = null;
 
   try {
     const authCtx = await getAuthContext(req);
@@ -56,7 +64,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // The tier is read server-side (never from the body) — the hint only says
     // which screen to open, and is discarded unless it is a real transition.
-    const flowData = await buildFlowData({
+    flowData = await buildFlowData({
       stripe,
       requestedTier: readTargetTier(req.body),
       currentTier: authCtx.tier,
@@ -79,9 +87,39 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         .status(503)
         .json({ error: 'Payments are not configured yet. Please contact support.' });
     }
+    if (isFlowRejection(error, flowData)) {
+      console.error(
+        '[portal] Stripe refused the requested flow — run `npm run stripe:configure-portal` ' +
+          `against this Stripe environment (test *and* live are configured separately): ${message}`
+      );
+      return res
+        .status(503)
+        .json({ error: 'Plan changes are temporarily unavailable. Please contact support.' });
+    }
     console.error('[portal]', message);
     return res.status(500).json({ error: 'Failed to open the billing portal' });
   }
+}
+
+/**
+ * TE-48: Stripe rejected the deep link itself.
+ *
+ * The cause seen in production was a portal configuration with
+ * `subscription_update` disabled — the state a Stripe account is in until
+ * `npm run stripe:configure-portal` has been run against it. Only the plan
+ * switch fails; "Manage billing" and "Downgrade" build sessions the same
+ * configuration still allows, which is exactly what makes it look like a bug
+ * in the upgrade button.
+ *
+ * Deliberately *not* retried as a bare session. The portal homepage has no
+ * plan switcher while the feature that rejected us is off, so falling back
+ * would trade a visible failure for an invisible dead end and leave a broken
+ * deployment undetected — the same reason a missing price id is a 503 rather
+ * than a degrade.
+ */
+function isFlowRejection(error: unknown, flowData: unknown): boolean {
+  if (!flowData) return false;
+  return (error as { type?: string } | null)?.type === 'StripeInvalidRequestError';
 }
 
 /** Accepts only the three tier names; anything else means "no hint". */

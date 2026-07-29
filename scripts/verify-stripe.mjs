@@ -114,6 +114,7 @@ fetch('https://api.stripe.com/v1/products', {
 
     console.log('');
   })
+  .then(verifyPortalConfiguration)
   .catch((error) => {
     console.error(`❌ Error: ${error.message}\n`);
 
@@ -125,3 +126,83 @@ fetch('https://api.stripe.com/v1/products', {
 
     process.exit(1);
   });
+
+/**
+ * TE-48: keys and prices were the only things this script checked, so an
+ * account where `npm run stripe:configure-portal` had never been run passed it
+ * cleanly — and every pro→builder upgrade then 500'd, because Stripe refuses a
+ * `subscription_update_confirm` session while that feature is disabled. Cancel
+ * and "Manage billing" keep working, which is what disguises it as a bug in
+ * the upgrade button.
+ *
+ * `subscription_update.products` is deliberately not asserted: the current API
+ * version accepts the allowlist on write but does not return it, so checking
+ * it would fail against a correctly configured account.
+ */
+function verifyPortalConfiguration() {
+  console.log('6️⃣  Customer Portal configuration:');
+
+  return fetch('https://api.stripe.com/v1/billing_portal/configurations?limit=10', {
+    headers: { Authorization: `Basic ${auth}` },
+  })
+    .then((res) => {
+      if (!res.ok) throw new Error(`Stripe API error: ${res.status}`);
+      return res.json();
+    })
+    .then((data) => {
+      const configs = data.data || [];
+      const config = configs.find((c) => c.is_default) || configs[0];
+
+      if (!config) {
+        console.log('   ✗ No portal configuration exists\n');
+        return fail(['the account has no Customer Portal configuration at all']);
+      }
+
+      const update = config.features?.subscription_update || {};
+      const deferred = (update.schedule_at_period_end?.conditions || []).some(
+        (c) => c.type === 'decreasing_item_amount'
+      );
+      const cancelEnabled = config.features?.subscription_cancel?.enabled;
+
+      const mark = (ok) => (ok ? '✓' : '✗');
+      console.log(`   ${config.id}${config.is_default ? ' (default)' : ''}`);
+      console.log(`   ${mark(update.enabled)} plan switching enabled: ${!!update.enabled}`);
+      console.log(
+        `   ${mark(update.proration_behavior === 'always_invoice')} proration_behavior: ${
+          update.proration_behavior || '(unset)'
+        }`
+      );
+      console.log(`   ${mark(deferred)} period-end downgrade: ${deferred}`);
+      console.log(`   ${mark(cancelEnabled)} cancellation enabled: ${!!cancelEnabled}\n`);
+
+      const problems = [];
+      if (!update.enabled) {
+        problems.push('plan switching is OFF — every pro↔builder change fails with a 503');
+      }
+      if (update.proration_behavior !== 'always_invoice') {
+        problems.push(
+          `proration_behavior is "${update.proration_behavior || 'unset'}" — pro→builder takes no payment until the next invoice`
+        );
+      }
+      if (!deferred) {
+        problems.push(
+          'schedule_at_period_end is unset — builder→pro strips paid-for access immediately'
+        );
+      }
+      if (!cancelEnabled) {
+        problems.push('cancellation is OFF — "Downgrade to Free" cannot complete');
+      }
+
+      return problems.length
+        ? fail(problems)
+        : console.log('   ✓ Portal is correctly configured\n');
+    });
+}
+
+function fail(problems) {
+  console.log('❌ Customer Portal is misconfigured:\n');
+  problems.forEach((p) => console.log(`   • ${p}`));
+  console.log('\n   Fix: npm run stripe:configure-portal');
+  console.log('   Test and live are separate Stripe environments — run it against each.\n');
+  process.exit(1);
+}

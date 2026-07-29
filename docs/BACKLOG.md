@@ -79,6 +79,42 @@ No "getMarketSignals" export is defined on the "../../../api/_lib/signals" mock
 
 **Not failures, for the record:** the 81 skipped tests in `tests/unit/firestore.test.ts` are the documented emulator-gated rules suite (run via `firebase emulators:exec`, see CLAUDE.md) — expected skips, not breakage. The Playwright E2E suite was not assessed as part of this ticket.
 
+## Shipped — P0: the upgrade button 500'd because the portal config was never applied (TE-48)
+
+| ID    | Task                                                                                                    | Status            | Owner  | Effort |
+| ----- | ------------------------------------------------------------------------------------------------------- | ----------------- | ------ | ------ |
+| TE-48 | Apply the Stripe portal configuration; make its absence fail loudly in preflight and legibly at runtime | done (2026-07-29) | Claude | S      |
+
+**TE-48 user story:** As a Pro subscriber, I want "Upgrade now" to take me to Stripe's confirm page — and as the operator, I want a Stripe environment that has not been configured to fail in `npm run stripe:verify`, not in front of a paying customer.
+
+**Symptom:** pro→builder showed "Failed to open the billing portal" under the Builder card. "Manage billing" and "Downgrade" both worked.
+
+**Root cause — not code.** `npm run stripe:configure-portal`, shipped by TE-47 and flagged in that ticket as a deploy step that is not code, had never been run. The default portal configuration has `subscription_update.enabled: false`, so Stripe rejected the session:
+
+```
+StripeInvalidRequestError: This subscription cannot be updated because
+the subscription update feature in the portal configuration is disabled.
+```
+
+`subscription_cancel` is enabled by default, which is exactly why the two neighbouring buttons worked and the failure read as a bug in the upgrade path. Confirmed by reproducing all three flows against the account: bare OK, cancel OK, update refused.
+
+**Why nothing caught it (the same shape as TE-47's own post-mortem):**
+
+| Guard                           | Why it passed                                                                                   |
+| ------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `tests/unit/api/portal.test.ts` | Mocks `sessions.create`; a mock cannot refuse the call it is handed. 15 tests, all green.       |
+| `npm run stripe:verify`         | Checked `STRIPE_SECRET_KEY` and the two price ids. Said nothing about the portal configuration. |
+| TE-47's ⚠️ deploy note          | A note in a shipped ticket is not a check. It was correct, and it was not run.                  |
+
+**Fixed:**
+
+1. Portal configuration applied to the test environment — `subscription_update.enabled: true`, `always_invoice`, `[decreasing_item_amount]`, cancel `at_period_end`. Verified end-to-end in a browser: the confirm page charges **$9.80 today** for pro→builder with the Aug 28 anchor unmoved.
+2. `npm run stripe:verify` now asserts all four portal settings and exits non-zero on any of them. Proved in both directions by disabling plan switching and re-running (exit 1), then restoring (exit 0).
+3. `api/portal.ts` maps a Stripe-refused flow to a 503 plus an operator log naming the script to run, instead of an opaque 500. It deliberately does not retry as a bare session — the homepage has no plan switcher while the feature is off.
+4. `docs/PAYMENTS.md` gained the `subscription_update.enabled` row it never had, and its "degrades to the portal homepage rather than erroring" claim is corrected.
+
+**⚠️ Still outstanding — production.** The live Stripe environment is configured separately and could not be checked from here (no `sk_live_…` key). Run `STRIPE_SECRET_KEY=sk_live_… npm run stripe:configure-portal` and then `npm run stripe:verify` against live before trusting paid→paid switching there.
+
 ## Shipped — P0: pro↔builder plan switching was a dead end (TE-47)
 
 | ID    | Task                                                                                                    | Status            | Owner  | Effort |
@@ -350,6 +386,7 @@ All five stories (TE-38…TE-42) shipped 2026-07-29 — rows are in [Recently sh
 
 | ID    | Task                                                                                                                                                               | Shipped    | Commits                   |
 | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------- | ------------------------- |
+| TE-48 | Portal configuration applied; `stripe:verify` asserts it and fails non-zero; a Stripe-refused flow reports as a 503 with the fix, not an opaque 500                | 2026-07-29 | _pending_                 |
 | TE-47 | Paid→paid plan switching: `targetTier` portal deep links, prorated immediate upgrade, period-end downgrade + `pendingTier`, per-button state, portal config script | 2026-07-29 | 00ea80f                   |
 | TE-45 | Checkout modal honours the clicked plan (`initialTier`, clamped selection); subscribers get the portal, not a broken CTA; `tierLoading` gate                       | 2026-07-29 | 065a4e8                   |
 | TE-44 | Signed-out plan identity: no "current plan" claim without an account; single `PROCEED` CTA per card with post-sign-in checkout resume                              | 2026-07-29 | 308f7ec                   |

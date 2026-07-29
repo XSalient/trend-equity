@@ -204,6 +204,72 @@ describe('POST /api/portal', () => {
       expect(flowData()).toBeUndefined();
     });
 
+    /**
+     * TE-48. Every assertion above inspects what we *sent*; Stripe was mocked
+     * to accept all of it. Production rejected the upgrade flow outright
+     * because the portal configuration had `subscription_update` disabled, and
+     * the whole suite stayed green through it.
+     */
+    describe('when Stripe refuses the flow (TE-48)', () => {
+      /** The real rejection, verbatim, from a portal config that was never configured. */
+      const configDisabled = () =>
+        Object.assign(
+          new Error(
+            'This subscription cannot be updated because the subscription update feature in the portal configuration is disabled.'
+          ),
+          { type: 'StripeInvalidRequestError' }
+        );
+
+      it('reports a refused upgrade as a configuration fault, not a generic failure', async () => {
+        stripeClient.billingPortal.sessions.create.mockRejectedValue(configDisabled());
+        mockReq.body = { targetTier: 'builder' };
+        await handler(mockReq as VercelRequest, mockRes as VercelResponse);
+
+        expect(mockRes.status).toHaveBeenCalledWith(503);
+        expect(mockRes.json).toHaveBeenCalledWith({
+          error: 'Plan changes are temporarily unavailable. Please contact support.',
+        });
+      });
+
+      it('applies the same handling to a refused cancel flow', async () => {
+        stripeClient.billingPortal.sessions.create.mockRejectedValue(configDisabled());
+        mockReq.body = { targetTier: 'free' };
+        await handler(mockReq as VercelRequest, mockRes as VercelResponse);
+
+        expect(mockRes.status).toHaveBeenCalledWith(503);
+      });
+
+      it('never silently retries as a bare session — the homepage cannot switch plans either', async () => {
+        stripeClient.billingPortal.sessions.create.mockRejectedValue(configDisabled());
+        mockReq.body = { targetTier: 'builder' };
+        await handler(mockReq as VercelRequest, mockRes as VercelResponse);
+
+        expect(stripeClient.billingPortal.sessions.create).toHaveBeenCalledTimes(1);
+      });
+
+      it('leaves a plain "Manage billing" failure as a generic 500', async () => {
+        // No flow_data was sent, so the deep link cannot be what broke.
+        stripeClient.billingPortal.sessions.create.mockRejectedValue(configDisabled());
+        mockReq.body = {};
+        await handler(mockReq as VercelRequest, mockRes as VercelResponse);
+
+        expect(mockRes.status).toHaveBeenCalledWith(500);
+        expect(mockRes.json).toHaveBeenCalledWith({ error: 'Failed to open the billing portal' });
+      });
+
+      it('does not mistake a transient Stripe outage for a misconfiguration', async () => {
+        stripeClient.billingPortal.sessions.create.mockRejectedValue(
+          Object.assign(new Error('Connection to Stripe timed out'), {
+            type: 'StripeConnectionError',
+          })
+        );
+        mockReq.body = { targetTier: 'builder' };
+        await handler(mockReq as VercelRequest, mockRes as VercelResponse);
+
+        expect(mockRes.status).toHaveBeenCalledWith(500);
+      });
+    });
+
     it('does not open an update flow on a cancelled subscription', async () => {
       stripeClient.subscriptions.retrieve.mockResolvedValue({
         ...liveSubscription,

@@ -57,19 +57,34 @@ Every plan change the product supports, and what each one costs and when. **Any 
 | pro/builder → free   | Portal `subscription_cancel`                      | Nothing                                   | Period end | `downgradeToFree` (on `.deleted`)       |
 | lapsed → pro/builder | Checkout session (`stripeSubscriptionId` is null) | Full price now                            | Immediate  | `provisionSubscription`                 |
 
-The billing anchor never moves on a paid→paid switch — Stripe does the calendar maths. `api/portal.ts` takes an optional `targetTier` and deep-links to the right flow; it is a routing hint only, re-validated against the Firestore tier server-side, and degrades to the portal homepage rather than erroring.
+The billing anchor never moves on a paid→paid switch — Stripe does the calendar maths. `api/portal.ts` takes an optional `targetTier` and deep-links to the right flow; it is a routing hint only, re-validated against the Firestore tier server-side. A hint that cannot be built (no subscription, stale tier, multi-item subscription) degrades to the portal homepage; a flow Stripe **refuses** does not — see "when the configuration is missing" below.
 
 ### Portal configuration is not optional
 
-The two behaviours above are properties of the **portal configuration object**, not of anything the session sends. `flow_data` opens the right screen; the configuration decides what that screen does. Apply with `npm run stripe:configure-portal` (`--dry-run` to preview), once per Stripe environment:
+The behaviours above are properties of the **portal configuration object**, not of anything the session sends. `flow_data` opens the right screen; the configuration decides whether that screen exists at all and what it does. Apply with `npm run stripe:configure-portal` (`--dry-run` to preview), once per Stripe environment:
 
 | Setting                                                 | Value                      | Why                                                                                                                                                     |
 | ------------------------------------------------------- | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `subscription_update.enabled`                           | `true`                     | **Off by default.** While it is off Stripe rejects every `subscription_update_confirm` session outright — pro↔builder is not mis-billed, it is dead     |
 | `subscription_update.proration_behavior`                | `always_invoice`           | Charges the net difference **today**. `create_prorations` (Stripe's default) only books it to the _next_ invoice — the user upgrades free until renewal |
 | `subscription_update.schedule_at_period_end.conditions` | `[decreasing_item_amount]` | Defers builder→pro to the period end. Without it Stripe downgrades immediately and credits back — stripping access already paid for                     |
 | `subscription_cancel.mode`                              | `at_period_end`            | Never revoke time already paid for                                                                                                                      |
 
-A deployment where this script has never been run is mis-billing, not merely unconfigured.
+A deployment where this script has never been run is broken, not merely unconfigured.
+
+#### When the configuration is missing (TE-48)
+
+This shipped. A Pro subscriber pressed **Upgrade now** and got "Failed to open the billing portal", while **Manage billing** and **Downgrade** worked — the tell that it is configuration and not code, because those two build sessions that a default configuration still permits:
+
+```
+StripeInvalidRequestError: This subscription cannot be updated because
+the subscription update feature in the portal configuration is disabled.
+```
+
+Two consequences are load-bearing:
+
+- **`npm run stripe:verify` asserts the portal configuration**, not just keys and prices. It exits non-zero on any of the four settings above being wrong. Run it after any Stripe environment change; the version that only checked prices passed cleanly against the broken account.
+- **`api/portal.ts` reports a refused flow as a 503**, with an operator log naming the script to run. It does not retry as a bare session: the portal homepage has no plan switcher while plan switching is disabled, so the fallback would swap a visible failure for an invisible dead end.
 
 ### Scheduled switches: `pendingTier`
 
