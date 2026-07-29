@@ -17,6 +17,35 @@ export interface AuthContext {
   email?: string;
 }
 
+/** Grace after proEndDate before paid access lapses — covers a missed webhook
+ *  without punishing users for Stripe retry latency. */
+const EXPIRY_GRACE_MS = 3 * 24 * 60 * 60 * 1000;
+
+/**
+ * TE-41 backstop: the tier a request actually gets. Admin grants (paid tier,
+ * no proEndDate) never expire; Stripe-provisioned tiers lapse to free once
+ * proEndDate + grace has passed, even if `customer.subscription.deleted`
+ * never arrived. There is no cron — both Vercel Hobby slots are taken — so
+ * this per-request check is what actually ends access.
+ */
+export function resolveEffectiveTier(
+  data: Record<string, unknown> | undefined
+): AuthContext['tier'] {
+  const raw = (data?.tier ?? 'free') as string;
+  if (!(['free', 'pro', 'builder'] as const).includes(raw as AuthContext['tier'])) return 'free';
+  if (raw === 'free') return 'free';
+
+  const end = data?.proEndDate as { toMillis?: () => number } | Date | null | undefined;
+  if (!end) return raw as AuthContext['tier'];
+  const endMs =
+    typeof (end as { toMillis?: () => number }).toMillis === 'function'
+      ? (end as { toMillis: () => number }).toMillis()
+      : new Date(end as Date).getTime();
+  // An unparseable date leaves access intact rather than revoking it.
+  if (Number.isFinite(endMs) && Date.now() > endMs + EXPIRY_GRACE_MS) return 'free';
+  return raw as AuthContext['tier'];
+}
+
 /**
  * Verifies the Bearer token from the Authorization header.
  * Returns { uid, tier } on success, or null for unauthenticated requests.
@@ -50,10 +79,7 @@ export async function getAuthContext(req: VercelRequest): Promise<AuthContext | 
     try {
       const db = getAdminDb();
       const userDoc = await db.collection('users').doc(decoded.uid).get();
-      const rawTier = userDoc.exists ? (userDoc.data()?.tier ?? 'free') : 'free';
-      const tier = (['free', 'pro', 'builder'] as const).includes(rawTier as any)
-        ? (rawTier as AuthContext['tier'])
-        : 'free';
+      const tier = resolveEffectiveTier(userDoc.exists ? userDoc.data() : undefined);
       const role = userDoc.exists ? userDoc.data()?.role : null;
       const isAdmin = role === 'admin';
       const email = decoded.email ?? userDoc.data()?.email ?? undefined;
