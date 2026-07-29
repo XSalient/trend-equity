@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   CheckCircle2,
   Sparkles,
@@ -23,9 +23,17 @@ import type { SubscriptionInfo } from '../hooks/useTier';
 
 interface PricingSectionProps {
   currentPlan: 'free' | 'pro' | 'builder';
+  /**
+   * TE-44: `currentPlan` is the *entitlement* — it is 'free' for anonymous
+   * visitors too, which is correct for feature gating but wrong for plan
+   * identity. This flag separates the two: a signed-out visitor is on no plan
+   * at all, so no card may claim to be theirs.
+   */
+  isAuthenticated: boolean;
   firebaseToken?: string;
   /** Server-truth subscription state (TE-38) — display only. */
   subscription?: SubscriptionInfo;
+  onSignIn?: () => void;
   onOpenTE100?: () => void;
   onOpenApiAccess?: () => void;
 }
@@ -118,8 +126,10 @@ const TIER_SHOWCASE: Record<PlanKey, { icon: React.ReactNode; label: string; onC
 
 export const PricingSection: React.FC<PricingSectionProps> = ({
   currentPlan,
+  isAuthenticated,
   firebaseToken,
   subscription,
+  onSignIn,
   onOpenTE100,
   onOpenApiAccess,
 }) => {
@@ -128,11 +138,42 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
   const [checkoutTier, setCheckoutTier] = useState<'pro' | 'builder'>('pro');
   const validPlans: PlanKey[] = ['free', 'pro', 'builder'];
   const safePlan: PlanKey = validPlans.includes(currentPlan) ? currentPlan : 'free';
+  /**
+   * TE-44: the plan the user is actually *on*. Null while signed out — nothing
+   * may render a "Current" badge, a disabled CURRENT PLAN button or possessive
+   * copy for someone who has no account yet.
+   */
+  const activePlan: PlanKey | null = isAuthenticated ? safePlan : null;
   const [selectedTier, setSelectedTier] = useState<PlanKey>(safePlan);
   const [portalBusy, setPortalBusy] = useState(false);
   const [portalError, setPortalError] = useState<string | null>(null);
+  /** Plan the visitor picked before signing in — resumed once the token lands. */
+  const [pendingIntent, setPendingIntent] = useState<PlanKey | null>(null);
 
-  const featuresLost = pendingDowngrade ? getFeaturesLost(currentPlan, pendingDowngrade) : [];
+  const featuresLost = pendingDowngrade ? getFeaturesLost(safePlan, pendingDowngrade) : [];
+
+  /**
+   * Signed-out CTA: every card says "Proceed" and starts sign-in. Showing
+   * "Upgrade now" to someone without an account, then bouncing them to a login
+   * wall, reads as a bait-and-switch and kills the paid conversion outright.
+   */
+  const handleProceed = (plan: PlanKey) => {
+    setPendingIntent(plan);
+    onSignIn?.();
+  };
+
+  // Resume the pre-sign-in intent. Free needs nothing beyond the account; a paid
+  // pick opens Checkout — but only if the freshly-read server tier is still
+  // free, since Checkout on a live subscription double-bills (docs/PAYMENTS.md).
+  useEffect(() => {
+    if (!pendingIntent || !isAuthenticated || !firebaseToken) return;
+    const target = pendingIntent;
+    setPendingIntent(null);
+    setSelectedTier(target);
+    if (target === 'free' || safePlan !== 'free') return;
+    setCheckoutTier(target);
+    setCheckoutOpen(true);
+  }, [pendingIntent, isAuthenticated, firebaseToken, safePlan]);
 
   /**
    * TE-39: hands off to the Stripe-hosted Customer Portal. Every cancel, plan
@@ -173,7 +214,7 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
   };
 
   const renewalLine =
-    subscription?.proEndDate && currentPlan !== 'free' ? (
+    subscription?.proEndDate && activePlan && activePlan !== 'free' ? (
       <p className="text-[10px] text-zinc-500">
         {subscription.cancelAtPeriodEnd
           ? `Ends ${subscription.proEndDate.toLocaleDateString()}`
@@ -192,7 +233,7 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
   // Border/highlight color for selected tier
   const getCardStyle = (tier: PlanKey) => {
     const isSelected = selectedTier === tier;
-    const isCurrent = currentPlan === tier;
+    const isCurrent = activePlan === tier;
     if (isSelected && tier === 'builder')
       return 'border-amber-500 bg-amber-500/5 ring-1 ring-amber-500/30';
     if (isSelected) return 'border-emerald-500 bg-emerald-500/5 ring-1 ring-emerald-500/30';
@@ -220,7 +261,7 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
               <h4 className="text-lg font-black uppercase italic">Free</h4>
               <p className="text-3xl font-black">$0</p>
             </div>
-            {currentPlan === 'free' && (
+            {activePlan === 'free' && (
               <span className="text-[9px] font-bold uppercase tracking-widest text-emerald-500 bg-emerald-500/10 px-2 py-1 rounded-full">
                 Current
               </span>
@@ -240,12 +281,16 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
           <button
             onClick={(e) => {
               e.stopPropagation();
-              if (currentPlan !== 'free') handleDowngradeClick('free');
+              if (!isAuthenticated) {
+                handleProceed('free');
+                return;
+              }
+              if (activePlan !== 'free') handleDowngradeClick('free');
             }}
-            disabled={currentPlan === 'free'}
-            className={`w-full py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${currentPlan === 'free' ? 'bg-zinc-800 text-zinc-500 cursor-default' : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-300'}`}
+            disabled={activePlan === 'free'}
+            className={`w-full py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${activePlan === 'free' ? 'bg-zinc-800 text-zinc-500 cursor-default' : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-300'}`}
           >
-            {currentPlan === 'free' ? 'CURRENT PLAN' : 'DOWNGRADE'}
+            {!isAuthenticated ? 'PROCEED' : activePlan === 'free' ? 'CURRENT PLAN' : 'DOWNGRADE'}
           </button>
         </div>
 
@@ -263,9 +308,9 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
               <p className="text-3xl font-black">
                 $9<span className="text-sm text-zinc-500">/mo</span>
               </p>
-              {currentPlan === 'pro' && renewalLine}
+              {activePlan === 'pro' && renewalLine}
             </div>
-            {currentPlan === 'pro' && (
+            {activePlan === 'pro' && (
               <span className="text-[9px] font-bold uppercase tracking-widest text-emerald-500 bg-emerald-500/10 px-2 py-1 rounded-full">
                 Current
               </span>
@@ -294,25 +339,31 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
           <button
             onClick={(e) => {
               e.stopPropagation();
-              if (currentPlan === 'free') {
+              if (!isAuthenticated) {
+                handleProceed('pro');
+                return;
+              }
+              if (activePlan === 'free') {
                 setCheckoutTier('pro');
                 setCheckoutOpen(true);
               }
-              if (currentPlan === 'builder') handleDowngradeClick('pro');
+              if (activePlan === 'builder') handleDowngradeClick('pro');
             }}
-            disabled={currentPlan === 'pro'}
+            disabled={activePlan === 'pro'}
             className={`w-full py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${
-              currentPlan === 'builder'
+              activePlan === 'builder'
                 ? 'bg-zinc-800 hover:bg-zinc-700 text-zinc-300'
                 : 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/20 ' +
-                  (currentPlan === 'pro' ? 'opacity-50 cursor-default' : 'hover:bg-emerald-500')
+                  (activePlan === 'pro' ? 'opacity-50 cursor-default' : 'hover:bg-emerald-500')
             }`}
           >
-            {currentPlan === 'pro'
-              ? 'CURRENT PLAN'
-              : currentPlan === 'builder'
-                ? 'DOWNGRADE'
-                : 'UPGRADE NOW'}
+            {!isAuthenticated
+              ? 'PROCEED'
+              : activePlan === 'pro'
+                ? 'CURRENT PLAN'
+                : activePlan === 'builder'
+                  ? 'DOWNGRADE'
+                  : 'UPGRADE NOW'}
           </button>
         </div>
 
@@ -327,9 +378,9 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
               <p className="text-3xl font-black">
                 $19<span className="text-sm text-zinc-500">/mo</span>
               </p>
-              {currentPlan === 'builder' && renewalLine}
+              {activePlan === 'builder' && renewalLine}
             </div>
-            {currentPlan === 'builder' && (
+            {activePlan === 'builder' && (
               <span className="text-[9px] font-bold uppercase tracking-widest text-amber-500 bg-amber-500/10 px-2 py-1 rounded-full">
                 Current
               </span>
@@ -363,26 +414,34 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
               e.stopPropagation();
               // free → new subscription via Checkout; pro → plan switch in the
               // portal (a second Checkout would double-bill).
-              if (currentPlan === 'free') {
+              if (!isAuthenticated) {
+                handleProceed('builder');
+                return;
+              }
+              if (activePlan === 'free') {
                 setCheckoutTier('builder');
                 setCheckoutOpen(true);
               }
-              if (currentPlan === 'pro') void openPortal();
+              if (activePlan === 'pro') void openPortal();
             }}
-            disabled={currentPlan === 'builder'}
+            disabled={activePlan === 'builder'}
             className={`w-full py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${
-              currentPlan === 'builder'
+              activePlan === 'builder'
                 ? 'bg-zinc-800 text-zinc-500 cursor-default'
                 : 'bg-amber-600 hover:bg-amber-500 text-white shadow-lg shadow-amber-900/20'
             }`}
           >
-            {currentPlan === 'builder' ? 'CURRENT PLAN' : 'UPGRADE NOW'}
+            {!isAuthenticated
+              ? 'PROCEED'
+              : activePlan === 'builder'
+                ? 'CURRENT PLAN'
+                : 'UPGRADE NOW'}
           </button>
         </div>
       </div>
 
       {/* Billing management — Stripe hosts invoices, cards, cancellation */}
-      {subscription?.hasBillingAccount && (
+      {isAuthenticated && subscription?.hasBillingAccount && (
         <div className="text-center space-y-2">
           <button
             onClick={() => void openPortal()}
@@ -444,7 +503,7 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
               selectedTier === 'builder' ? 'text-amber-500/70' : 'text-emerald-500/70'
             }`}
           >
-            {selectedTier === currentPlan
+            {selectedTier === activePlan
               ? `Your ${selectedTier.toUpperCase()} Features`
               : `Preview: ${selectedTier.toUpperCase()} Features`}
           </p>
@@ -458,7 +517,7 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
             } gap-4`}
           >
             {(TIER_SHOWCASE[selectedTier] ?? TIER_SHOWCASE['free']).map((item, i) => {
-              const isClickable = item.onClick && currentPlan === 'builder';
+              const isClickable = item.onClick && activePlan === 'builder';
               const Wrapper = isClickable ? 'button' : 'div';
               return (
                 <Wrapper
@@ -468,7 +527,7 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
                     isClickable
                       ? 'hover:bg-zinc-800/80 hover:border-emerald-500/50 cursor-pointer'
                       : ''
-                  } ${selectedTier !== currentPlan ? 'opacity-60' : ''}`}
+                  } ${isAuthenticated && selectedTier !== activePlan ? 'opacity-60' : ''}`}
                 >
                   {item.icon}
                   <p className="text-[10px] font-bold uppercase tracking-widest">{item.label}</p>
@@ -476,13 +535,19 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
               );
             })}
           </div>
-          {selectedTier !== currentPlan && (
+          {!isAuthenticated ? (
             <p className="text-center text-[10px] text-zinc-600 italic">
-              {['free', 'pro', 'builder'].indexOf(selectedTier) >
-              ['free', 'pro', 'builder'].indexOf(currentPlan)
-                ? 'Upgrade to unlock these features'
-                : 'These are the features available on this plan'}
+              Sign in to get started — Free needs no card
             </p>
+          ) : (
+            selectedTier !== activePlan && (
+              <p className="text-center text-[10px] text-zinc-600 italic">
+                {['free', 'pro', 'builder'].indexOf(selectedTier) >
+                ['free', 'pro', 'builder'].indexOf(safePlan)
+                  ? 'Upgrade to unlock these features'
+                  : 'These are the features available on this plan'}
+              </p>
+            )
           )}
         </motion.div>
       </AnimatePresence>
@@ -491,7 +556,7 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
       <StripeCheckoutModal
         isOpen={checkoutOpen}
         onClose={() => setCheckoutOpen(false)}
-        userTier={currentPlan}
+        userTier={safePlan}
         firebaseToken={firebaseToken}
       />
 
@@ -524,7 +589,7 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
                       Confirm Downgrade
                     </h3>
                     <p className="text-xs text-zinc-500 mt-0.5">
-                      {currentPlan.toUpperCase()} → {pendingDowngrade.toUpperCase()}
+                      {safePlan.toUpperCase()} → {pendingDowngrade.toUpperCase()}
                     </p>
                   </div>
                 </div>
@@ -564,7 +629,7 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
                   onClick={() => setPendingDowngrade(null)}
                   className="flex-1 py-3 rounded-xl text-xs font-bold uppercase tracking-widest bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition-all"
                 >
-                  Keep {currentPlan.toUpperCase()}
+                  Keep {safePlan.toUpperCase()}
                 </button>
                 <button
                   onClick={confirmDowngrade}

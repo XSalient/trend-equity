@@ -6,6 +6,28 @@ For ongoing context and details, see `CLAUDE.md` and the per-session memory syst
 
 ---
 
+## Entitlement and Plan Identity Are Different Values — Adopted (2026-07-29)
+
+**Decision:** `useTier().tier` answers "what may this visitor do" and is `'free'` for anonymous visitors. It must never be used to answer "what plan is this person on." Any UI that names, badges or claims a plan reads `hasAccount` alongside it and renders _no plan_ when there is no account.
+
+```tsx
+// entitlement — correct for anonymous visitors, unchanged everywhere
+const isFree = tier === 'free';
+
+// identity — nothing may claim a plan without an account
+const activePlan = hasAccount ? tier : null;
+```
+
+**Rationale:** TE-44 shipped a pricing page telling logged-out visitors they were "on" the Free plan, because `useTier(null)` returns `'free'` and the pricing tab consumed it as `currentPlan`. `Header.tsx` had drawn its badge inside `{user && …}` from the start, so the same fact was rendered two contradictory ways. Collapsing the two meanings into one string makes that divergence the default outcome — each new plan-facing surface has to remember the guard, and the failure is silent when it doesn't.
+
+Making `tier` nullable was the alternative and was rejected: it forces a null check into every `tier === 'free'` gate and `TIER_LIMITS[tier]` lookup for no behavioral gain, since anonymous visitors genuinely _should_ get free-tier limits. The narrow flag keeps the invasive change out of ~15 call sites.
+
+**Corollary — a locked-out CTA is a lost signup.** The Free card's only control used to be a disabled `CURRENT PLAN` button, and the paid cards offered `UPGRADE NOW` into a Checkout that could only 401. Every plan a signed-out visitor can see must have a live CTA that starts sign-in, and the plan they picked is carried through the sign-in so the flow resumes rather than restarts. The resume is guarded on the freshly-read server tier still being `free` — the no-Checkout-for-live-subscribers rule above outranks the convenience.
+
+**Dev note:** `?mockTier=` stands in for a signed-in member of that tier, so it sets `hasAccount: true`. `useTier` is the only place that knows the mock is active.
+
+---
+
 ## Account-Scoped State Must Be Cleared, Not Just Unsubscribed — Adopted (2026-07-29)
 
 **Decision:** Any hook holding data scoped to `users/{uid}` clears that state at the **top of the effect body**, before the auth guard — not in the cleanup function, and not only in an `if (!user)` branch.

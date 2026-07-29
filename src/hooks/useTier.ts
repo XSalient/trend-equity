@@ -32,6 +32,13 @@ export function useTier(user: User | null) {
   const [tier, setTier] = useState<Tier>('free');
   const [isAdmin, setIsAdmin] = useState(false);
   const [subscription, setSubscription] = useState<SubscriptionInfo>(EMPTY_SUBSCRIPTION);
+  /**
+   * TE-44: `tier` is an *entitlement* — it is 'free' for anonymous visitors too,
+   * which is what feature gates want but is wrong for anything that renders plan
+   * identity ("Current plan"). This flag says whether the tier belongs to
+   * somebody: a real account, or a dev `?mockTier=` that stands in for one.
+   */
+  const [hasAccount, setHasAccount] = useState(false);
 
   useEffect(() => {
     // FIX (S-3): mockTier & mockAdmin URL param is ONLY active in development/test mode.
@@ -43,11 +50,15 @@ export function useTier(user: User | null) {
       if (mockTier && (['free', 'pro', 'builder'] as Tier[]).includes(mockTier)) {
         setTier(mockTier);
         setIsAdmin(mockAdmin || mockTier === 'builder'); // default mock builder to admin for dev simplicity unless specified
+        // The mock stands in for a signed-in member of that tier, so plan
+        // identity must render as it would for a real account.
+        setHasAccount(true);
         return;
       }
     }
 
     if (user) {
+      setHasAccount(true);
       // TE-08: subscribe rather than read once — the tier is written server-side
       // by the Stripe webhook / checkout confirmation, so the UI has to pick up
       // the upgrade without a page reload.
@@ -89,9 +100,11 @@ export function useTier(user: User | null) {
       return unsubscribe;
     }
 
+    // Signed out: free-tier entitlement, but no plan to call theirs (TE-44).
     setTier('free');
     setIsAdmin(false);
     setSubscription(EMPTY_SUBSCRIPTION);
+    setHasAccount(false);
   }, [user]);
 
   // TE-38: this hook deliberately exposes NO tier mutators. `users/{uid}.tier`
@@ -105,5 +118,6 @@ export function useTier(user: User | null) {
     tier,
     isAdmin,
     subscription,
+    hasAccount,
   };
 }

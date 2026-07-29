@@ -72,7 +72,8 @@ Only through the Customer Portal (Stripe prorates automatically). `customer.subs
 
 | Surface                                              | Data source                                                                               |
 | ---------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| Current plan badge, tier gates                       | `useTier().tier` (Firestore snapshot)                                                     |
+| Tier gates (what the visitor may do)                 | `useTier().tier` (Firestore snapshot) — `'free'` for anonymous visitors too               |
+| Current plan badge / "CURRENT PLAN" CTA              | `useTier().tier` **and** `useTier().hasAccount` — no account, no plan claim (TE-44)       |
 | "Renews {date}" / "Ends {date}" / "payment issue"    | `useTier().subscription` (`proEndDate`, `cancelAtPeriodEnd`, `status`) on the pricing tab |
 | Invoices, receipts, card update, cancel, plan switch | Stripe Customer Portal via "Manage billing" (`POST /api/portal`)                          |
 | Payment-failure warning                              | Alerts bell (`user_alerts` doc written by the webhook)                                    |

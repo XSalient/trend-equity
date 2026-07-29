@@ -53,7 +53,7 @@ export default function App() {
 
 function MainApp() {
   const { user, authReady, handleLogin, handleLogout, error: authError } = useAuth();
-  const { tier, isAdmin, subscription } = useTier(user);
+  const { tier, isAdmin, subscription, hasAccount } = useTier(user);
   const [firebaseToken, setFirebaseToken] = useState<string | undefined>();
   // TE-08: confirms the Stripe session when the user returns from checkout.
   const { checkoutStatus, checkoutMessage } = useCheckout(firebaseToken);
@@ -447,7 +447,9 @@ function MainApp() {
                     : 'text-emerald-400 hover:text-emerald-300'
               }`}
             >
-              {tier === 'free' ? 'Upgrade' : 'Plan'}
+              {/* TE-44: a signed-out visitor is on no plan, so neither "Upgrade"
+                  nor "Plan" is true for them — the tab is plain Pricing. */}
+              {!hasAccount ? 'Pricing' : tier === 'free' ? 'Upgrade' : 'Plan'}
             </button>
           </div>
 
@@ -545,8 +547,10 @@ function MainApp() {
             ) : (
               <PricingSection
                 currentPlan={tier}
+                isAuthenticated={hasAccount}
                 firebaseToken={firebaseToken}
                 subscription={subscription}
+                onSignIn={handleLogin}
                 onOpenTE100={() => setShowTE100(true)}
                 onOpenApiAccess={() => setShowApiAccess(true)}
               />

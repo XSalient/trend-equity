@@ -210,6 +210,18 @@ All five stories (TE-38…TE-42) shipped 2026-07-29 — rows are in [Recently sh
 
 **Second-order impact (worse than the display bug):** filters loaded from account A stayed in state through a sign-out, and the debounced "save filters" effect then wrote them into account B's `users/{uid}` document on the next sign-in — silent cross-account data corruption, not just a stale view.
 
+## Shipped — P1: signed-out plan identity (TE-44)
+
+| ID    | Task                                                                                                       | Status            | Owner  | Effort |
+| ----- | ---------------------------------------------------------------------------------------------------------- | ----------------- | ------ | ------ |
+| TE-44 | Stop presenting Free as the signed-out visitor's "current plan"; every pricing CTA actionable without auth | done (2026-07-29) | Claude | S      |
+
+**TE-44 user story:** As a visitor who has never signed in, I want the pricing page to show me three plans I could choose, not to tell me I am already on Free — and I want every plan's button to actually do something, so picking Pro doesn't dead-end at a login wall that says my session expired.
+
+**Root cause:** `useTier(null)` returns `tier: 'free'`, and `App.tsx` passed that straight to `PricingSection` as `currentPlan`. The value conflates two different things — the visitor's _entitlement_ (correctly `free`: anonymous users get free-tier feature gates) and their _plan identity_ (should be nothing at all). `Header.tsx` had always drawn its tier badge inside `{user && …}`, so the two surfaces disagreed about whether a signed-out visitor has a plan. Fixed by adding `hasAccount` to `useTier` and deriving `activePlan = isAuthenticated ? safePlan : null` inside `PricingSection`; every entitlement gate keeps reading `tier` unchanged.
+
+**Conversion half of the bug:** the Free card's only control was a disabled `CURRENT PLAN` button — the sign-up path was a dead control — while Pro/Builder said `UPGRADE NOW` and opened a Checkout modal that could only fail, with the misleading copy "your session has expired" for someone who never had one. All three cards now read `PROCEED` and start sign-in, and the chosen plan is remembered so Checkout resumes once the token lands.
+
 ## Later — P3: code health
 
 | ID    | Task                                                                                                                        | Status | Owner | Effort |
@@ -235,7 +247,8 @@ All five stories (TE-38…TE-42) shipped 2026-07-29 — rows are in [Recently sh
 
 | ID    | Task                                                                                                                                                    | Shipped    | Commits                   |
 | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- | ------------------------- |
-| TE-43 | Sign-out data isolation: clear saves, filters, custom feed, latest idea, Weekly Best and gated tabs when the account or tier goes away                  | 2026-07-29 | (this commit)             |
+| TE-44 | Signed-out plan identity: no "current plan" claim without an account; single `PROCEED` CTA per card with post-sign-in checkout resume                   | 2026-07-29 | (this commit)             |
+| TE-43 | Sign-out data isolation: clear saves, filters, custom feed, latest idea, Weekly Best and gated tabs when the account or tier goes away                  | 2026-07-29 | bb295a5                   |
 | TE-38 | Server-truth tier UI: deleted client-side tier mutations (the `handleDowngrade` bug class); `useTier` exposes read-only `SubscriptionInfo`              | 2026-07-29 | c6a75da, e33feeb          |
 | TE-39 | Stripe Customer Portal: `POST /api/portal`, pricing-tab wiring (cancel, plan switch, invoices, cards) + 409 checkout guard against double subscriptions | 2026-07-29 | 5616578, 318a328, a77b2b6 |
 | TE-40 | Lifecycle webhooks: `customer.subscription.updated` (plan switch, cancel-at-period-end, status) + `invoice.payment_failed` (past_due flag + user alert) | 2026-07-29 | 30503d5, e0846e1          |
