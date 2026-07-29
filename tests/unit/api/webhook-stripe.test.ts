@@ -164,7 +164,15 @@ describe('POST /api/webhook/stripe', () => {
   it('resolves the uid from the subscription on invoice.payment_succeeded', async () => {
     stripeClient.webhooks.constructEvent.mockReturnValue({
       type: 'invoice.payment_succeeded',
-      data: { object: { id: 'in_1', subscription: 'sub_test_123', customer: 'cus_test_123' } },
+      data: {
+        object: {
+          id: 'in_1',
+          subscription: 'sub_test_123',
+          customer: 'cus_test_123',
+          amount_paid: 900,
+          currency: 'usd',
+        },
+      },
     });
     (resolveUid as any).mockResolvedValue('user123');
     stripeClient.subscriptions.retrieve.mockResolvedValue({
@@ -177,7 +185,67 @@ describe('POST /api/webhook/stripe', () => {
       stripeClient,
       expect.objectContaining({ subscriptionId: 'sub_test_123', customerId: 'cus_test_123' })
     );
-    expect(extendSubscription).toHaveBeenCalledWith('user123', 1800000000);
+    // TE-42: renewal writes carry the invoice id (audit-row idempotency key).
+    expect(extendSubscription).toHaveBeenCalledWith({
+      uid: 'user123',
+      currentPeriodEnd: 1800000000,
+      invoiceId: 'in_1',
+      amountPaid: 900,
+      currency: 'usd',
+      subscriptionId: 'sub_test_123',
+    });
+    expect(mockRes.status).toHaveBeenCalledWith(200);
+  });
+
+  // TE-42: purchases record Stripe's real billing anchor, not "now + 30 days".
+  it('provisions checkout.session.completed with the real current_period_end', async () => {
+    stripeClient.webhooks.constructEvent.mockReturnValue({
+      type: 'checkout.session.completed',
+      data: {
+        object: {
+          id: 'cs_test_period',
+          payment_status: 'paid',
+          metadata: { uid: 'user123', tier: 'pro' },
+          customer: 'cus_test_123',
+          subscription: 'sub_test_123',
+          amount_total: 900,
+          currency: 'usd',
+        },
+      },
+    });
+    stripeClient.subscriptions.retrieve.mockResolvedValue({
+      items: { data: [{ current_period_end: 1800000000 }] },
+    });
+    (provisionSubscription as any).mockResolvedValue({ tier: 'pro', applied: true });
+
+    await handler(mockReq as VercelRequest, mockRes as VercelResponse);
+
+    expect(stripeClient.subscriptions.retrieve).toHaveBeenCalledWith('sub_test_123');
+    expect(provisionSubscription).toHaveBeenCalledWith(
+      expect.objectContaining({ currentPeriodEnd: 1800000000 })
+    );
+  });
+
+  it('still provisions when the period-end lookup fails', async () => {
+    stripeClient.webhooks.constructEvent.mockReturnValue({
+      type: 'checkout.session.completed',
+      data: {
+        object: {
+          id: 'cs_test_perr',
+          payment_status: 'paid',
+          metadata: { uid: 'user123', tier: 'pro' },
+          subscription: 'sub_test_123',
+        },
+      },
+    });
+    stripeClient.subscriptions.retrieve.mockRejectedValue(new Error('Stripe down'));
+    (provisionSubscription as any).mockResolvedValue({ tier: 'pro', applied: true });
+
+    await handler(mockReq as VercelRequest, mockRes as VercelResponse);
+
+    expect(provisionSubscription).toHaveBeenCalledWith(
+      expect.objectContaining({ currentPeriodEnd: null })
+    );
     expect(mockRes.status).toHaveBeenCalledWith(200);
   });
 

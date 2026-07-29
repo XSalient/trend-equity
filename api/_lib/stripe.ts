@@ -158,6 +158,7 @@ export async function provisionSubscription(params: ProvisionParams): Promise<Pr
     transaction.set(auditRef, {
       uid,
       tier,
+      type: 'checkout',
       stripeSessionId: sessionId,
       stripeCustomerId: customerId ?? null,
       stripeSubscriptionId: subscriptionId ?? null,
@@ -219,17 +220,42 @@ export function getPeriodEnd(subscription: Stripe.Subscription): number | null {
   return typeof itemEnd?.current_period_end === 'number' ? itemEnd.current_period_end : null;
 }
 
-/** Extends the paid period after a successful renewal invoice. */
-export async function extendSubscription(uid: string, currentPeriodEnd?: number | null) {
+export interface RenewalParams {
+  uid: string;
+  currentPeriodEnd?: number | null;
+  /** Invoice id — the idempotency key for the renewal audit row. */
+  invoiceId?: string | null;
+  amountPaid?: number | null;
+  currency?: string | null;
+  subscriptionId?: string | null;
+}
+
+/** Extends the paid period after a successful renewal invoice and records
+ *  the payment in stripe_transactions (doc id = invoice id, replay-safe). */
+export async function extendSubscription(params: RenewalParams): Promise<void> {
+  const { uid, currentPeriodEnd, invoiceId, amountPaid, currency, subscriptionId } = params;
   const db = getAdminDb();
   const periodEnd = currentPeriodEnd
     ? new Date(currentPeriodEnd * 1000)
     : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
-  await db
-    .collection('users')
-    .doc(uid)
-    .set({ proEndDate: periodEnd, updatedAt: new Date() }, { merge: true });
+  const batch = db.batch();
+  batch.set(
+    db.collection('users').doc(uid),
+    { proEndDate: periodEnd, subscriptionStatus: 'active', updatedAt: new Date() },
+    { merge: true }
+  );
+  if (invoiceId) {
+    batch.set(db.collection('stripe_transactions').doc(invoiceId), {
+      uid,
+      type: 'renewal',
+      stripeSubscriptionId: subscriptionId ?? null,
+      amount: amountPaid ?? null,
+      currency: currency ?? null,
+      completedAt: new Date(),
+    });
+  }
+  await batch.commit();
 }
 
 /** Drops a user back to free — subscription cancelled, expired, or refunded. */

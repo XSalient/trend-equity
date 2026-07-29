@@ -190,7 +190,7 @@ Source: 2026-07-29 lifecycle audit — root cause of the "user already has this 
 | TE-39 | Stripe Customer Portal: `POST /api/portal` + pricing-tab wiring (cancel, plan switch, invoices, cards); 409 checkout guard against double subscriptions  | in progress | —     | M      |
 | TE-40 | Lifecycle webhooks: `customer.subscription.updated` (plan switch, cancel-at-period-end, status) + `invoice.payment_failed` (past_due flag + user alert)  | in progress | —     | M      |
 | TE-41 | Expiry backstop: `getAuthContext` resolves paid tier as free after `proEndDate` + 3-day grace (missed-webhook safety net; manual grants never expire)    | in progress | —     | S      |
-| TE-42 | Billing accuracy: provision with Stripe's real `current_period_end`; renewal audit rows in `stripe_transactions` (invoice-id keyed, `type` field)        | todo        | —     | S      |
+| TE-42 | Billing accuracy: provision with Stripe's real `current_period_end`; renewal audit rows in `stripe_transactions` (invoice-id keyed, `type` field)        | in progress | —     | S      |
 
 **TE-38 user story:** As a subscriber, I want the plan shown in the app to always match what the server will enforce — including my renewal or expiry date — so I never see a "downgrade" that didn't happen or get blocked from an upgrade I'm entitled to.
 

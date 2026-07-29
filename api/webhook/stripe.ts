@@ -66,7 +66,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     switch (event.type) {
       case 'checkout.session.completed':
-        return await onCheckoutCompleted(event.data.object as Stripe.Checkout.Session, res);
+        return await onCheckoutCompleted(stripe, event.data.object as Stripe.Checkout.Session, res);
       case 'invoice.payment_succeeded':
         return await onInvoicePaid(stripe, event.data.object as Stripe.Invoice, res);
       case 'invoice.payment_failed':
@@ -85,7 +85,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 }
 
-async function onCheckoutCompleted(session: Stripe.Checkout.Session, res: VercelResponse) {
+async function onCheckoutCompleted(
+  stripe: Stripe,
+  session: Stripe.Checkout.Session,
+  res: VercelResponse
+) {
   const uid = session.metadata?.uid ?? session.client_reference_id ?? undefined;
   const tier = session.metadata?.tier as PaidTier | undefined;
 
@@ -98,13 +102,29 @@ async function onCheckoutCompleted(session: Stripe.Checkout.Session, res: Vercel
     return res.status(200).json({ received: true, skipped: session.payment_status });
   }
 
+  const subscriptionId =
+    typeof session.subscription === 'string' ? session.subscription : session.subscription?.id;
+
+  // TE-42: use Stripe's real billing anchor rather than "now + 30 days" so the
+  // renewal date shown in-app matches the invoice. Best-effort — provisioning
+  // falls back to the 30-day default if the lookup fails.
+  let currentPeriodEnd: number | null = null;
+  if (subscriptionId) {
+    try {
+      const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+      currentPeriodEnd = getPeriodEnd(subscription);
+    } catch (err) {
+      console.warn('[stripe] period-end lookup failed:', (err as Error).message);
+    }
+  }
+
   const result = await provisionSubscription({
     uid,
     tier,
     sessionId: session.id,
     customerId: typeof session.customer === 'string' ? session.customer : session.customer?.id,
-    subscriptionId:
-      typeof session.subscription === 'string' ? session.subscription : session.subscription?.id,
+    subscriptionId,
+    currentPeriodEnd,
     amountTotal: session.amount_total,
     currency: session.currency,
   });
@@ -132,7 +152,14 @@ async function onInvoicePaid(stripe: Stripe, invoice: Stripe.Invoice, res: Verce
     periodEnd = getPeriodEnd(subscription);
   }
 
-  await extendSubscription(uid, periodEnd);
+  await extendSubscription({
+    uid,
+    currentPeriodEnd: periodEnd,
+    invoiceId: invoice.id,
+    amountPaid: invoice.amount_paid,
+    currency: invoice.currency,
+    subscriptionId,
+  });
   console.log(`✓ Renewed subscription for user ${uid}`);
   return res.status(200).json({ received: true });
 }

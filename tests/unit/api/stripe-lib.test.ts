@@ -165,6 +165,70 @@ describe('api/_lib/stripe configuration guards', () => {
     });
   });
 
+  describe('extendSubscription', () => {
+    const setupBatchDb = async () => {
+      const batchSet = vi.fn();
+      const commit = vi.fn().mockResolvedValue(undefined);
+      const docs: Record<string, unknown> = {};
+      const collection = vi.fn((name: string) => ({
+        doc: vi.fn((id: string) => {
+          const ref = { collection: name, id };
+          docs[`${name}/${id}`] = ref;
+          return ref;
+        }),
+      }));
+      const { getAdminDb } = await import('../../../api/_lib/admin');
+      (getAdminDb as any).mockReturnValue({
+        collection,
+        batch: vi.fn(() => ({ set: batchSet, commit })),
+      });
+      return { batchSet, commit };
+    };
+
+    it('extends the period and writes a renewal audit row keyed on the invoice id', async () => {
+      const { batchSet, commit } = await setupBatchDb();
+      const { extendSubscription } = await load();
+
+      await extendSubscription({
+        uid: 'user123',
+        currentPeriodEnd: 1800000000,
+        invoiceId: 'in_123',
+        amountPaid: 900,
+        currency: 'usd',
+        subscriptionId: 'sub_123',
+      });
+
+      expect(batchSet).toHaveBeenCalledTimes(2);
+      const userWrite = batchSet.mock.calls.find((c: any[]) => c[0].collection === 'users')!;
+      expect(userWrite[1]).toMatchObject({
+        proEndDate: new Date(1800000000 * 1000),
+        subscriptionStatus: 'active',
+      });
+      const auditWrite = batchSet.mock.calls.find(
+        (c: any[]) => c[0].collection === 'stripe_transactions'
+      )!;
+      expect(auditWrite[0].id).toBe('in_123');
+      expect(auditWrite[1]).toMatchObject({
+        uid: 'user123',
+        type: 'renewal',
+        amount: 900,
+        currency: 'usd',
+        stripeSubscriptionId: 'sub_123',
+      });
+      expect(commit).toHaveBeenCalled();
+    });
+
+    it('skips the audit row when there is no invoice id', async () => {
+      const { batchSet } = await setupBatchDb();
+      const { extendSubscription } = await load();
+
+      await extendSubscription({ uid: 'user123', currentPeriodEnd: 1800000000 });
+
+      expect(batchSet).toHaveBeenCalledTimes(1);
+      expect(batchSet.mock.calls[0][0].collection).toBe('users');
+    });
+  });
+
   describe('getPeriodEnd', () => {
     it('reads the legacy top-level field', async () => {
       const { getPeriodEnd } = await load();

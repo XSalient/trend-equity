@@ -5,6 +5,7 @@ import {
   getStripe,
   getPriceId,
   getAppUrl,
+  getPeriodEnd,
   provisionSubscription,
   StripeConfigError,
   type PaidTier,
@@ -142,12 +143,24 @@ async function verifySession(req: VercelRequest, res: VercelResponse) {
     const subscriptionId =
       typeof session.subscription === 'string' ? session.subscription : session.subscription?.id;
 
+    // TE-42: real billing anchor, not "now + 30 days" (see webhook counterpart).
+    let currentPeriodEnd: number | null = null;
+    if (subscriptionId) {
+      try {
+        const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+        currentPeriodEnd = getPeriodEnd(subscription);
+      } catch (err) {
+        console.warn('[stripe] period-end lookup failed:', (err as Error).message);
+      }
+    }
+
     const result = await provisionSubscription({
       uid: authCtx.uid,
       tier,
       sessionId,
       customerId: typeof session.customer === 'string' ? session.customer : session.customer?.id,
       subscriptionId,
+      currentPeriodEnd,
       amountTotal: session.amount_total,
       currency: session.currency,
     });
