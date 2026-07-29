@@ -1,4 +1,4 @@
-import { describe, it, beforeEach, afterEach } from 'vitest';
+import { describe, it, beforeAll, afterAll, beforeEach } from 'vitest';
 import {
   initializeTestEnvironment,
   RulesTestEnvironment,
@@ -8,28 +8,41 @@ import {
 import * as fs from 'fs';
 import * as path from 'path';
 
-let testEnv: RulesTestEnvironment;
+let testEnv!: RulesTestEnvironment;
+
+/**
+ * These tests need the Firestore emulator:
+ *   npx firebase emulators:exec --only firestore --project trend-equity-test \
+ *     "npx vitest run tests/unit/firestore.test.ts --pool=threads"
+ *
+ * The guard reads the env var the emulator exports, NOT `testEnv` — vitest
+ * evaluates `skipIf` while collecting the file, long before `beforeEach` runs,
+ * so the old `skipIf(!testEnv)` was always true and every rules test silently
+ * skipped (they had never actually executed).
+ */
+const EMULATOR_RUNNING = Boolean(process.env.FIRESTORE_EMULATOR_HOST);
+
+// One environment for the whole file — rebuilding it per test opened ~79
+// emulator connections and produced ECONNRESET/timeout flakes.
+beforeAll(async () => {
+  if (!EMULATOR_RUNNING) return;
+  testEnv = await initializeTestEnvironment({
+    projectId: 'trend-equity-test',
+    firestore: {
+      rules: fs.readFileSync(path.join(__dirname, '../../firestore.rules'), 'utf8'),
+    },
+  });
+});
 
 beforeEach(async () => {
-  try {
-    testEnv = await initializeTestEnvironment({
-      projectId: 'trend-equity-test',
-      firestore: {
-        rules: fs.readFileSync(path.join(__dirname, '../../firestore.rules'), 'utf8'),
-      },
-    });
-  } catch (error) {
-    // Emulator not running - tests will be skipped
-  }
+  if (EMULATOR_RUNNING) await testEnv.clearFirestore();
 });
 
-afterEach(async () => {
-  if (testEnv) {
-    await testEnv.cleanup();
-  }
+afterAll(async () => {
+  if (testEnv) await testEnv.cleanup();
 });
 
-describe.skipIf(!testEnv)('Firestore Security Rules', () => {
+describe.skipIf(!EMULATOR_RUNNING)('Firestore Security Rules', () => {
   describe('users/{uid} collection', () => {
     const uid = 'user123';
     const otherUid = 'user456';
@@ -63,6 +76,46 @@ describe.skipIf(!testEnv)('Firestore Security Rules', () => {
         })
       );
     });
+
+    // TE-08 Phase 2: billing fields are server-only. A writable proEndDate
+    // defeats the TE-41 expiry backstop; a writable stripeCustomerId lets a
+    // user open someone else's billing portal.
+    const BILLING_FIELDS: Record<string, unknown> = {
+      proEndDate: new Date('2099-01-01'),
+      cancelAtPeriodEnd: false,
+      subscriptionStatus: 'active',
+      stripeCustomerId: 'cus_hijack',
+      stripeSubscriptionId: 'sub_fake',
+      stripeSessionId: 'cs_fake',
+    };
+
+    for (const [field, value] of Object.entries(BILLING_FIELDS)) {
+      it(`denies user writing ${field} on create`, async () => {
+        const db = testEnv.authenticatedContext(uid).firestore();
+        await assertFails(
+          db
+            .collection('users')
+            .doc(uid)
+            .set({ [field]: value, filters: {} })
+        );
+      });
+
+      it(`denies user updating ${field}`, async () => {
+        await testEnv.withSecurityRulesDisabled(async (context) => {
+          await context.firestore().collection('users').doc(uid).set({
+            tier: 'pro',
+            filters: {},
+          });
+        });
+        const db = testEnv.authenticatedContext(uid).firestore();
+        await assertFails(
+          db
+            .collection('users')
+            .doc(uid)
+            .update({ [field]: value })
+        );
+      });
+    }
 
     it('denies user writing role field on create', async () => {
       const db = testEnv.authenticatedContext(uid).firestore();
@@ -326,11 +379,44 @@ describe.skipIf(!testEnv)('Firestore Security Rules', () => {
       await assertFails(db.collection('comments').doc(commentId).get());
     });
 
-    it('allows authenticated user to create comment', async () => {
+    // Commenting is a Pro+ feature, so the author needs a paid users doc.
+    it('allows a pro user to create a comment', async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await context.firestore().collection('users').doc(uid).set({ tier: 'pro' });
+      });
       const db = testEnv.authenticatedContext(uid).firestore();
       await assertSucceeds(
         db.collection('comments').doc(commentId).set({
           userId: uid,
+          ideaId: 'idea1',
+          text: 'great idea',
+          timestamp: new Date(),
+        })
+      );
+    });
+
+    it('denies a free user creating a comment', async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await context.firestore().collection('users').doc(uid).set({ tier: 'free' });
+      });
+      const db = testEnv.authenticatedContext(uid).firestore();
+      await assertFails(
+        db.collection('comments').doc(commentId).set({
+          userId: uid,
+          ideaId: 'idea1',
+          text: 'great idea',
+          timestamp: new Date(),
+        })
+      );
+    });
+
+    // Regression: a missing users doc used to raise an evaluation error inside
+    // isProOrBuilder() instead of denying cleanly.
+    it('denies a user with no users doc creating a comment', async () => {
+      const db = testEnv.authenticatedContext('ghost-user').firestore();
+      await assertFails(
+        db.collection('comments').doc(commentId).set({
+          userId: 'ghost-user',
           ideaId: 'idea1',
           text: 'great idea',
           timestamp: new Date(),

@@ -8,24 +8,35 @@ service cloud.firestore {
     }
 
     // Helper: check if current user is pro or builder tier
+    // exists() guard: get() on a missing user doc returns null, and reading
+    // .data.tier off it raised an evaluation error rather than denying cleanly.
     function isProOrBuilder() {
-      let userTier = get(/databases/$(database)/documents/users/$(request.auth.uid)).data.tier;
-      return userTier == 'pro' || userTier == 'builder';
+      return exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('tier', 'free')
+               in ['pro', 'builder'];
     }
 
     // ============ USER-OWNED COLLECTIONS ============
 
     // users/{uid} — user profile (tier, role, filters, settings)
     match /users/{uid} {
+      // TE-08/TE-41: every billing field is server-written only (Stripe webhook,
+      // checkout return leg, portal). A client-writable proEndDate would defeat
+      // the expiry backstop; a client-writable stripeCustomerId would let a user
+      // open another customer's billing portal via POST /api/portal.
       allow read: if request.auth.uid == uid;
       allow create: if request.auth.uid == uid &&
-                       !('tier' in request.resource.data) &&
-                       !('role' in request.resource.data) &&
-                       !('apiAccess' in request.resource.data);
+                       !request.resource.data.keys().hasAny([
+                         'tier', 'role', 'apiAccess',
+                         'proEndDate', 'cancelAtPeriodEnd', 'subscriptionStatus',
+                         'stripeCustomerId', 'stripeSubscriptionId', 'stripeSessionId'
+                       ]);
       allow update: if request.auth.uid == uid &&
-                       !('tier' in request.resource.data.diff.delta) &&
-                       !('role' in request.resource.data.diff.delta) &&
-                       !('apiAccess' in request.resource.data.diff.delta);
+                       !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+                         'tier', 'role', 'apiAccess',
+                         'proEndDate', 'cancelAtPeriodEnd', 'subscriptionStatus',
+                         'stripeCustomerId', 'stripeSubscriptionId', 'stripeSessionId'
+                       ]);
       allow delete: if false;
     }
 
@@ -49,10 +60,13 @@ service cloud.firestore {
     match /user_alerts/{alertId} {
       allow read: if request.auth != null && resource.data.userId == request.auth.uid;
       allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      // `diff` is a method, not a property — the old `request.resource.data.diff.delta`
+      // raised an evaluation error on every update, so users could never mark an
+      // alert as read (including the TE-40 payment-failure alert).
       allow update: if request.auth != null &&
                        resource.data.userId == request.auth.uid &&
-                       request.resource.data.diff.delta.size() <= 1 &&
-                       'isRead' in request.resource.data.diff.delta;
+                       request.resource.data.diff(resource.data).affectedKeys()
+                         .hasOnly(['isRead']);
       allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
     }
 
