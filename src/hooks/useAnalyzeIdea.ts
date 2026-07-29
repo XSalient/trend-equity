@@ -17,6 +17,11 @@ export function useAnalyzeIdea(user: User | null, tier: Tier, authReady: boolean
 
   // Fetch the user's latest analyzed idea from Firestore on mount
   useEffect(() => {
+    // user_latest_idea is per-account Pro content. Clear it before (re)loading so
+    // a sign-out or downgrade does not leave the previous analysis on screen.
+    setLatestIdea(null);
+    setAnalyzedIdea(null);
+    setAnalyzeError(null);
     if (!authReady || !user || tier === 'free') return;
     setLoadingLatest(true);
     const docRef = doc(db, 'user_latest_idea', user.uid);
@@ -28,10 +33,12 @@ export function useAnalyzeIdea(user: User | null, tier: Tier, authReady: boolean
       })
       .catch((err) => console.error('[useAnalyzeIdea] Failed to fetch latest idea:', err))
       .finally(() => setLoadingLatest(false));
-  }, [user, tier]);
+  }, [user, tier, authReady]);
 
   // Pre-fetch monthly usage so the modal can show remaining count immediately
   useEffect(() => {
+    // Quota counters are per-account — never carry them across a sign-out.
+    setUsage(null);
     if (!user || tier === 'free') return;
     fetchAnalyzeIdeaUsage().then((u) => {
       if (u) setUsage(u);

@@ -198,6 +198,18 @@ All five stories (TE-38…TE-42) shipped 2026-07-29 — rows are in [Recently sh
 
 **TE-09 user story:** As the product owner, I want to see which tabs get used and where users hit walls, so I can prioritize from evidence instead of intuition. Runs well in parallel with TE-08 — `quota_hit`/`upgrade_click` are the Stripe conversion funnel.
 
+## Shipped — P0: signed-out data leakage (TE-43)
+
+| ID    | Task                                                                                                  | Status            | Owner  | Effort |
+| ----- | ----------------------------------------------------------------------------------------------------- | ----------------- | ------ | ------ |
+| TE-43 | Reset every user-scoped hook state on sign-out / tier loss (saves, filters, custom feed, latest idea) | done (2026-07-29) | Claude | S      |
+
+**TE-43 user story:** As a user who signs out on a shared or personal browser, I want everything tied to my account to disappear from the screen immediately — saved ideas, my filters, my custom feed, my analyzed idea — so the next person to use the browser sees a genuinely signed-out app and never inherits my data.
+
+**Root cause:** the Firestore subscription effects in `useIdeas`/`useAnalyzeIdea` early-returned on `user === null`. The effect cleanup detaches the listener but does not clear the data it already delivered, so the previous session's React state stayed rendered. `useAlerts` and `useTier` already did this correctly — the bug was the inconsistency, not a missing capability. Firestore rules were never at fault: the reads had been legitimately authorized at the time they happened. Related to [TE-10](#later--p3-code-health) — `useIdeas` owning this much account state is what let the omission hide.
+
+**Second-order impact (worse than the display bug):** filters loaded from account A stayed in state through a sign-out, and the debounced "save filters" effect then wrote them into account B's `users/{uid}` document on the next sign-in — silent cross-account data corruption, not just a stale view.
+
 ## Later — P3: code health
 
 | ID    | Task                                                                                                                        | Status | Owner | Effort |
@@ -223,6 +235,7 @@ All five stories (TE-38…TE-42) shipped 2026-07-29 — rows are in [Recently sh
 
 | ID    | Task                                                                                                                                                    | Shipped    | Commits                   |
 | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- | ------------------------- |
+| TE-43 | Sign-out data isolation: clear saves, filters, custom feed, latest idea, Weekly Best and gated tabs when the account or tier goes away                  | 2026-07-29 | (this commit)             |
 | TE-38 | Server-truth tier UI: deleted client-side tier mutations (the `handleDowngrade` bug class); `useTier` exposes read-only `SubscriptionInfo`              | 2026-07-29 | c6a75da, e33feeb          |
 | TE-39 | Stripe Customer Portal: `POST /api/portal`, pricing-tab wiring (cancel, plan switch, invoices, cards) + 409 checkout guard against double subscriptions | 2026-07-29 | 5616578, 318a328, a77b2b6 |
 | TE-40 | Lifecycle webhooks: `customer.subscription.updated` (plan switch, cancel-at-period-end, status) + `invoice.payment_failed` (past_due flag + user alert) | 2026-07-29 | 30503d5, e0846e1          |

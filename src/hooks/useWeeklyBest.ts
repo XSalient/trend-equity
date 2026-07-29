@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { Idea, WeeklyBestIdea, Tier } from '../types';
@@ -10,6 +10,16 @@ export function useWeeklyBest(tier: Tier) {
   const [fetched, setFetched] = useState(false);
   // Use a ref for the in-flight guard so the callback has a stable identity
   const loadingRef = useRef(false);
+
+  // Weekly Best is Pro/Builder-only. Losing the entitlement (sign-out, downgrade)
+  // must drop the already-fetched list, not just hide the tab button.
+  useEffect(() => {
+    if (tier === 'free') {
+      setWeeklyBest([]);
+      setFetched(false);
+      setError(null);
+    }
+  }, [tier]);
 
   const updateWeeklyBestIdea = useCallback((updatedIdea: Idea) => {
     setWeeklyBest((prev) =>

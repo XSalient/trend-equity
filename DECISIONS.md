@@ -6,6 +6,33 @@ For ongoing context and details, see `CLAUDE.md` and the per-session memory syst
 
 ---
 
+## Account-Scoped State Must Be Cleared, Not Just Unsubscribed — Adopted (2026-07-29)
+
+**Decision:** Any hook holding data scoped to `users/{uid}` clears that state at the **top of the effect body**, before the auth guard — not in the cleanup function, and not only in an `if (!user)` branch.
+
+```ts
+useEffect(() => {
+  setUserSaves([]); // ← unconditional reset first
+  if (!user) return; // ← then the guard
+  const unsub = onSnapshot(q, ...);
+  return () => unsub(); // ← cleanup detaches the listener; it does NOT clear data
+}, [user]);
+```
+
+**Rationale:** TE-43 shipped a signed-out app still rendering the previous account's saved ideas. The effects all early-returned on `user === null`, which unsubscribes but leaves the delivered data in React state. Three properties make the reset-first form the right default:
+
+1. **It covers the account switch, not just sign-out.** Firebase can go A → B without a `null` in between, so an `if (!user)` branch alone still leaks A's data into B's session.
+2. **It's free on mount.** With a module-level `DEFAULT_FILTERS` constant used as both the `useState` initial value and the reset value, the first call is an `Object.is` bail-out — no extra render.
+3. **The failure is silent.** Nothing errors; the wrong data just renders. The blast radius went past display: account A's filters were written into account B's user document by the debounced save effect.
+
+**Non-goal:** this is not a security boundary. Firestore rules correctly authorized every one of those reads at the time they happened, and rules cannot express "forget what you already read." Client state lifetime is the only place this can be fixed.
+
+**Corollary — tier-gated views:** losing an entitlement must drop the gated **payload**, not just hide the tab button. `activeTab` falls back to the daily feed when the tier no longer permits it, and `weeklyRadar` / `futurecasting` / `weeklyBest` / `customFeed` are cleared on the downgrade.
+
+**Reference implementations:** `useAlerts.ts` and `useTier.ts` already did this before TE-43 — the bug was inconsistency across hooks, which is exactly the argument for finishing [TE-10](docs/BACKLOG.md) (splitting `useIdeas.ts`).
+
+---
+
 ## Free-Tier Value Ladder — Adopted (2026-07-10)
 
 **Decision:** Restructure tier boundaries so each tier has one clear job: **Free = discover** (see that real, scored opportunities exist), **Pro = evaluate** (get the full diligence picture), **Builder = execute** (get the build/validate/track machinery). The 2026-07-08 audit showed Free currently receives _more_ than the PRD promises in four places — those giveaways are reclaimed as Pro value rather than inventing new restrictions.

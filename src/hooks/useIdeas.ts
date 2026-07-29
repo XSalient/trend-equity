@@ -51,6 +51,23 @@ function stableId(str: string): string {
   return (h >>> 0).toString(36);
 }
 
+/**
+ * Shared identity so `setFilters(DEFAULT_FILTERS)` on the initial mount is a
+ * no-op re-render (Object.is bail-out) rather than a spurious state change that
+ * re-triggers the debounced filter save. Never mutated — every writer spreads.
+ */
+const DEFAULT_FILTERS: FilterState = {
+  industries: [],
+  productTypes: [],
+  riskLevels: [],
+  effortLevels: [],
+  marketFocus: [],
+  teamSize: [],
+  excludeCategories: [],
+  customKeywords: '',
+  sortBy: 'quality',
+};
+
 export function useIdeas(user: User | null, tier: Tier, authReady: boolean, isAdmin = false) {
   const { getCustomSavesLimit } = useTierLimits();
   const [dailyGen, setDailyGen] = useState<DailyGeneration | null>(null);
@@ -63,17 +80,7 @@ export function useIdeas(user: User | null, tier: Tier, authReady: boolean, isAd
   const [customFeedLoading, setCustomFeedLoading] = useState(false);
   const [customFeedError, setCustomFeedError] = useState<string | null>(null);
   const [timeUntilGeneration, setTimeUntilGeneration] = useState<TimeRemaining | null>(null);
-  const [filters, setFilters] = useState<FilterState>({
-    industries: [],
-    productTypes: [],
-    riskLevels: [],
-    effortLevels: [],
-    marketFocus: [],
-    teamSize: [],
-    excludeCategories: [],
-    customKeywords: '',
-    sortBy: 'quality',
-  });
+  const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
 
   const today = new Date().toISOString().split('T')[0];
 
@@ -204,6 +211,10 @@ export function useIdeas(user: User | null, tier: Tier, authReady: boolean, isAd
 
   // --- User Profile Sync (Filters) ---
   useEffect(() => {
+    // Drop the previous account's filters before loading this one's. On sign-out
+    // they would otherwise stay on screen; on an account switch the debounced
+    // save effect below would write them into the NEW user's doc.
+    setFilters(DEFAULT_FILTERS);
     if (!user) return;
 
     const fetchInitialFilters = async () => {
@@ -270,6 +281,10 @@ export function useIdeas(user: User | null, tier: Tier, authReady: boolean, isAd
 
   // --- User Saves Sync ---
   useEffect(() => {
+    // The cleanup below only detaches the listener — it does not clear the data
+    // it delivered. Without this reset the signed-out (or newly signed-in) user
+    // keeps seeing the previous account's saved ideas.
+    setUserSaves([]);
     if (!user) return;
 
     const q = query(collection(db, 'user_saves'), where('userId', '==', user.uid));
@@ -538,6 +553,11 @@ export function useIdeas(user: User | null, tier: Tier, authReady: boolean, isAd
   // generation per 24h per user; without this, the cached feed is invisible until
   // the user presses Generate again.
   useEffect(() => {
+    // Pro/Builder-only content — clear it whenever the entitlement goes away
+    // (sign-out, downgrade) instead of leaving it rendered in the feed.
+    setCustomFeed(null);
+    setCustomFeedVisible(false);
+    setCustomFeedError(null);
     if (!authReady || !user || tier === 'free') return;
     let cancelled = false;
     // Ensure the ID token is set before calling the authenticated endpoint —

@@ -157,6 +157,24 @@ function MainApp() {
     }
   }, [authError]);
 
+  // Tier-gated tabs are only hidden from the tab bar when the tier drops
+  // (sign-out, downgrade) — the panel keeps rendering whatever was already
+  // fetched, with no button left to navigate away from it. Drop both the
+  // gated view and the gated data.
+  useEffect(() => {
+    if (tier !== 'builder') {
+      setWeeklyRadar(null);
+      setFuturecasting(null);
+      setRadarError(null);
+      setFutureError(null);
+    }
+    const needsBuilder = activeTab === 'radar' || activeTab === 'future';
+    const needsPaid = needsBuilder || activeTab === 'weekly' || activeTab === 'digest';
+    if ((needsBuilder && tier !== 'builder') || (needsPaid && tier === 'free')) {
+      setActiveTab('feed');
+    }
+  }, [tier, activeTab]);
+
   const today = new Date().toISOString().split('T')[0];
 
   // Sync idea updates to both daily/custom feeds and the weekly best list (TE-20)
@@ -201,13 +219,16 @@ function MainApp() {
 
   // FIX (B-3): Only fetch if not already loaded and no ongoing error (prevents retry storm).
   // Guard with authReady so this never fires during the loading splash.
+  // Both panels are Builder-only; the tier guard keeps a stale `activeTab` from
+  // firing a fetch in the same commit that resets it.
   useEffect(() => {
-    if (!authReady) return;
+    if (!authReady || tier !== 'builder') return;
     if (activeTab === 'radar' && !weeklyRadar && !loadingRadar && !radarError) fetchWeeklyRadar();
     if (activeTab === 'future' && !futurecasting && !loadingFuture && !futureError)
       fetchFuturecasting();
   }, [
     authReady,
+    tier,
     activeTab,
     weeklyRadar,
     futurecasting,

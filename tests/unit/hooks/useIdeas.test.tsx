@@ -13,11 +13,15 @@ const {
   mockGenerateCustomFeed,
   mockGenerateDailyIdeas,
   mockSetCurrentIdToken,
+  mockOnSnapshot,
+  mockGetDoc,
 } = vi.hoisted(() => ({
   mockFetchCachedCustomFeed: vi.fn(),
   mockGenerateCustomFeed: vi.fn(),
   mockGenerateDailyIdeas: vi.fn(),
   mockSetCurrentIdToken: vi.fn(),
+  mockOnSnapshot: vi.fn(),
+  mockGetDoc: vi.fn(),
 }));
 
 vi.mock('../../../src/services/geminiService', () => ({
@@ -31,12 +35,14 @@ vi.mock('../../../src/firebase', () => ({ db: {} }));
 
 vi.mock('firebase/firestore', () => ({
   doc: vi.fn(),
-  getDoc: vi.fn().mockResolvedValue({ exists: () => false, data: () => undefined }),
+  getDoc: mockGetDoc,
   setDoc: vi.fn().mockResolvedValue(undefined),
   collection: vi.fn(),
-  query: vi.fn(),
+  // Tagged so onSnapshot callers can tell the user_saves query apart from the
+  // app_config doc listener that TierLimitsProvider registers.
+  query: vi.fn(() => ({ __savesQuery: true })),
   where: vi.fn(),
-  onSnapshot: vi.fn(() => () => {}),
+  onSnapshot: mockOnSnapshot,
   serverTimestamp: vi.fn(() => 'server-ts'),
   deleteDoc: vi.fn(),
   addDoc: vi.fn(),
@@ -94,6 +100,8 @@ describe('useIdeas — custom requirement feed', () => {
     storage.clear();
     mockFetchCachedCustomFeed.mockResolvedValue(null);
     mockUser.getIdToken.mockResolvedValue('id-token');
+    mockGetDoc.mockResolvedValue({ exists: () => false, data: () => undefined });
+    mockOnSnapshot.mockImplementation(() => () => {});
   });
 
   it('restores a fresh cached custom feed on load and shows it', async () => {
@@ -162,5 +170,86 @@ describe('useIdeas — custom requirement feed', () => {
       result.current.toggleCustomFeedView();
     });
     expect(result.current.customFeedVisible).toBe(true);
+  });
+});
+
+describe('useIdeas — sign-out state reset', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    storage.clear();
+    mockFetchCachedCustomFeed.mockResolvedValue(null);
+    mockUser.getIdToken.mockResolvedValue('id-token');
+    mockGetDoc.mockResolvedValue({ exists: () => false, data: () => undefined });
+    mockOnSnapshot.mockImplementation(() => () => {});
+  });
+
+  /** Renders the hook with a swappable `user` so a sign-out can be simulated. */
+  function renderWithSwappableUser(tier: 'free' | 'pro' | 'builder' = 'builder') {
+    return renderHook(({ user }: { user: any }) => useIdeas(user, tier, true), {
+      wrapper,
+      initialProps: { user: mockUser as any },
+    });
+  }
+
+  const savedSnapshot = {
+    docs: [
+      {
+        id: 'save-1',
+        data: () => ({ userId: 'user-1', idea: customIdea, saveType: 'feed' }),
+      },
+    ],
+  };
+
+  it('clears saved ideas when the user signs out', async () => {
+    let emitSaves: ((snap: unknown) => void) | null = null;
+    mockOnSnapshot.mockImplementation((ref: any, next: (snap: unknown) => void) => {
+      if (ref?.__savesQuery) emitSaves = next;
+      return () => {};
+    });
+
+    const { result, rerender } = renderWithSwappableUser();
+    await act(async () => {
+      emitSaves!(savedSnapshot);
+    });
+    expect(result.current.userSaves).toHaveLength(1);
+    expect(result.current.feedSaves).toHaveLength(1);
+
+    // Sign out
+    rerender({ user: null });
+    await act(async () => {});
+
+    expect(result.current.userSaves).toEqual([]);
+    expect(result.current.feedSaves).toEqual([]);
+    expect(result.current.customSaves).toEqual([]);
+  });
+
+  it('clears the Pro custom feed when the user signs out', async () => {
+    mockFetchCachedCustomFeed.mockResolvedValue(cachedFeed);
+    const { result, rerender } = renderWithSwappableUser();
+    await waitFor(() => expect(result.current.customFeed).not.toBeNull());
+
+    rerender({ user: null });
+    await act(async () => {});
+
+    expect(result.current.customFeed).toBeNull();
+    expect(result.current.customFeedVisible).toBe(false);
+  });
+
+  it('resets saved filters to defaults when the user signs out', async () => {
+    mockGetDoc.mockResolvedValue({
+      exists: () => true,
+      data: () => ({ filters: { industries: ['Fintech'], sortBy: 'revenue' } }),
+    });
+
+    const { result, rerender } = renderWithSwappableUser();
+    await waitFor(() => expect(result.current.filters.industries).toEqual(['Fintech']));
+
+    rerender({ user: null });
+    await act(async () => {});
+
+    // Leaking these into the signed-out session also leaks them into the NEXT
+    // account signed in on this browser, via the debounced filter-save effect.
+    expect(result.current.filters.industries).toEqual([]);
+    expect(result.current.filters.sortBy).toBe('quality');
   });
 });
