@@ -264,7 +264,7 @@ All five stories (TE-38…TE-42) shipped 2026-07-29 — rows are in [Recently sh
 
 | ID    | Task                                                                                                                                                    | Shipped    | Commits                   |
 | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- | ------------------------- |
-| TE-45 | Checkout modal honours the clicked plan (`initialTier`, clamped selection); subscribers get the portal, not a broken CTA; `tierLoading` gate            | 2026-07-29 | (this commit)             |
+| TE-45 | Checkout modal honours the clicked plan (`initialTier`, clamped selection); subscribers get the portal, not a broken CTA; `tierLoading` gate            | 2026-07-29 | 065a4e8                   |
 | TE-44 | Signed-out plan identity: no "current plan" claim without an account; single `PROCEED` CTA per card with post-sign-in checkout resume                   | 2026-07-29 | 308f7ec                   |
 | TE-43 | Sign-out data isolation: clear saves, filters, custom feed, latest idea, Weekly Best and gated tabs when the account or tier goes away                  | 2026-07-29 | bb295a5                   |
 | TE-38 | Server-truth tier UI: deleted client-side tier mutations (the `handleDowngrade` bug class); `useTier` exposes read-only `SubscriptionInfo`              | 2026-07-29 | c6a75da, e33feeb          |
