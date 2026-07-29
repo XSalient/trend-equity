@@ -163,19 +163,33 @@ All project state lives in-repo so every developer and agent on every machine se
 - **Component-First**: Prefer small, focused, reusable components. Aggressively reuse existing component patterns.
 - **Post-Story Checklist**: After finishing any user story (TE-NN), execute: (1) update `docs/BACKLOG.md` (move to done), `CHANGELOG.md` (add entry), `DECISIONS.md` (document any decisions); (2) stage + commit with `feat(scope): TE-NN description` format + bullet-point changelog + Co-Author line; (3) run `npm run check` to verify pre-commit hooks pass; (4) `git push origin main` to trigger Vercel deployment; (5) verify live within ~2 min at https://trend-equity.vercel.app. See `.claude/projects/*/memory/workflow_post_story_checklist.md` for full checklist.
 
-### 2. Context & Token Discipline
+### 2. Change Impact — run before declaring any change complete
+
+**A request names a symptom; the deliverable is the state machine around it.** TE-44, TE-45 and TE-47 were three tickets filed on the same day against the same component, each finding the next defect in the same flow, because each was scoped to the symptom that was reported. Set the scope first, then work the list:
+
+1. **Enumerate the states.** What are _all_ the states and transitions this path has? Write them down. Say explicitly which cells you are not touching and why — empty cells are findings, not oversights. (Worked example: the six-cell matrix in `docs/PAYMENTS.md`.)
+2. **Every value gets a writer _and_ a reader.** Name both. A missing reader is the bug, and it is greppable rather than intuited — this exact class shipped three times: `checkIpRateLimit` was never called (TE-02, zero IP protection in production), `checkoutTier` was never passed to the modal (TE-45, wrong plan billed), `portalBusy` was never rendered on the card button (TE-47, dead-looking click).
+3. **New `users/{uid}` field → `firestore.rules` allowlist.** Any server-written field is client-writable until it is listed. TE-47's `pendingTier` nearly shipped without it.
+4. **Is there a deploy step that is not code?** Third-party configuration (`npm run stripe:configure-portal`), env vars, dashboard settings, index deploys. Correct code plus unrun config is a broken feature — flag it in the ticket, not at verification time.
+5. **Does an existing test pin the _old_ behaviour?** `portal.test.ts` asserted `sessions.create` was called with exactly `{customer, return_url}` and passed for the whole life of the defect. A green assertion over an incomplete behaviour is worse than no test. Corollary: **assert the journey, not the call** — if the test would pass against code where the user cannot finish, it tests nothing.
+6. **Does an existing doc or plan now say something false?** Strike it at the source. Correcting `docs/PAYMENTS.md` while the linked plan still said `create_prorations` is how the mistake gets re-derived.
+7. **Has this file been in a ticket in the last 30 days?** Read that ticket. You may be about to fix the same bug a second time.
+
+A passing correctness guard is not a completed journey. `void openPortal()` satisfied every rule written about it and still left the user unable to upgrade.
+
+### 3. Context & Token Discipline
 
 - **Minimal Verbiage**: No filler, no repeating instructions. Start directly with the plan, diff, or answer.
 - **Edits Format**: Provide changes as precise Search & Replace blocks with sufficient unique context. Never rewrite entire files unless explicitly requested.
 - **Lazy Loading**: Only read files when strictly necessary.
 - **Local-First**: Always prefer existing codebase symbols and patterns. Do not hallucinate local APIs.
 
-### 3. Tool & Environment Rules
+### 4. Tool & Environment Rules
 
 - **No URL Guessing**: If a URL fails/404s once, report it. Do not try variations.
 - **Auth Failures**: On 401/403 during external access → stop immediately, report, and ask for a fix.
 
-### 4. Architecture & Quality
+### 5. Architecture & Quality
 
 - **Separation of Concerns**: Business logic in services/hooks/server actions; components focus on rendering only.
 - **Unified AI Layer**: All AI calls go through `api/_lib/ai-provider.ts` → `generateWithAI()`.
@@ -185,12 +199,12 @@ All project state lives in-repo so every developer and agent on every machine se
 - **Type Safety**: Maintain strong TypeScript types. Avoid `any`.
 - **Lint & Format**: Follow project ESLint/Prettier rules (`npm run check`). Mention violations if found.
 
-### 5. Testing & Reliability
+### 6. Testing & Reliability
 
 - **Testing Approach**: Write tests for complex logic and AI integration. Prefer integration/component tests over fragile unit tests for UI slices.
 - **Error Handling**: Robust error boundaries and user-friendly messages, especially for AI failures.
 
-### 6. Additional Best Practices
+### 7. Additional Best Practices
 
 - **Dependencies**: Conservative — justify every non-obvious package addition.
 - **Performance**: Keep initial implementation simple. Optimize only when there is a measured need.

@@ -25,6 +25,10 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/): **Added 
 - Webhook returns 200 for permanently unprocessable events (missing metadata, unresolvable uid) so Stripe stops retrying; 5xx is reserved for transient failures.
 - Tier writes use `set(..., { merge: true })` — `update()` threw for users with no `users/{uid}` document, turning a successful payment into an unrecoverable error.
 
+### Docs
+
+- **Change Impact standard (CLAUDE.md §2, 2026-07-29).** A seven-point pass to run before declaring any change complete, written from the TE-44/45/47 sequence — three tickets filed on the same day against the same component, each finding the next defect in the same flow because each was scoped to the reported symptom. Covers: enumerate the state machine before coding; give every value a writer _and_ a reader (the class behind `checkIpRateLimit`, `checkoutTier` and `portalBusy`, all of which were written and never read); new `users/{uid}` fields go in the `firestore.rules` allowlist; flag deploy steps that are not code; check whether an existing test pins the old behaviour; strike superseded docs at the source; and re-read any ticket that touched the same file recently. Remaining Agent Rules sections renumbered 3–7.
+
 ### Fixed
 
 - **Switching between paid plans was a dead end (TE-47, 2026-07-29).** A Pro subscriber pressing **UPGRADE NOW** on the Builder card got: no visual selection of the card they clicked, no feedback on the button they pressed, and a Stripe billing _overview_ page that never mentioned Builder or asked for payment. Four defects behind one root cause — the pro→builder branch was implemented as `void openPortal()`, which satisfied the "never create a second Checkout for a live subscriber" rule and nothing else:
