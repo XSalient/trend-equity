@@ -45,6 +45,8 @@ interface PricingSectionProps {
 }
 
 type PlanKey = 'free' | 'pro' | 'builder';
+/** Which control started a portal hand-off — one of the cards, or the standalone button. */
+type PortalAction = PlanKey | 'manage';
 
 // Define what each tier offers so we can compute losses on downgrade
 const TIER_FEATURES: Record<string, { label: string; tiers: string[] }[]> = {
@@ -158,12 +160,32 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
    */
   const planUnknown = isAuthenticated && tierLoading;
   const [selectedTier, setSelectedTier] = useState<PlanKey>(safePlan);
-  const [portalBusy, setPortalBusy] = useState(false);
-  const [portalError, setPortalError] = useState<string | null>(null);
+  /**
+   * TE-47: which control is waiting on Stripe, not merely *that* something is.
+   * A single boolean put the only "Opening…" label on the standalone Manage
+   * billing button, so pressing UPGRADE NOW on a card looked like a dead click
+   * for the whole round-trip.
+   */
+  const [portalBusy, setPortalBusy] = useState<PortalAction | null>(null);
+  const [portalError, setPortalError] = useState<{ action: PortalAction; message: string } | null>(
+    null
+  );
   /** Plan the visitor picked before signing in — resumed once the token lands. */
   const [pendingIntent, setPendingIntent] = useState<PlanKey | null>(null);
 
   const featuresLost = pendingDowngrade ? getFeaturesLost(safePlan, pendingDowngrade) : [];
+
+  /**
+   * TE-47: a builder→pro switch is scheduled for the period end, so the user
+   * keeps Builder in the meantime. `activePlan` is still the truth about what
+   * they can do; this is the truth about what happens next.
+   */
+  const scheduledTier = subscription?.pendingTier ?? null;
+  const scheduledDate = subscription?.pendingTierDate ?? null;
+  const hasScheduledSwitch = Boolean(scheduledTier && activePlan && scheduledTier !== activePlan);
+
+  const errorFor = (action: PortalAction) =>
+    portalError?.action === action ? portalError.message : null;
 
   /**
    * Signed-out CTA: every card says "Proceed" and starts sign-in. Showing
@@ -192,29 +214,44 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
   }, [pendingIntent, isAuthenticated, firebaseToken, safePlan, tierLoading]);
 
   /**
-   * TE-39: hands off to the Stripe-hosted Customer Portal. Every cancel, plan
-   * switch, card update and invoice lookup happens there — the resulting
+   * TE-39/TE-47: hands off to the Stripe-hosted Customer Portal. Every cancel,
+   * plan switch, card update and invoice lookup happens there — the resulting
    * changes come back through the webhook, which is the only writer of tier.
+   *
+   * `targetTier` deep-links to the flow the user asked for (the prorated
+   * upgrade confirmation, or the cancel screen) instead of the portal homepage.
+   * It is a routing hint the server re-validates against Firestore, never a
+   * grant — see docs/PAYMENTS.md.
    */
-  const openPortal = async () => {
+  const openPortal = async (action: PortalAction, targetTier?: PlanKey) => {
     if (!firebaseToken || portalBusy) return;
-    setPortalBusy(true);
+    setPortalBusy(action);
     setPortalError(null);
     try {
       const res = await fetch('/api/portal', {
         method: 'POST',
-        headers: { Authorization: `Bearer ${firebaseToken}` },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${firebaseToken}`,
+        },
+        body: JSON.stringify(targetTier ? { targetTier } : {}),
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok && data.url) {
         window.location.href = data.url;
         return;
       }
-      setPortalError(data.error ?? 'Could not open the billing portal. Please try again.');
+      setPortalError({
+        action,
+        message: data.error ?? 'Could not open the billing portal. Please try again.',
+      });
     } catch {
-      setPortalError('Could not open the billing portal. Please try again.');
+      setPortalError({
+        action,
+        message: 'Could not open the billing portal. Please try again.',
+      });
     } finally {
-      setPortalBusy(false);
+      setPortalBusy(null);
     }
   };
 
@@ -223,19 +260,30 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
   };
 
   // The "features you'll lose" modal is retention UX only — the actual
-  // downgrade is performed by the user inside the Stripe portal.
+  // downgrade is performed by the user inside the Stripe portal. Passing the
+  // target opens the right screen: cancel for free, plan switch for pro.
   const confirmDowngrade = () => {
+    const target = pendingDowngrade;
     setPendingDowngrade(null);
-    void openPortal();
+    if (target) void openPortal(target, target);
   };
 
+  /**
+   * Status line under the price on the user's own card. A scheduled switch
+   * outranks the renewal date: "Renews 12 Aug" is technically true but hides
+   * the fact that what renews is a different, cheaper plan.
+   */
   const renewalLine =
-    subscription?.proEndDate && activePlan && activePlan !== 'free' ? (
+    activePlan && activePlan !== 'free' ? (
       <p className="text-[10px] text-zinc-500">
-        {subscription.cancelAtPeriodEnd
-          ? `Ends ${subscription.proEndDate.toLocaleDateString()}`
-          : `Renews ${subscription.proEndDate.toLocaleDateString()}`}
-        {subscription.status === 'past_due' && (
+        {hasScheduledSwitch && scheduledDate
+          ? `Switches to ${scheduledTier?.toUpperCase()} on ${scheduledDate.toLocaleDateString()}`
+          : subscription?.proEndDate
+            ? subscription.cancelAtPeriodEnd
+              ? `Ends ${subscription.proEndDate.toLocaleDateString()}`
+              : `Renews ${subscription.proEndDate.toLocaleDateString()}`
+            : null}
+        {subscription?.status === 'past_due' && (
           <span className="text-red-400 font-bold"> · payment issue</span>
         )}
       </p>
@@ -296,7 +344,10 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
           </ul>
           <button
             onClick={(e) => {
+              // The card's own onClick can't run — this handler stops the
+              // bubble — so selection is this button's job too (TE-47).
               e.stopPropagation();
+              setSelectedTier('free');
               if (!isAuthenticated) {
                 handleProceed('free');
                 return;
@@ -304,17 +355,20 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
               if (planUnknown) return;
               if (activePlan !== 'free') handleDowngradeClick('free');
             }}
-            disabled={activePlan === 'free' || planUnknown}
-            className={`w-full py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${activePlan === 'free' || planUnknown ? 'bg-zinc-800 text-zinc-500 cursor-default' : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-300'}`}
+            disabled={activePlan === 'free' || planUnknown || portalBusy === 'free'}
+            className={`w-full py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${activePlan === 'free' || planUnknown ? 'bg-zinc-800 text-zinc-500 cursor-default' : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-300 disabled:opacity-60'}`}
           >
             {!isAuthenticated
               ? 'PROCEED'
               : planUnknown
                 ? 'LOADING…'
-                : activePlan === 'free'
-                  ? 'CURRENT PLAN'
-                  : 'DOWNGRADE'}
+                : portalBusy === 'free'
+                  ? 'OPENING…'
+                  : activePlan === 'free'
+                    ? 'CURRENT PLAN'
+                    : 'DOWNGRADE'}
           </button>
+          {errorFor('free') && <p className="text-[10px] text-red-400">{errorFor('free')}</p>}
         </div>
 
         {/* Pro Plan */}
@@ -362,21 +416,27 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
           <button
             onClick={(e) => {
               e.stopPropagation();
+              setSelectedTier('pro');
               if (!isAuthenticated) {
                 handleProceed('pro');
                 return;
               }
               if (planUnknown) return;
+              // A switch to Pro is already booked for the period end — offering
+              // it again would open a flow that changes nothing.
+              if (scheduledTier === 'pro') return;
               if (activePlan === 'free') {
                 setCheckoutTier('pro');
                 setCheckoutOpen(true);
               }
               if (activePlan === 'builder') handleDowngradeClick('pro');
             }}
-            disabled={activePlan === 'pro' || planUnknown}
+            disabled={
+              activePlan === 'pro' || planUnknown || portalBusy === 'pro' || scheduledTier === 'pro'
+            }
             className={`w-full py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${
               activePlan === 'builder'
-                ? 'bg-zinc-800 hover:bg-zinc-700 text-zinc-300'
+                ? 'bg-zinc-800 hover:bg-zinc-700 text-zinc-300 disabled:opacity-60'
                 : 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/20 ' +
                   (activePlan === 'pro' || planUnknown
                     ? 'opacity-50 cursor-default'
@@ -387,12 +447,17 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
               ? 'PROCEED'
               : planUnknown
                 ? 'LOADING…'
-                : activePlan === 'pro'
-                  ? 'CURRENT PLAN'
-                  : activePlan === 'builder'
-                    ? 'DOWNGRADE'
-                    : 'UPGRADE NOW'}
+                : portalBusy === 'pro'
+                  ? 'OPENING…'
+                  : activePlan === 'pro'
+                    ? 'CURRENT PLAN'
+                    : scheduledTier === 'pro'
+                      ? 'SCHEDULED'
+                      : activePlan === 'builder'
+                        ? 'DOWNGRADE'
+                        : 'UPGRADE NOW'}
           </button>
+          {errorFor('pro') && <p className="text-[10px] text-red-400">{errorFor('pro')}</p>}
         </div>
 
         {/* Builder Plan */}
@@ -440,6 +505,7 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
           <button
             onClick={(e) => {
               e.stopPropagation();
+              setSelectedTier('builder');
               // free → new subscription via Checkout; pro → plan switch in the
               // portal (a second Checkout would double-bill).
               if (!isAuthenticated) {
@@ -451,23 +517,28 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
                 setCheckoutTier('builder');
                 setCheckoutOpen(true);
               }
-              if (activePlan === 'pro') void openPortal();
+              // Prorated immediate upgrade — Stripe charges the net difference
+              // today and leaves the billing anchor alone (docs/PAYMENTS.md).
+              if (activePlan === 'pro') void openPortal('builder', 'builder');
             }}
-            disabled={activePlan === 'builder' || planUnknown}
+            disabled={activePlan === 'builder' || planUnknown || portalBusy === 'builder'}
             className={`w-full py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${
               activePlan === 'builder' || planUnknown
                 ? 'bg-zinc-800 text-zinc-500 cursor-default'
-                : 'bg-amber-600 hover:bg-amber-500 text-white shadow-lg shadow-amber-900/20'
+                : 'bg-amber-600 hover:bg-amber-500 text-white shadow-lg shadow-amber-900/20 disabled:opacity-60'
             }`}
           >
             {!isAuthenticated
               ? 'PROCEED'
               : planUnknown
                 ? 'LOADING…'
-                : activePlan === 'builder'
-                  ? 'CURRENT PLAN'
-                  : 'UPGRADE NOW'}
+                : portalBusy === 'builder'
+                  ? 'OPENING…'
+                  : activePlan === 'builder'
+                    ? 'CURRENT PLAN'
+                    : 'UPGRADE NOW'}
           </button>
+          {errorFor('builder') && <p className="text-[10px] text-red-400">{errorFor('builder')}</p>}
         </div>
       </div>
 
@@ -475,16 +546,23 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
       {isAuthenticated && subscription?.hasBillingAccount && (
         <div className="text-center space-y-2">
           <button
-            onClick={() => void openPortal()}
-            disabled={portalBusy}
+            onClick={() => void openPortal('manage')}
+            disabled={portalBusy !== null}
             className="px-6 py-2 rounded-xl text-xs font-bold uppercase tracking-widest bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition-all disabled:opacity-50"
           >
-            {portalBusy ? 'Opening…' : 'Manage billing'}
+            {portalBusy === 'manage' ? 'Opening…' : 'Manage billing'}
           </button>
           <p className="text-[10px] text-zinc-600">
             Invoices, payment methods, plan changes &amp; cancellation — via Stripe
           </p>
-          {portalError && <p className="text-[10px] text-red-400">{portalError}</p>}
+          {hasScheduledSwitch && scheduledDate && (
+            <p className="text-[10px] text-amber-500/80">
+              Scheduled: {activePlan?.toUpperCase()} → {scheduledTier?.toUpperCase()} on{' '}
+              {scheduledDate.toLocaleDateString()}. You keep {activePlan?.toUpperCase()} until then
+              — cancel the switch in Manage billing.
+            </p>
+          )}
+          {errorFor('manage') && <p className="text-[10px] text-red-400">{errorFor('manage')}</p>}
         </div>
       )}
 
@@ -590,7 +668,7 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
         userTier={safePlan}
         initialTier={checkoutTier}
         firebaseToken={firebaseToken}
-        onManageBilling={() => void openPortal()}
+        onManageBilling={() => void openPortal('manage')}
       />
 
       {/* Downgrade Confirmation Modal */}
@@ -639,6 +717,13 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
                 <p className="text-sm text-zinc-300 font-medium">
                   You will lose access to{' '}
                   <span className="text-amber-400 font-bold">{featuresLost.length} features</span>:
+                </p>
+                {/* TE-47: the switch is scheduled, not immediate — never imply
+                    the user forfeits time they have already paid for. */}
+                <p className="text-xs text-zinc-500">
+                  {subscription?.proEndDate
+                    ? `You keep ${safePlan.toUpperCase()} until ${subscription.proEndDate.toLocaleDateString()}. The change takes effect then — nothing is charged today.`
+                    : 'You keep your current plan until the end of the period you have paid for. The change takes effect then — nothing is charged today.'}
                 </p>
                 <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
                   {featuresLost.map((feature, i) => (

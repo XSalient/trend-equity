@@ -102,6 +102,135 @@ describe('PricingSection → StripeCheckoutModal (TE-45)', () => {
     expect(screen.queryByRole('button', { name: /upgrade to/i })).toBeNull();
   });
 
+  it('tells the portal which plan was clicked, not just that a click happened', async () => {
+    const fetchMock = mockFetch();
+    render(<PricingSection currentPlan="pro" isAuthenticated firebaseToken={TOKEN} />);
+
+    await userEvent.click(upgradeButtons()[0]);
+
+    // The old test asserted only the URL, which is why the portal opening on
+    // its homepage went unnoticed for the whole of TE-39.
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ targetTier: 'builder' });
+  });
+});
+
+describe('PricingSection plan-switch journey (TE-47)', () => {
+  it('selects the clicked card even though the button stops propagation', async () => {
+    mockFetch();
+    render(<PricingSection currentPlan="pro" isAuthenticated firebaseToken={TOKEN} />);
+
+    // The showcase strip below the cards renders the *selected* tier, and
+    // starts on the user's own plan.
+    expect(screen.getByText(/your PRO features/i)).toBeInTheDocument();
+
+    await userEvent.click(upgradeButtons()[0]); // Builder
+    expect(screen.getByText(/preview: BUILDER features/i)).toBeInTheDocument();
+  });
+
+  it('shows OPENING… on the button that was pressed, not on Manage billing', async () => {
+    // A promise that never settles keeps the component in its in-flight state.
+    const fetchMock = vi.fn().mockReturnValue(new Promise(() => {}));
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <PricingSection
+        currentPlan="pro"
+        isAuthenticated
+        firebaseToken={TOKEN}
+        subscription={{
+          proEndDate: new Date('2026-08-12'),
+          cancelAtPeriodEnd: false,
+          status: 'active',
+          hasBillingAccount: true,
+          pendingTier: null,
+          pendingTierDate: null,
+        }}
+      />
+    );
+
+    await userEvent.click(upgradeButtons()[0]);
+
+    expect(screen.getByRole('button', { name: /opening/i })).toBeInTheDocument();
+    // The standalone control keeps its own label — the busy state is per-action.
+    expect(screen.getByRole('button', { name: /manage billing/i })).toBeInTheDocument();
+  });
+
+  it('reports a portal failure next to the button that caused it', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 500,
+        json: async () => ({ error: 'Stripe is unavailable' }),
+      })
+    );
+    render(<PricingSection currentPlan="pro" isAuthenticated firebaseToken={TOKEN} />);
+
+    await userEvent.click(upgradeButtons()[0]);
+
+    expect(await screen.findByText('Stripe is unavailable')).toBeInTheDocument();
+  });
+
+  it('announces a scheduled downgrade instead of a renewal date', async () => {
+    mockFetch();
+    render(
+      <PricingSection
+        currentPlan="builder"
+        isAuthenticated
+        firebaseToken={TOKEN}
+        subscription={{
+          proEndDate: new Date('2026-08-12'),
+          cancelAtPeriodEnd: false,
+          status: 'active',
+          hasBillingAccount: true,
+          pendingTier: 'pro',
+          pendingTierDate: new Date('2026-08-12'),
+        }}
+      />
+    );
+
+    // "Renews" would be true but misleading — what renews is a cheaper plan.
+    expect(screen.getByText(/switches to PRO on/i)).toBeInTheDocument();
+    expect(screen.queryByText(/^Renews/i)).toBeNull();
+  });
+
+  it('does not offer a switch that is already booked', async () => {
+    const fetchMock = mockFetch();
+    render(
+      <PricingSection
+        currentPlan="builder"
+        isAuthenticated
+        firebaseToken={TOKEN}
+        subscription={{
+          proEndDate: new Date('2026-08-12'),
+          cancelAtPeriodEnd: false,
+          status: 'active',
+          hasBillingAccount: true,
+          pendingTier: 'pro',
+          pendingTierDate: new Date('2026-08-12'),
+        }}
+      />
+    );
+
+    const scheduled = screen.getByRole('button', { name: 'SCHEDULED' });
+    expect(scheduled).toBeDisabled();
+    await userEvent.click(scheduled);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('routes a downgrade-to-free through the cancel flow after confirmation', async () => {
+    const fetchMock = mockFetch();
+    render(<PricingSection currentPlan="pro" isAuthenticated firebaseToken={TOKEN} />);
+
+    await userEvent.click(screen.getByRole('button', { name: 'DOWNGRADE' }));
+    // Retention modal first — nothing has been sent yet.
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(screen.getByText(/nothing is charged today/i)).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: /downgrade to FREE/i }));
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ targetTier: 'free' });
+  });
+
   it('parks a pre-sign-in plan pick until the server tier is known', async () => {
     mockFetch();
     const { rerender } = render(

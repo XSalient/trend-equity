@@ -163,6 +163,135 @@ describe('api/_lib/stripe configuration guards', () => {
       expect(payload).not.toHaveProperty('proEndDate');
       expect(payload.subscriptionStatus).toBe('past_due');
     });
+
+    // TE-47: an explicit null means "the user reversed the scheduled switch",
+    // which a truthiness check would silently drop — leaving the UI promising
+    // a downgrade that is no longer coming.
+    it('clears a pending switch when passed null, and leaves it alone when absent', async () => {
+      const { set } = await setupDb();
+      const { updateSubscriptionState } = await load();
+
+      await updateSubscriptionState({
+        uid: 'user123',
+        status: 'active',
+        cancelAtPeriodEnd: false,
+        pendingTier: null,
+        pendingTierDate: null,
+      });
+      expect(set.mock.calls[0][0]).toMatchObject({ pendingTier: null, pendingTierDate: null });
+
+      await updateSubscriptionState({ uid: 'user123', status: 'active', cancelAtPeriodEnd: false });
+      expect(set.mock.calls[1][0]).not.toHaveProperty('pendingTier');
+    });
+
+    it('records the scheduled tier and its effective date', async () => {
+      const { set } = await setupDb();
+      const { updateSubscriptionState } = await load();
+
+      await updateSubscriptionState({
+        uid: 'user123',
+        tier: 'builder',
+        status: 'active',
+        cancelAtPeriodEnd: false,
+        pendingTier: 'pro',
+        pendingTierDate: 1800000000,
+      });
+
+      expect(set.mock.calls[0][0]).toMatchObject({
+        tier: 'builder', // still Builder — the user keeps what they paid for
+        pendingTier: 'pro',
+        pendingTierDate: new Date(1800000000 * 1000),
+      });
+    });
+  });
+
+  describe('resolveScheduledTierChange (TE-47)', () => {
+    const future = Math.floor(Date.now() / 1000) + 86_400;
+    const past = Math.floor(Date.now() / 1000) - 86_400;
+
+    const stripeWith = (schedule: unknown) => ({
+      subscriptionSchedules: { retrieve: vi.fn().mockResolvedValue(schedule) },
+    });
+
+    beforeEach(() => {
+      process.env.STRIPE_PRICE_PRO = 'price_pro_live';
+      process.env.STRIPE_PRICE_BUILDER = 'price_builder_live';
+    });
+
+    it('reads the upcoming phase price as the pending tier', async () => {
+      const { resolveScheduledTierChange } = await load();
+      const stripe = stripeWith({
+        status: 'active',
+        phases: [
+          { start_date: past, items: [{ price: 'price_builder_live' }] },
+          { start_date: future, items: [{ price: 'price_pro_live' }] },
+        ],
+      });
+
+      const result = await resolveScheduledTierChange(
+        stripe as any,
+        {
+          schedule: 'sub_sched_1',
+        } as any
+      );
+
+      expect(result).toEqual({ tier: 'pro', effectiveAt: future });
+    });
+
+    it('reports nothing pending when the subscription has no schedule', async () => {
+      const { resolveScheduledTierChange } = await load();
+      const result = await resolveScheduledTierChange({} as any, { schedule: null } as any);
+      expect(result).toEqual({ tier: null, effectiveAt: null });
+    });
+
+    it('ignores a released schedule — that is history, not intent', async () => {
+      const { resolveScheduledTierChange } = await load();
+      const stripe = stripeWith({
+        status: 'released',
+        phases: [{ start_date: future, items: [{ price: 'price_pro_live' }] }],
+      });
+
+      const result = await resolveScheduledTierChange(
+        stripe as any,
+        {
+          schedule: 'sub_sched_1',
+        } as any
+      );
+      expect(result.tier).toBeNull();
+    });
+
+    it('ignores phases that have already started', async () => {
+      const { resolveScheduledTierChange } = await load();
+      const stripe = stripeWith({
+        status: 'active',
+        phases: [{ start_date: past, items: [{ price: 'price_pro_live' }] }],
+      });
+
+      const result = await resolveScheduledTierChange(
+        stripe as any,
+        {
+          schedule: 'sub_sched_1',
+        } as any
+      );
+      expect(result.tier).toBeNull();
+    });
+
+    // A webhook must not 500 over display metadata: Stripe would retry and
+    // replay a state write that already succeeded.
+    it('degrades to nothing pending when the schedule lookup throws', async () => {
+      const { resolveScheduledTierChange } = await load();
+      const stripe = {
+        subscriptionSchedules: { retrieve: vi.fn().mockRejectedValue(new Error('boom')) },
+      };
+
+      const result = await resolveScheduledTierChange(
+        stripe as any,
+        {
+          schedule: 'sub_sched_1',
+        } as any
+      );
+      expect(result).toEqual({ tier: null, effectiveAt: null });
+    });
   });
 
   describe('extendSubscription', () => {

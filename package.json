@@ -27,6 +27,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "check": "npm run typecheck && npm run eslint && npm run format:check",
+    "stripe:verify": "node scripts/verify-stripe.mjs",
+    "stripe:configure-portal": "node scripts/configure-portal.mjs",
     "prepare": "husky",
     "build:android": "vite build --mode android && npx cap sync android",
     "cap:sync": "npx cap sync",

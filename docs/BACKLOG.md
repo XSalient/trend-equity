@@ -79,6 +79,40 @@ No "getMarketSignals" export is defined on the "../../../api/_lib/signals" mock
 
 **Not failures, for the record:** the 81 skipped tests in `tests/unit/firestore.test.ts` are the documented emulator-gated rules suite (run via `firebase emulators:exec`, see CLAUDE.md) — expected skips, not breakage. The Playwright E2E suite was not assessed as part of this ticket.
 
+## Now — P0: pro↔builder plan switching is a dead end (TE-47)
+
+| ID    | Task                                                                                                    | Status      | Owner  | Effort |
+| ----- | ------------------------------------------------------------------------------------------------------- | ----------- | ------ | ------ |
+| TE-47 | Make paid→paid plan changes a real journey: prorated immediate upgrade, period-end downgrade, honest UI | in progress | Claude | M      |
+
+**TE-47 user story:** As a Pro subscriber, I want pressing "Upgrade now" on Builder to select Builder on screen, tell me it is opening, and land me on a Stripe page that asks me to pay the difference today — not on a billing overview page that makes me hunt for the plan switcher. And as a Builder subscriber stepping down to Pro, I want to keep what I paid for until the period ends rather than losing features the moment I click.
+
+**The transition matrix (the deliverable — every cell must be specified before code):**
+
+| From → To            | Mechanism                                         | Money                                     | Effective  | Tier writer                             |
+| -------------------- | ------------------------------------------------- | ----------------------------------------- | ---------- | --------------------------------------- |
+| free → pro           | Checkout session                                  | Full price now                            | Immediate  | `provisionSubscription`                 |
+| free → builder       | Checkout session                                  | Full price now                            | Immediate  | `provisionSubscription`                 |
+| pro → builder        | Portal `subscription_update_confirm`              | **Net difference now** (`always_invoice`) | Immediate  | `updateSubscriptionState` (webhook)     |
+| builder → pro        | Portal `subscription_update_confirm`              | Nothing now; lower price from next cycle  | Period end | `updateSubscriptionState` (at rollover) |
+| pro/builder → free   | Portal `subscription_cancel`                      | Nothing                                   | Period end | `downgradeToFree` (on `.deleted`)       |
+| lapsed → pro/builder | Checkout session (`stripeSubscriptionId` is null) | Full price now                            | Immediate  | `provisionSubscription`                 |
+
+Billing anchor never moves on a paid→paid switch — Stripe does the calendar maths.
+
+**Defects fixed (all four reported symptoms, one root cause):**
+
+1. **Card never highlights on upgrade.** Every card button calls `e.stopPropagation()`, which is what makes the parent card's `onClick={() => setSelectedTier(...)}` unreachable. No button handler set the selection itself, so the ring and the feature showcase stayed on the previous plan.
+2. **No feedback on the button pressed.** `portalBusy` / `portalError` existed but were rendered only inside the separate "Manage billing" block, so the card button that triggered the portal showed nothing at all.
+3. **Portal opened on its homepage.** `api/portal.ts` created a bare session (`customer` + `return_url`). It did not accept a target tier, so it could not have opened the plan-switch flow even in principle.
+4. **Proration semantics were never configured.** The lifecycle plan chose `create_prorations`, which books the credit and the charge onto the _next_ invoice — no payment is taken at switch time. Immediate net charge is `always_invoice`. Period-end downgrade needs `schedule_at_period_end.conditions: [decreasing_item_amount]`. Neither was set anywhere.
+
+**Root cause (process, not knowledge):** TE-44 and TE-45 were both scoped as free→paid stories, and the fixes stopped at the boundary of the reported symptom. The pro→builder branch (`if (activePlan === 'pro') void openPortal()`) satisfied the one hard constraint it was written against — never create a second Checkout for a live subscriber — and satisfied nothing else. "Routes to Stripe" was accepted as "handled", when Stripe only handles what the portal configuration tells it to.
+
+**Why no test caught it:** `tests/unit/api/portal.test.ts` exists and passes — it asserts `sessions.create` is called with _exactly_ `{ customer, return_url }`. The incomplete behaviour was pinned by a green assertion. `PricingSection.test.tsx` asserts a Pro member's Builder click reaches `/api/portal` and never inspects the request body. Both tests encoded "the call happens" rather than "the user can complete the journey".
+
+**Guard added:** the six-cell matrix above now lives in `docs/PAYMENTS.md` and every cell has a test. Any future billing change states its cells before code.
+
 ## Now — P0 (wave 2): findings from the 2026-07-08 UI/feature/tier audit
 
 Full evidence and per-surface inventory: [2026-07-08 UI, Feature & Tier-Promise Audit](audits/2026-07-08-ui-feature-tier-audit.md).

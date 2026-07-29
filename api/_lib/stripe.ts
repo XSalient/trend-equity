@@ -186,6 +186,14 @@ export interface SubscriptionStateParams {
   status: string;
   cancelAtPeriodEnd: boolean;
   currentPeriodEnd?: number | null;
+  /**
+   * TE-47: a builder→pro downgrade is *scheduled*, not applied — the user keeps
+   * the tier they paid for until the period ends. `undefined` leaves the stored
+   * value alone; `null` clears it (the schedule was released or reversed).
+   */
+  pendingTier?: PaidTier | null;
+  /** Unix seconds at which `pendingTier` takes effect. */
+  pendingTierDate?: number | null;
 }
 
 /**
@@ -194,7 +202,8 @@ export interface SubscriptionStateParams {
  * a dunning or proration update must not strip access the user paid for.
  */
 export async function updateSubscriptionState(params: SubscriptionStateParams): Promise<void> {
-  const { uid, tier, status, cancelAtPeriodEnd, currentPeriodEnd } = params;
+  const { uid, tier, status, cancelAtPeriodEnd, currentPeriodEnd, pendingTier, pendingTierDate } =
+    params;
   const db = getAdminDb();
   const update: Record<string, unknown> = {
     subscriptionStatus: status,
@@ -203,7 +212,69 @@ export async function updateSubscriptionState(params: SubscriptionStateParams): 
   };
   if (tier) update.tier = tier;
   if (currentPeriodEnd) update.proEndDate = new Date(currentPeriodEnd * 1000);
+  // Explicit null is meaningful here (clear the pending switch), so only an
+  // absent key is skipped — `if (pendingTier)` would never clear anything.
+  if (pendingTier !== undefined) update.pendingTier = pendingTier;
+  if (pendingTierDate !== undefined) {
+    update.pendingTierDate = pendingTierDate ? new Date(pendingTierDate * 1000) : null;
+  }
   await db.collection('users').doc(uid).set(update, { merge: true });
+}
+
+export interface ScheduledTierChange {
+  tier: PaidTier | null;
+  /** Unix seconds — start of the phase that applies `tier`. */
+  effectiveAt: number | null;
+}
+
+/**
+ * TE-47: reads the pending plan change off a subscription's schedule.
+ *
+ * A period-end downgrade (portal `schedule_at_period_end`) leaves the
+ * subscription on its current price and attaches a schedule whose next phase
+ * carries the new one — so `subscription.items[0].price` still reports Builder
+ * while the user is on their way to Pro. Without this the UI would show no sign
+ * of the change until it silently landed.
+ *
+ * Returns nulls when there is no schedule, no future phase, or the phase's
+ * price is not one of ours — all of which mean "nothing pending".
+ */
+export async function resolveScheduledTierChange(
+  stripe: Stripe,
+  subscription: Stripe.Subscription
+): Promise<ScheduledTierChange> {
+  const none: ScheduledTierChange = { tier: null, effectiveAt: null };
+
+  const scheduleRef = subscription.schedule;
+  if (!scheduleRef) return none;
+
+  try {
+    const schedule =
+      typeof scheduleRef === 'string'
+        ? await stripe.subscriptionSchedules.retrieve(scheduleRef)
+        : scheduleRef;
+
+    // Released/cancelled schedules describe history, not intent.
+    if (schedule.status === 'released' || schedule.status === 'canceled') return none;
+
+    const now = Math.floor(Date.now() / 1000);
+    const upcoming = (schedule.phases ?? [])
+      .filter((phase) => typeof phase.start_date === 'number' && phase.start_date > now)
+      .sort((a, b) => a.start_date - b.start_date)[0];
+    if (!upcoming) return none;
+
+    const priceRef = upcoming.items?.[0]?.price;
+    const priceId = typeof priceRef === 'string' ? priceRef : (priceRef?.id ?? null);
+    const tier = tierForPriceId(priceId);
+    if (!tier) return none;
+
+    return { tier, effectiveAt: upcoming.start_date };
+  } catch (err) {
+    // Best-effort display data — never fail a webhook over it (Stripe retries
+    // would then replay a state write that already succeeded).
+    console.warn('[stripe] schedule lookup failed:', (err as Error).message);
+    return none;
+  }
 }
 
 /**
@@ -266,6 +337,10 @@ export async function downgradeToFree(uid: string) {
       tier: 'free',
       proEndDate: null,
       stripeSubscriptionId: null,
+      // The subscription is gone, so any scheduled plan switch went with it —
+      // leaving it set would render "switches to Pro" on a free account.
+      pendingTier: null,
+      pendingTierDate: null,
       updatedAt: new Date(),
     },
     { merge: true }

@@ -29,6 +29,8 @@ Anything else writing `tier` is a bug.
 | `stripeCustomerId`     | string \| null                 | Gates the "Manage billing" button; portal session key; uid lookup fallback for webhooks                             |
 | `stripeSubscriptionId` | string \| null                 | Non-null = live subscription → checkout returns 409 (plan changes must use the portal). Nulled by `downgradeToFree` |
 | `stripeSessionId`      | string                         | Last applied checkout session                                                                                       |
+| `pendingTier`          | `'pro' \| 'builder'` \| null   | Plan this subscription switches to at period end (TE-47). Null when nothing is scheduled                            |
+| `pendingTierDate`      | Timestamp \| null              | When `pendingTier` takes effect                                                                                     |
 
 Firestore rules must keep every one of these fields client-unwritable (TE-12 safe-field allowlist).
 
@@ -41,6 +43,37 @@ Append-only ledger, server-written, doubles as the idempotency store:
 - Fields: `uid`, `tier` (checkout only), `amount`, `currency`, `stripeCustomerId`/`stripeSubscriptionId`, `completedAt`.
 
 **User-facing payment history is NOT built from this collection.** Users get invoices, receipts, and payment methods from the Stripe Customer Portal (`POST /api/portal`). `stripe_transactions` is for internal audit, support queries, and revenue reporting.
+
+## The transition matrix (TE-47)
+
+Every plan change the product supports, and what each one costs and when. **Any billing change must state which cells it touches before code is written** — TE-44 and TE-45 were both scoped to the first two rows, and the pro↔builder rows silently shipped as "open the portal homepage" for it.
+
+| From → To            | Mechanism                                         | Money                                     | Effective  | Tier writer                             |
+| -------------------- | ------------------------------------------------- | ----------------------------------------- | ---------- | --------------------------------------- |
+| free → pro           | Checkout session                                  | Full price now                            | Immediate  | `provisionSubscription`                 |
+| free → builder       | Checkout session                                  | Full price now                            | Immediate  | `provisionSubscription`                 |
+| pro → builder        | Portal `subscription_update_confirm`              | **Net difference now** (`always_invoice`) | Immediate  | `updateSubscriptionState` (webhook)     |
+| builder → pro        | Portal `subscription_update_confirm`              | Nothing now; lower price from next cycle  | Period end | `updateSubscriptionState` (at rollover) |
+| pro/builder → free   | Portal `subscription_cancel`                      | Nothing                                   | Period end | `downgradeToFree` (on `.deleted`)       |
+| lapsed → pro/builder | Checkout session (`stripeSubscriptionId` is null) | Full price now                            | Immediate  | `provisionSubscription`                 |
+
+The billing anchor never moves on a paid→paid switch — Stripe does the calendar maths. `api/portal.ts` takes an optional `targetTier` and deep-links to the right flow; it is a routing hint only, re-validated against the Firestore tier server-side, and degrades to the portal homepage rather than erroring.
+
+### Portal configuration is not optional
+
+The two behaviours above are properties of the **portal configuration object**, not of anything the session sends. `flow_data` opens the right screen; the configuration decides what that screen does. Apply with `npm run stripe:configure-portal` (`--dry-run` to preview), once per Stripe environment:
+
+| Setting                                                 | Value                      | Why                                                                                                                                                     |
+| ------------------------------------------------------- | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `subscription_update.proration_behavior`                | `always_invoice`           | Charges the net difference **today**. `create_prorations` (Stripe's default) only books it to the _next_ invoice — the user upgrades free until renewal |
+| `subscription_update.schedule_at_period_end.conditions` | `[decreasing_item_amount]` | Defers builder→pro to the period end. Without it Stripe downgrades immediately and credits back — stripping access already paid for                     |
+| `subscription_cancel.mode`                              | `at_period_end`            | Never revoke time already paid for                                                                                                                      |
+
+A deployment where this script has never been run is mis-billing, not merely unconfigured.
+
+### Scheduled switches: `pendingTier`
+
+A period-end downgrade leaves the **current** price live and attaches a subscription schedule, so `customer.subscription.updated` alone looks like a no-op. `resolveScheduledTierChange()` reads the schedule's next phase, and the webhook writes `pendingTier` / `pendingTierDate` on every sync — passing `null` is what clears a switch the user reversed in the portal. `tier` is untouched throughout: the user keeps what they paid for until the date lands, and the rollover invoice is what finally moves it.
 
 ## Lifecycle flows
 
@@ -62,7 +95,13 @@ Only through the Customer Portal (cancel at period end). Immediately: `customer.
 
 ### Plan switch (pro ↔ builder)
 
-Only through the Customer Portal (Stripe prorates automatically). `customer.subscription.updated` carries the new price id → `tierForPriceId` → tier updated. Checkout must never be used by a live subscriber (409 guard) — it would create a second subscription and double-bill.
+Only through the Customer Portal — Checkout must never be used by a live subscriber (409 guard), as it would create a second subscription and double-bill. The pricing card passes the clicked plan as `targetTier`, so the user lands on Stripe's confirmation screen for that plan rather than the portal homepage.
+
+**Upgrade (pro → builder)** is immediate and prorated: Stripe credits the unused days on Pro, prices Builder for those same days, and charges the net difference on the spot. `customer.subscription.updated` carries the new price id → `tierForPriceId` → tier updated.
+
+**Downgrade (builder → pro)** is scheduled for the period end — the user keeps Builder for the time they paid for. The event arrives with the _old_ price still live plus a schedule; `pendingTier`/`pendingTierDate` record it, and the tier changes at the rollover.
+
+Both behaviours come from the portal configuration (see above), not from the session.
 
 ### Expiry backstop
 

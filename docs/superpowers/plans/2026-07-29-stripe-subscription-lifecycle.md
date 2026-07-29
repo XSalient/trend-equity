@@ -27,7 +27,8 @@ Story mapping: TE-38 (server-truth tier UI), TE-39 (billing portal), TE-40 (life
 
 1. **Customer Portal configuration** (test mode): https://dashboard.stripe.com/test/settings/billing/portal
    - Enable **Cancel subscriptions** → "at end of billing period".
-   - Enable **Switch plans** and add both prices (`STRIPE_PRICE_PRO`, `STRIPE_PRICE_BUILDER`) as switchable products. Proration: default (create prorations).
+   - Enable **Switch plans** and add both prices (`STRIPE_PRICE_PRO`, `STRIPE_PRICE_BUILDER`) as switchable products. ~~Proration: default (create prorations).~~
+     > **Superseded by TE-47 (2026-07-29).** `create_prorations` books the credit and the charge onto the _next_ invoice, so an upgrade takes no payment at switch time — the user gets the higher tier free until renewal. Do not configure the portal by hand: run `npm run stripe:configure-portal`, which sets `always_invoice` plus `schedule_at_period_end` for downgrades. See `docs/PAYMENTS.md`.
    - Enable invoice history + payment-method update (on by default).
 2. **Webhook endpoint** must subscribe to two additional events: `customer.subscription.updated`, `invoice.payment_failed` (alongside the existing `checkout.session.completed`, `invoice.payment_succeeded`, `customer.subscription.deleted`).
 3. Local testing: `stripe listen --forward-to localhost:3001/api/webhook/stripe`, failing card `4000 0000 0000 0341`, and `stripe trigger customer.subscription.updated`.

@@ -6,6 +6,35 @@ For ongoing context and details, see `CLAUDE.md` and the per-session memory syst
 
 ---
 
+## Upgrades Bill Immediately, Downgrades Wait for the Period End — Adopted (2026-07-29)
+
+**Decision:** a mid-cycle paid→paid plan change is asymmetric, and deliberately so.
+
+- **Upgrade (pro → builder):** immediate. Stripe credits the unused days on the old plan, prices the new plan for those same days, charges the net difference on the spot, and unlocks the features now. The billing anchor does not move.
+- **Downgrade (builder → pro):** scheduled for the period end. Nothing is charged or refunded; the user keeps the tier they paid for until it lapses, then the cheaper plan renews.
+
+Both are properties of the **portal configuration** (`proration_behavior: always_invoice`, `schedule_at_period_end.conditions: [decreasing_item_amount]`), applied by `npm run stripe:configure-portal` — not of anything the app sends per-session.
+
+**Rationale (TE-47):** the asymmetry follows from who is owed what. On an upgrade the user is asking for more and the money is owed now; making them wait for the next invoice means giving away the difference. On a downgrade they have already paid for the current period, and applying it immediately would revoke access they own — a refund-shaped problem we would then have to solve badly. Deferring costs nothing and is the honest reading of "I want to spend less _next_ month".
+
+The lifecycle plan had specified `create_prorations`, which sounds like the middle ground and is in fact neither: it books the credit and charge onto the next invoice, so an upgrade takes no payment at switch time and the user gets the higher tier free until renewal. There is no configuration that makes both directions immediate and correct — the asymmetry is not a compromise.
+
+**Corollary — a scheduled change is state the UI must show.** A period-end downgrade leaves the current price live and hangs the new one off a subscription schedule, so the subscription object alone reports no change at all. `pendingTier`/`pendingTierDate` are read from the schedule and written on every `customer.subscription.updated`, including as `null` — clearing them is how a reversal in the portal propagates. `tier` stays the current entitlement throughout; "what you can do now" and "what happens next" are separate fields, for the same reason entitlement and plan identity are (below).
+
+---
+
+## A Hand-Off to a Third Party Is Not a Completed Journey — Adopted (2026-07-29)
+
+**Decision:** any control that hands the user to an external system states which screen they land on and what they see there. "Stripe handles it" is not an implementation. Concretely: `POST /api/portal` takes a `targetTier` and deep-links via `flow_data`; a bare session that opens the portal homepage is a fallback for when we cannot resolve the flow, never the plan.
+
+**Rationale (TE-47):** the pro→builder branch was one line — `if (activePlan === 'pro') void openPortal()` — and it satisfied the only rule it was written against (never create a second Checkout for a live subscriber). It was reviewed as correct because that rule is genuinely the important one. But it dropped the user on a billing overview page with no indication of what they had just asked for, having pressed a button labelled "Upgrade now", and the portal itself was configured to do the wrong thing in both directions once they found the switcher. Every individual assertion in the code and in `docs/PAYMENTS.md` was true; the journey did not exist.
+
+**Corollary — a routing hint is not a grant.** `targetTier` comes from the client, so it decides only which screen opens. The tier is re-read from Firestore server-side, the flow is discarded unless it describes a real transition from that tier, and every unresolvable case degrades to the portal homepage instead of erroring. This keeps the one rule intact: `users/{uid}.tier` is still written only by the webhook.
+
+**Test corollary — assert the journey, not the call.** `portal.test.ts` asserted `sessions.create` was called with exactly `{customer, return_url}` and passed for the entire life of the defect; `PricingSection.test.tsx` asserted the Builder click reached `/api/portal` and never inspected the body. Both encoded "the call happens". A test that pins an incomplete behaviour is worse than no test, because it reports the gap as covered.
+
+---
+
 ## Entitlement and Plan Identity Are Different Values — Adopted (2026-07-29)
 
 **Decision:** `useTier().tier` answers "what may this visitor do" and is `'free'` for anonymous visitors. It must never be used to answer "what plan is this person on." Any UI that names, badges or claims a plan reads `hasAccount` alongside it and renders _no plan_ when there is no account.

@@ -29,12 +29,14 @@ service cloud.firestore {
                        !request.resource.data.keys().hasAny([
                          'tier', 'role', 'apiAccess',
                          'proEndDate', 'cancelAtPeriodEnd', 'subscriptionStatus',
+                         'pendingTier', 'pendingTierDate',
                          'stripeCustomerId', 'stripeSubscriptionId', 'stripeSessionId'
                        ]);
       allow update: if request.auth.uid == uid &&
                        !request.resource.data.diff(resource.data).affectedKeys().hasAny([
                          'tier', 'role', 'apiAccess',
                          'proEndDate', 'cancelAtPeriodEnd', 'subscriptionStatus',
+                         'pendingTier', 'pendingTierDate',
                          'stripeCustomerId', 'stripeSubscriptionId', 'stripeSessionId'
                        ]);
       allow delete: if false;

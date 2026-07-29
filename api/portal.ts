@@ -1,16 +1,34 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import type Stripe from 'stripe';
 import { getAuthContext } from './_lib/auth';
-import { getStripe, getAppUrl, StripeConfigError } from './_lib/stripe';
+import { getStripe, getAppUrl, getPriceId, StripeConfigError, type PaidTier } from './_lib/stripe';
 import { getAdminDb } from './_lib/admin';
 
 /**
- * TE-39: Stripe Customer Portal session.
+ * TE-39 / TE-47: Stripe Customer Portal session.
  *
  * The portal is the ONLY place cancels, plan switches, card updates, and
  * invoice history live — we never rebuild billing UI in-app. The resulting
  * changes flow back through the webhook (`customer.subscription.updated` /
  * `.deleted`), which stays the sole writer of `users/{uid}.tier`.
+ *
+ * TE-47: an optional `targetTier` in the body deep-links into the flow the user
+ * actually asked for, instead of dropping them on the portal homepage to hunt
+ * for the plan switcher:
+ *
+ *   pro → builder   `subscription_update_confirm` — confirm page showing the
+ *                   prorated amount due today (portal config: always_invoice)
+ *   builder → pro   the same flow; the portal's `schedule_at_period_end`
+ *                   condition defers a decreasing amount to the period end
+ *   paid → free     `subscription_cancel` — cancel-at-period-end confirmation
+ *
+ * `targetTier` is a routing hint only. It can never grant anything: the tier
+ * still comes from Firestore via the webhook, and an unusable hint degrades to
+ * the portal homepage rather than failing the request.
  */
+
+const KNOWN_TIERS = ['free', 'pro', 'builder'] as const;
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -24,7 +42,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const db = getAdminDb();
     const userDoc = await db.collection('users').doc(authCtx.uid).get();
-    const customerId = userDoc.data()?.stripeCustomerId as string | undefined;
+    const userData = userDoc.data();
+    const customerId = userData?.stripeCustomerId as string | undefined;
 
     if (!customerId) {
       return res
@@ -33,9 +52,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const stripe = getStripe();
+    const returnUrl = `${getAppUrl()}/?tab=pro`;
+
+    // The tier is read server-side (never from the body) — the hint only says
+    // which screen to open, and is discarded unless it is a real transition.
+    const flowData = await buildFlowData({
+      stripe,
+      requestedTier: readTargetTier(req.body),
+      currentTier: authCtx.tier,
+      subscriptionId: userData?.stripeSubscriptionId as string | undefined,
+      returnUrl,
+    });
+
     const session = await stripe.billingPortal.sessions.create({
       customer: customerId,
-      return_url: `${getAppUrl()}/?tab=pro`,
+      return_url: returnUrl,
+      ...(flowData ? { flow_data: flowData } : {}),
     });
 
     return res.status(200).json({ url: session.url });
@@ -50,4 +82,85 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.error('[portal]', message);
     return res.status(500).json({ error: 'Failed to open the billing portal' });
   }
+}
+
+/** Accepts only the three tier names; anything else means "no hint". */
+function readTargetTier(body: unknown): 'free' | PaidTier | null {
+  const raw = (body as { targetTier?: unknown } | undefined)?.targetTier;
+  return raw === 'free' || raw === 'pro' || raw === 'builder' ? raw : null;
+}
+
+interface FlowDataParams {
+  stripe: Stripe;
+  requestedTier: 'free' | PaidTier | null;
+  currentTier: string;
+  subscriptionId: string | undefined;
+  returnUrl: string;
+}
+
+/**
+ * Resolves the deep-link flow, or null to open the portal homepage.
+ *
+ * Runtime failures return null rather than throwing: a user who asked to
+ * upgrade should land on a page where they still can, not on an error. The
+ * homepage offers the same actions, just with more clicks. A missing price id
+ * is the exception — that is an operator misconfiguration and surfaces as a
+ * 503, because degrading it would hide a broken deployment.
+ */
+async function buildFlowData({
+  stripe,
+  requestedTier,
+  currentTier,
+  subscriptionId,
+  returnUrl,
+}: FlowDataParams): Promise<Stripe.BillingPortal.SessionCreateParams.FlowData | null> {
+  if (!requestedTier || !subscriptionId) return null;
+  // Not a transition — e.g. a bare "Manage billing" press, or a stale UI.
+  if (requestedTier === currentTier) return null;
+  if (!KNOWN_TIERS.includes(currentTier as (typeof KNOWN_TIERS)[number])) return null;
+
+  const afterCompletion = {
+    type: 'redirect' as const,
+    redirect: { return_url: returnUrl },
+  };
+
+  if (requestedTier === 'free') {
+    return {
+      type: 'subscription_cancel',
+      subscription_cancel: { subscription: subscriptionId },
+      after_completion: afterCompletion,
+    };
+  }
+
+  // A paid↔paid switch needs the *item* to re-price, which only a live
+  // subscription can supply.
+  let subscription: Stripe.Subscription;
+  try {
+    subscription = await stripe.subscriptions.retrieve(subscriptionId);
+  } catch (err) {
+    console.warn('[portal] subscription lookup failed:', (err as Error).message);
+    return null;
+  }
+
+  if (subscription.status === 'canceled' || subscription.status === 'incomplete_expired') {
+    return null;
+  }
+
+  const items = subscription.items?.data ?? [];
+  // Stripe's confirm flow updates at most one item; a multi-item subscription
+  // is not something this product creates, but guessing would re-price the
+  // wrong line.
+  if (items.length !== 1) return null;
+
+  const itemId = items[0]?.id;
+  if (!itemId) return null;
+
+  return {
+    type: 'subscription_update_confirm',
+    subscription_update_confirm: {
+      subscription: subscriptionId,
+      items: [{ id: itemId, price: getPriceId(requestedTier), quantity: 1 }],
+    },
+    after_completion: afterCompletion,
+  };
 }

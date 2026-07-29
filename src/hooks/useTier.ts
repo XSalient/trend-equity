@@ -19,6 +19,14 @@ export interface SubscriptionInfo {
   status: string | null;
   /** True once a Stripe customer exists — gates the "Manage billing" button. */
   hasBillingAccount: boolean;
+  /**
+   * TE-47: plan this subscription switches to at period end (builder → pro).
+   * Null when nothing is scheduled. `tier` stays the *current* entitlement
+   * throughout — the user keeps what they paid for until the date lands.
+   */
+  pendingTier: Tier | null;
+  /** When `pendingTier` takes effect. */
+  pendingTierDate: Date | null;
 }
 
 const EMPTY_SUBSCRIPTION: SubscriptionInfo = {
@@ -26,7 +34,19 @@ const EMPTY_SUBSCRIPTION: SubscriptionInfo = {
   cancelAtPeriodEnd: false,
   status: null,
   hasBillingAccount: false,
+  pendingTier: null,
+  pendingTierDate: null,
 };
+
+/** Firestore Timestamp | Date | epoch → Date, tolerant of all three shapes. */
+function toDate(value: unknown): Date | null {
+  if (!value) return null;
+  if (typeof (value as { toDate?: unknown }).toDate === 'function') {
+    return (value as { toDate: () => Date }).toDate();
+  }
+  const parsed = new Date(value as string | number | Date);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
 
 export function useTier(user: User | null) {
   const [tier, setTier] = useState<Tier>('free');
@@ -81,12 +101,18 @@ export function useTier(user: User | null) {
             setTier((data.tier as Tier) || 'free');
             setIsAdmin(data.role === 'admin');
             const end = data.proEndDate;
+            const pendingAt = data.pendingTierDate;
+            const pending = data.pendingTier as Tier | undefined;
             setSubscription({
-              proEndDate:
-                end && typeof end.toDate === 'function' ? end.toDate() : end ? new Date(end) : null,
+              proEndDate: toDate(end),
               cancelAtPeriodEnd: data.cancelAtPeriodEnd === true,
               status: (data.subscriptionStatus as string) ?? null,
               hasBillingAccount: Boolean(data.stripeCustomerId),
+              pendingTier:
+                pending && (['free', 'pro', 'builder'] as Tier[]).includes(pending)
+                  ? pending
+                  : null,
+              pendingTierDate: toDate(pendingAt),
             });
           } else {
             // User doc doesn't exist yet (new user) — default to free tier

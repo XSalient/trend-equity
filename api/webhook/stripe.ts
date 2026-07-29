@@ -7,6 +7,7 @@ import {
   downgradeToFree,
   updateSubscriptionState,
   tierForPriceId,
+  resolveScheduledTierChange,
   resolveUid,
   getPeriodEnd,
   StripeConfigError,
@@ -228,15 +229,28 @@ async function onSubscriptionUpdated(
   }
 
   const priceId = subscription.items?.data?.[0]?.price?.id;
+
+  // TE-47: a period-end downgrade leaves the *current* price in place and hangs
+  // the new one off a schedule, so this event alone looks like a no-op. Read the
+  // schedule too, and always write the result — passing null is what clears a
+  // pending switch the user reversed in the portal.
+  const scheduled = await resolveScheduledTierChange(stripe, subscription);
+
   await updateSubscriptionState({
     uid,
     tier: tierForPriceId(priceId),
     status: subscription.status,
     cancelAtPeriodEnd: subscription.cancel_at_period_end === true,
     currentPeriodEnd: getPeriodEnd(subscription),
+    pendingTier: scheduled.tier,
+    pendingTierDate: scheduled.effectiveAt,
   });
 
-  console.log(`✓ Subscription state synced for user ${uid} (${subscription.status})`);
+  console.log(
+    scheduled.tier
+      ? `✓ Subscription state synced for user ${uid} (${subscription.status}; → ${scheduled.tier} at period end)`
+      : `✓ Subscription state synced for user ${uid} (${subscription.status})`
+  );
   return res.status(200).json({ received: true });
 }
 
