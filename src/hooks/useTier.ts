@@ -39,6 +39,13 @@ export function useTier(user: User | null) {
    * somebody: a real account, or a dev `?mockTier=` that stands in for one.
    */
   const [hasAccount, setHasAccount] = useState(false);
+  /**
+   * TE-45: true between sign-in and the first Firestore snapshot. During that
+   * window `tier` still reads 'free' for a paying member, which made the pricing
+   * UI offer Checkout to somebody who already had a live subscription. Callers
+   * that act on plan identity (upgrade CTAs, Checkout) must wait for this.
+   */
+  const [tierLoading, setTierLoading] = useState(false);
 
   useEffect(() => {
     // FIX (S-3): mockTier & mockAdmin URL param is ONLY active in development/test mode.
@@ -53,12 +60,14 @@ export function useTier(user: User | null) {
         // The mock stands in for a signed-in member of that tier, so plan
         // identity must render as it would for a real account.
         setHasAccount(true);
+        setTierLoading(false);
         return;
       }
     }
 
     if (user) {
       setHasAccount(true);
+      setTierLoading(true);
       // TE-08: subscribe rather than read once — the tier is written server-side
       // by the Stripe webhook / checkout confirmation, so the UI has to pick up
       // the upgrade without a page reload.
@@ -66,6 +75,7 @@ export function useTier(user: User | null) {
       const unsubscribe = onSnapshot(
         userRef,
         (docSnap) => {
+          setTierLoading(false);
           if (docSnap.exists()) {
             const data = docSnap.data();
             setTier((data.tier as Tier) || 'free');
@@ -86,6 +96,9 @@ export function useTier(user: User | null) {
           }
         },
         (err: any) => {
+          // The tier is as resolved as it is going to get — never leave the UI
+          // stuck in the loading state on a failed read.
+          setTierLoading(false);
           // Permission denied (common for new users before server setup) — gracefully default to free
           if (err?.code === 'permission-denied') {
             console.warn('[TIER] User doc not accessible, defaulting to free tier');
@@ -105,6 +118,7 @@ export function useTier(user: User | null) {
     setIsAdmin(false);
     setSubscription(EMPTY_SUBSCRIPTION);
     setHasAccount(false);
+    setTierLoading(false);
   }, [user]);
 
   // TE-38: this hook deliberately exposes NO tier mutators. `users/{uid}.tier`
@@ -119,5 +133,6 @@ export function useTier(user: User | null) {
     isAdmin,
     subscription,
     hasAccount,
+    tierLoading,
   };
 }

@@ -53,7 +53,7 @@ export default function App() {
 
 function MainApp() {
   const { user, authReady, handleLogin, handleLogout, error: authError } = useAuth();
-  const { tier, isAdmin, subscription, hasAccount } = useTier(user);
+  const { tier, isAdmin, subscription, hasAccount, tierLoading } = useTier(user);
   const [firebaseToken, setFirebaseToken] = useState<string | undefined>();
   // TE-08: confirms the Stripe session when the user returns from checkout.
   const { checkoutStatus, checkoutMessage } = useCheckout(firebaseToken);
@@ -548,6 +548,7 @@ function MainApp() {
               <PricingSection
                 currentPlan={tier}
                 isAuthenticated={hasAccount}
+                tierLoading={tierLoading}
                 firebaseToken={firebaseToken}
                 subscription={subscription}
                 onSignIn={handleLogin}

@@ -28,6 +28,30 @@ Making `tier` nullable was the alternative and was rejected: it forces a null ch
 
 ---
 
+## "Tier Not Read Yet" Is a Third State, and Plan Actions Must Wait For It — Adopted (2026-07-29)
+
+**Decision:** `useTier` exposes `tierLoading`, true between sign-in and the first Firestore snapshot. Every control that changes a plan — Checkout, portal hand-off, downgrade confirm, and the TE-44 post-sign-in resume — is inert while it is true. Feature gates keep reading `tier` and do **not** wait: rendering a free-tier feed for a moment is harmless, offering a subscriber a new subscription is not.
+
+**Rationale (TE-45):** `tier` initialised to `'free'` while `hasAccount` flipped true immediately, so "signed in and genuinely on Free" and "signed in, tier unknown" were the same value. A Pro member landing on the pricing tab was therefore offered `UPGRADE NOW`, and the modal that opened was built for a free user. Defaulting the unknown state to the _least_ entitled value is right for gates and wrong for anything transactional — the two need different defaults, so the loading state has to be visible to callers.
+
+---
+
+## A Selection Must Be Clamped to What Is On Offer — Adopted (2026-07-29)
+
+**Decision:** When a component both derives the set of valid options and holds the current selection, the selection is clamped at render (`options.includes(picked) ? picked : options[0] ?? null`) rather than synced by effect. A CTA may never name — or transact on — a value absent from the options it was rendered beside.
+
+```tsx
+const tierOptions = userTier === 'free' ? ['pro', 'builder'] : [];
+const selectedTier = tierOptions.includes(picked) ? picked : (tierOptions[0] ?? null);
+// selectedTier === null ⇒ no Checkout CTA exists to be wrong
+```
+
+**Rationale (TE-45):** `StripeCheckoutModal` derived `tierOptions` from `userTier` but kept an independent `useState('pro')`, and shipped a Builder-only card list under an "Upgrade to Pro" button that the API rejects. Clamping makes the broken combination unrepresentable; an effect that re-syncs state would still render one frame of it, and adds a second source of truth.
+
+**Corollary — Checkout is free → paid only, so a subscriber is offered no tier at all.** The empty-options branch is not an error state to be avoided; it is the correct rendering for anyone with a live subscription, and it hands off to the Customer Portal (`docs/PAYMENTS.md`). The clicked plan is passed in as `initialTier` — a modal that recomputes the user's intent will eventually recompute it wrong.
+
+---
+
 ## Account-Scoped State Must Be Cleared, Not Just Unsubscribed — Adopted (2026-07-29)
 
 **Decision:** Any hook holding data scoped to `users/{uid}` clears that state at the **top of the effect body**, before the auth guard — not in the cleanup function, and not only in an `if (!user)` branch.

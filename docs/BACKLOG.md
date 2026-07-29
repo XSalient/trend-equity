@@ -222,6 +222,23 @@ All five stories (TE-38…TE-42) shipped 2026-07-29 — rows are in [Recently sh
 
 **Conversion half of the bug:** the Free card's only control was a disabled `CURRENT PLAN` button — the sign-up path was a dead control — while Pro/Builder said `UPGRADE NOW` and opened a Checkout modal that could only fail, with the misleading copy "your session has expired" for someone who never had one. All three cards now read `PROCEED` and start sign-in, and the chosen plan is remembered so Checkout resumes once the token lands.
 
+## Shipped — P1: checkout modal billed the wrong plan (TE-45)
+
+| ID    | Task                                                                                                     | Status            | Owner  | Effort |
+| ----- | -------------------------------------------------------------------------------------------------------- | ----------------- | ------ | ------ |
+| TE-45 | Checkout modal must offer the plan the user clicked, and must never be reachable before the tier is read | done (2026-07-29) | Claude | S      |
+
+**TE-45 user story:** As someone upgrading, I want the checkout modal to charge me for the plan whose button I pressed — and if I already subscribe, I want to be sent to the billing portal instead of an "Upgrade to Pro" button that cannot work.
+
+**Root cause (two defects, one symptom):**
+
+1. `PricingSection` tracked the clicked plan in `checkoutTier` and **never passed it to the modal**. `StripeCheckoutModal` kept its own `useState('pro')` and never reconciled it with the tiers on offer, so clicking **Builder → UPGRADE NOW** opened a modal preselected on Pro with an "Upgrade to Pro" CTA — a $9 Pro subscription for someone who asked for $19 Builder. `checkoutTier` was dead state from the day it was written (`d8946ba`).
+2. `useTier` initialised `tier: 'free'` but flipped `hasAccount: true` immediately on sign-in, with no loading flag. Until the Firestore snapshot landed, a paying member was seen as `activePlan === 'free'`, so the upgrade CTAs and the TE-44 `pendingIntent` resume opened Checkout for them. The snapshot then arrived as `pro`, the modal's `tierOptions` collapsed to `['builder']`, and the stale `'pro'` selection was left behind — rendering a lone Builder card under an "UPGRADE TO PRO" button (the reported screenshot). `userTier === 'builder'` was worse: zero cards and a dangling CTA.
+
+**Fix:** the modal takes `initialTier`, clamps the selection to `tierOptions` so the CTA can never name a plan that is not on offer, and resets on open. Per `docs/PAYMENTS.md`, Checkout is free → paid only, so a subscriber is now offered no tier at all — just a "Manage billing" hand-off to the portal. `useTier` exposes `tierLoading`; every plan-changing control waits for it.
+
+**Not a billing incident:** `api/checkout.ts` already rejected both the rank case (400) and any live `stripeSubscriptionId` (409, TE-39), so no double-charge was possible. The wrong-plan default (defect 1) _was_ chargeable for free users.
+
 ## Later — P3: code health
 
 | ID    | Task                                                                                                                        | Status | Owner | Effort |
@@ -247,6 +264,7 @@ All five stories (TE-38…TE-42) shipped 2026-07-29 — rows are in [Recently sh
 
 | ID    | Task                                                                                                                                                    | Shipped    | Commits                   |
 | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- | ------------------------- |
+| TE-45 | Checkout modal honours the clicked plan (`initialTier`, clamped selection); subscribers get the portal, not a broken CTA; `tierLoading` gate            | 2026-07-29 | (this commit)             |
 | TE-44 | Signed-out plan identity: no "current plan" claim without an account; single `PROCEED` CTA per card with post-sign-in checkout resume                   | 2026-07-29 | 308f7ec                   |
 | TE-43 | Sign-out data isolation: clear saves, filters, custom feed, latest idea, Weekly Best and gated tabs when the account or tier goes away                  | 2026-07-29 | bb295a5                   |
 | TE-38 | Server-truth tier UI: deleted client-side tier mutations (the `handleDowngrade` bug class); `useTier` exposes read-only `SubscriptionInfo`              | 2026-07-29 | c6a75da, e33feeb          |

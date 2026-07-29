@@ -30,6 +30,12 @@ interface PricingSectionProps {
    * at all, so no card may claim to be theirs.
    */
   isAuthenticated: boolean;
+  /**
+   * TE-45: true until the server tier has been read. `currentPlan` reads 'free'
+   * during that window even for a subscriber, so no upgrade may be started yet —
+   * Checkout on a live subscription is exactly what docs/PAYMENTS.md forbids.
+   */
+  tierLoading?: boolean;
   firebaseToken?: string;
   /** Server-truth subscription state (TE-38) — display only. */
   subscription?: SubscriptionInfo;
@@ -127,6 +133,7 @@ const TIER_SHOWCASE: Record<PlanKey, { icon: React.ReactNode; label: string; onC
 export const PricingSection: React.FC<PricingSectionProps> = ({
   currentPlan,
   isAuthenticated,
+  tierLoading = false,
   firebaseToken,
   subscription,
   onSignIn,
@@ -144,6 +151,12 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
    * copy for someone who has no account yet.
    */
   const activePlan: PlanKey | null = isAuthenticated ? safePlan : null;
+  /**
+   * TE-45: signed in, but the server tier is still in flight. `safePlan` reads
+   * 'free' here even for a subscriber, so every plan-changing action has to
+   * wait — otherwise a Builder member gets offered a Pro checkout.
+   */
+  const planUnknown = isAuthenticated && tierLoading;
   const [selectedTier, setSelectedTier] = useState<PlanKey>(safePlan);
   const [portalBusy, setPortalBusy] = useState(false);
   const [portalError, setPortalError] = useState<string | null>(null);
@@ -167,13 +180,16 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
   // free, since Checkout on a live subscription double-bills (docs/PAYMENTS.md).
   useEffect(() => {
     if (!pendingIntent || !isAuthenticated || !firebaseToken) return;
+    // Keep the intent parked until the server tier lands — acting on the
+    // placeholder 'free' would open Checkout for an existing subscriber (TE-45).
+    if (tierLoading) return;
     const target = pendingIntent;
     setPendingIntent(null);
     setSelectedTier(target);
     if (target === 'free' || safePlan !== 'free') return;
     setCheckoutTier(target);
     setCheckoutOpen(true);
-  }, [pendingIntent, isAuthenticated, firebaseToken, safePlan]);
+  }, [pendingIntent, isAuthenticated, firebaseToken, safePlan, tierLoading]);
 
   /**
    * TE-39: hands off to the Stripe-hosted Customer Portal. Every cancel, plan
@@ -285,12 +301,19 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
                 handleProceed('free');
                 return;
               }
+              if (planUnknown) return;
               if (activePlan !== 'free') handleDowngradeClick('free');
             }}
-            disabled={activePlan === 'free'}
-            className={`w-full py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${activePlan === 'free' ? 'bg-zinc-800 text-zinc-500 cursor-default' : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-300'}`}
+            disabled={activePlan === 'free' || planUnknown}
+            className={`w-full py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${activePlan === 'free' || planUnknown ? 'bg-zinc-800 text-zinc-500 cursor-default' : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-300'}`}
           >
-            {!isAuthenticated ? 'PROCEED' : activePlan === 'free' ? 'CURRENT PLAN' : 'DOWNGRADE'}
+            {!isAuthenticated
+              ? 'PROCEED'
+              : planUnknown
+                ? 'LOADING…'
+                : activePlan === 'free'
+                  ? 'CURRENT PLAN'
+                  : 'DOWNGRADE'}
           </button>
         </div>
 
@@ -343,27 +366,32 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
                 handleProceed('pro');
                 return;
               }
+              if (planUnknown) return;
               if (activePlan === 'free') {
                 setCheckoutTier('pro');
                 setCheckoutOpen(true);
               }
               if (activePlan === 'builder') handleDowngradeClick('pro');
             }}
-            disabled={activePlan === 'pro'}
+            disabled={activePlan === 'pro' || planUnknown}
             className={`w-full py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${
               activePlan === 'builder'
                 ? 'bg-zinc-800 hover:bg-zinc-700 text-zinc-300'
                 : 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/20 ' +
-                  (activePlan === 'pro' ? 'opacity-50 cursor-default' : 'hover:bg-emerald-500')
+                  (activePlan === 'pro' || planUnknown
+                    ? 'opacity-50 cursor-default'
+                    : 'hover:bg-emerald-500')
             }`}
           >
             {!isAuthenticated
               ? 'PROCEED'
-              : activePlan === 'pro'
-                ? 'CURRENT PLAN'
-                : activePlan === 'builder'
-                  ? 'DOWNGRADE'
-                  : 'UPGRADE NOW'}
+              : planUnknown
+                ? 'LOADING…'
+                : activePlan === 'pro'
+                  ? 'CURRENT PLAN'
+                  : activePlan === 'builder'
+                    ? 'DOWNGRADE'
+                    : 'UPGRADE NOW'}
           </button>
         </div>
 
@@ -418,24 +446,27 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
                 handleProceed('builder');
                 return;
               }
+              if (planUnknown) return;
               if (activePlan === 'free') {
                 setCheckoutTier('builder');
                 setCheckoutOpen(true);
               }
               if (activePlan === 'pro') void openPortal();
             }}
-            disabled={activePlan === 'builder'}
+            disabled={activePlan === 'builder' || planUnknown}
             className={`w-full py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${
-              activePlan === 'builder'
+              activePlan === 'builder' || planUnknown
                 ? 'bg-zinc-800 text-zinc-500 cursor-default'
                 : 'bg-amber-600 hover:bg-amber-500 text-white shadow-lg shadow-amber-900/20'
             }`}
           >
             {!isAuthenticated
               ? 'PROCEED'
-              : activePlan === 'builder'
-                ? 'CURRENT PLAN'
-                : 'UPGRADE NOW'}
+              : planUnknown
+                ? 'LOADING…'
+                : activePlan === 'builder'
+                  ? 'CURRENT PLAN'
+                  : 'UPGRADE NOW'}
           </button>
         </div>
       </div>
@@ -557,7 +588,9 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
         isOpen={checkoutOpen}
         onClose={() => setCheckoutOpen(false)}
         userTier={safePlan}
+        initialTier={checkoutTier}
         firebaseToken={firebaseToken}
+        onManageBilling={() => void openPortal()}
       />
 
       {/* Downgrade Confirmation Modal */}
