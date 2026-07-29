@@ -29,6 +29,56 @@ Detailed steps for TE-01…TE-10: [2026-07-08 pain-point remediation plan](super
 **TE-02 user story:** As the product owner, I want request limits enforced across all serverless instances, so cold starts and instance fan-out can't bypass the cap.
 **Finding while implementing:** the old `checkIpRateLimit` in `daily.ts` was never actually called anywhere — the endpoint had **zero** IP protection in production, not just a weak per-instance one. Fixed by wiring the new Firestore-backed `checkAndIncrementIpLimit` into the non-refresh generation-trigger path.
 
+## Now — P0: the daily-generation test suite has been dead since TE-04 (TE-46)
+
+| ID    | Task                                                                                                           | Status | Owner | Effort |
+| ----- | -------------------------------------------------------------------------------------------------------------- | ------ | ----- | ------ |
+| TE-46 | Repair `tests/unit/api/daily.test.ts` (13 failing) and stop the handler from masking programming errors as 503 | todo   | —     | S      |
+
+**TE-46 user story:** As a developer, I want the daily-generation suite to actually exercise the generation path, so the most expensive endpoint in the product is not shipping unverified — and I want a broken test mock to fail as a broken mock, not as a plausible-looking 503.
+
+**Symptom:** `npm run test:unit` → 13 failed / 402 passed / 81 skipped. Every failure is in `tests/unit/api/daily.test.ts`, and every one of them is a test that expects generation to _proceed_:
+
+| Failing test (all in `POST /api/generate/daily`)                       |
+| ---------------------------------------------------------------------- |
+| returns generated daily ideas on success                               |
+| calls getRecentIdeaHeadlines with the provided date                    |
+| injects DO NOT REPEAT block into prompt when recent headlines exist    |
+| does NOT inject dedup block when no recent headlines                   |
+| includes signal context in prompt when signals are non-empty           |
+| uses fallback prompt without signal prefix when signals are empty      |
+| overgenerates 60 candidates and publishes the quality-engine top 35    |
+| appends country localisation clause when country is not Global         |
+| does NOT append country clause when country is Global                  |
+| allows non-builder tier to trigger initial generation for the day      |
+| proceeds to generation for an authenticated request on today, uncached |
+| does not apply the per-IP limit to admin refresh requests              |
+| pre-fetches embeddings in parallel with generation batches             |
+
+The other 11 tests in the file pass because they are guard/early-return cases (405, 401, 404, 429, cached singleton) that never reach the signal fetch.
+
+**Root cause — mock drift, masked by a catch-all:** TE-04 (`915db97`, 2026-07-23) switched `api/_handlers/daily.ts:4` from `fetchLiveSignals()` to `getMarketSignals()` (the wrapper that adds `sourceCount`). The test's factory at `daily.test.ts:57` still declares only `fetchLiveSignals` + `formatSignalsForPrompt`. Vitest factories are strict, so touching the undeclared export throws:
+
+```
+No "getMarketSignals" export is defined on the "../../../api/_lib/signals" mock
+```
+
+`daily.ts`'s outer `try/catch` catches that and returns **503 `{ error: 'AI generation temporarily unavailable…' }`**. `res.json` is therefore called exactly once — so `expect(res.json).toHaveBeenCalledOnce()` still passes and the tests fail one line later on `body.ideas` being undefined, which reads like a response-shape problem rather than a missing mock. Verified by probe: `status=503`, body carries the vitest mock error.
+
+**Ruled out:** the hardcoded `'2026-04-11'` request date. It is in the past and TE-01 404s uncached past dates, so it looks like the culprit — substituting today's date changes nothing. Fix the mock, not the date (but see fix step 3).
+
+**Impact:** since 2026-07-23 there has been **zero** unit coverage of the daily generation path — quality-engine top-35 publishing, semantic-dedup block injection, signal grounding, country localisation, the admin IP-limit exemption and the embeddings prefetch are all unasserted on the most expensive endpoint in the product. Nothing is wrong in production because of this ticket; the risk is that the next regression there ships silently.
+
+**Fix:**
+
+1. Add `getMarketSignals` to the `vi.mock('../../../api/_lib/signals', …)` factory, returning `SignalMetrics` (`{ signals, sourceCount }`) — `daily.ts:125` passes `signalMetrics.signals` to `formatSignalsForPrompt`, so returning a bare `LiveSignals` will fail differently. Keep `fetchLiveSignals` only if something still imports it.
+2. Re-run and treat every one of the 13 as a fresh assertion review: they were written pre-TE-04 and have never run against the current response shape (`qualityStats.signals`, `sourceCount`, degraded flag).
+3. Replace the hardcoded date with a `getToday()`-derived value (or fake timers pinned to a fixed day) so the suite does not silently drift into the TE-01 past-date 404 branch later.
+4. **Stop the handler swallowing programming errors.** A `catch` that maps _any_ throw to "AI generation temporarily unavailable" hides `TypeError`s and bad-import bugs in production exactly as it hid this one in CI. Narrow it to provider/network failures and let the rest 500 with the real message (server-side log at minimum).
+5. Consider a CI gate: `npm run test:unit` is currently able to go red without blocking anything.
+
+**Not failures, for the record:** the 81 skipped tests in `tests/unit/firestore.test.ts` are the documented emulator-gated rules suite (run via `firebase emulators:exec`, see CLAUDE.md) — expected skips, not breakage. The Playwright E2E suite was not assessed as part of this ticket.
+
 ## Now — P0 (wave 2): findings from the 2026-07-08 UI/feature/tier audit
 
 Full evidence and per-surface inventory: [2026-07-08 UI, Feature & Tier-Promise Audit](audits/2026-07-08-ui-feature-tier-audit.md).
