@@ -8,27 +8,27 @@ Canonical reference for how money and tiers work in Trend-Equity. If code and th
 
 ## Tier writers (exhaustive list)
 
-| Writer | Direction | Trigger |
-| --- | --- | --- |
-| `provisionSubscription()` (`api/_lib/stripe.ts`) | free → pro/builder | `checkout.session.completed` webhook **or** `GET /api/checkout?session_id=` return leg (idempotent, dedup key = session id) |
-| `updateSubscriptionState()` | pro ↔ builder | `customer.subscription.updated` webhook (Customer Portal plan switch; price id → tier via `tierForPriceId`) |
-| `downgradeToFree()` | paid → free | `customer.subscription.deleted` webhook (portal cancel at period end, dashboard cancel, dunning exhaustion) |
-| `resolveEffectiveTier()` (`api/_lib/auth.ts`) | paid → free (virtual) | Per-request backstop: `proEndDate` + 3-day grace elapsed. Doesn't write the doc; the request just resolves as free |
-| Admin (Firestore console) | any | Manual grants. Leave `proEndDate` unset/null — manual grants never expire |
+| Writer                                           | Direction             | Trigger                                                                                                                     |
+| ------------------------------------------------ | --------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `provisionSubscription()` (`api/_lib/stripe.ts`) | free → pro/builder    | `checkout.session.completed` webhook **or** `GET /api/checkout?session_id=` return leg (idempotent, dedup key = session id) |
+| `updateSubscriptionState()`                      | pro ↔ builder         | `customer.subscription.updated` webhook (Customer Portal plan switch; price id → tier via `tierForPriceId`)                 |
+| `downgradeToFree()`                              | paid → free           | `customer.subscription.deleted` webhook (portal cancel at period end, dashboard cancel, dunning exhaustion)                 |
+| `resolveEffectiveTier()` (`api/_lib/auth.ts`)    | paid → free (virtual) | Per-request backstop: `proEndDate` + 3-day grace elapsed. Doesn't write the doc; the request just resolves as free          |
+| Admin (Firestore console)                        | any                   | Manual grants. Leave `proEndDate` unset/null — manual grants never expire                                                   |
 
 Anything else writing `tier` is a bug.
 
 ## User-doc billing fields (`users/{uid}`)
 
-| Field | Type | Meaning |
-| --- | --- | --- |
-| `tier` | `'free' \| 'pro' \| 'builder'` | Source of truth for entitlements |
-| `proEndDate` | Timestamp \| null | End of paid period. Renewal date normally; expiry date when `cancelAtPeriodEnd`. Null for manual grants |
-| `cancelAtPeriodEnd` | boolean | User cancelled in the portal; access continues until `proEndDate` |
-| `subscriptionStatus` | string \| null | Raw Stripe status (`active`, `past_due`, …) — display/diagnostics only, never an entitlement check |
-| `stripeCustomerId` | string \| null | Gates the "Manage billing" button; portal session key; uid lookup fallback for webhooks |
-| `stripeSubscriptionId` | string \| null | Non-null = live subscription → checkout returns 409 (plan changes must use the portal). Nulled by `downgradeToFree` |
-| `stripeSessionId` | string | Last applied checkout session |
+| Field                  | Type                           | Meaning                                                                                                             |
+| ---------------------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------------- |
+| `tier`                 | `'free' \| 'pro' \| 'builder'` | Source of truth for entitlements                                                                                    |
+| `proEndDate`           | Timestamp \| null              | End of paid period. Renewal date normally; expiry date when `cancelAtPeriodEnd`. Null for manual grants             |
+| `cancelAtPeriodEnd`    | boolean                        | User cancelled in the portal; access continues until `proEndDate`                                                   |
+| `subscriptionStatus`   | string \| null                 | Raw Stripe status (`active`, `past_due`, …) — display/diagnostics only, never an entitlement check                  |
+| `stripeCustomerId`     | string \| null                 | Gates the "Manage billing" button; portal session key; uid lookup fallback for webhooks                             |
+| `stripeSubscriptionId` | string \| null                 | Non-null = live subscription → checkout returns 409 (plan changes must use the portal). Nulled by `downgradeToFree` |
+| `stripeSessionId`      | string                         | Last applied checkout session                                                                                       |
 
 Firestore rules must keep every one of these fields client-unwritable (TE-12 safe-field allowlist).
 
@@ -45,36 +45,43 @@ Append-only ledger, server-written, doubles as the idempotency store:
 ## Lifecycle flows
 
 ### Successful purchase (free → paid)
+
 Pricing tab → `POST /api/checkout` (server re-checks tier + no live subscription) → Stripe-hosted Checkout → both provisioning paths race idempotently (webhook + return leg) → `tier`, `proEndDate` (real `current_period_end`), Stripe ids written in one transaction → UI updates live via `onSnapshot`.
 
 ### Renewal
+
 `invoice.payment_succeeded` → `extendSubscription()` → new `proEndDate`, `subscriptionStatus: 'active'`, renewal audit row.
 
 ### Failed renewal payment
+
 `invoice.payment_failed` → user doc `subscriptionStatus: 'past_due'` + `user_alerts` doc ("update your payment method", dedup on invoice id). **Tier is NOT dropped here** — Stripe dunning retries run their course. Access ends via `subscription.deleted` (if Stripe cancels) or the `proEndDate` grace backstop, whichever comes first.
 
 ### Cancel / downgrade to free
+
 Only through the Customer Portal (cancel at period end). Immediately: `customer.subscription.updated` sets `cancelAtPeriodEnd: true` → UI shows "Ends {date}". At period end (anchored to the subscription start date): `customer.subscription.deleted` → `downgradeToFree()`. The user keeps paid access for the time already paid — never revoke early.
 
 ### Plan switch (pro ↔ builder)
+
 Only through the Customer Portal (Stripe prorates automatically). `customer.subscription.updated` carries the new price id → `tierForPriceId` → tier updated. Checkout must never be used by a live subscriber (409 guard) — it would create a second subscription and double-bill.
 
 ### Expiry backstop
+
 `getAuthContext` resolves a paid tier as `free` once `proEndDate + 3 days` has passed — the safety net for a missed `subscription.deleted` webhook. No cron (both Vercel Hobby cron slots are taken).
 
 ## What the user sees
 
-| Surface | Data source |
-| --- | --- |
-| Current plan badge, tier gates | `useTier().tier` (Firestore snapshot) |
-| "Renews {date}" / "Ends {date}" / "payment issue" | `useTier().subscription` (`proEndDate`, `cancelAtPeriodEnd`, `status`) on the pricing tab |
-| Invoices, receipts, card update, cancel, plan switch | Stripe Customer Portal via "Manage billing" (`POST /api/portal`) |
-| Payment-failure warning | Alerts bell (`user_alerts` doc written by the webhook) |
-| Post-checkout confirmation | `useCheckout` banner (verify return leg) |
+| Surface                                              | Data source                                                                               |
+| ---------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| Current plan badge, tier gates                       | `useTier().tier` (Firestore snapshot)                                                     |
+| "Renews {date}" / "Ends {date}" / "payment issue"    | `useTier().subscription` (`proEndDate`, `cancelAtPeriodEnd`, `status`) on the pricing tab |
+| Invoices, receipts, card update, cancel, plan switch | Stripe Customer Portal via "Manage billing" (`POST /api/portal`)                          |
+| Payment-failure warning                              | Alerts bell (`user_alerts` doc written by the webhook)                                    |
+| Post-checkout confirmation                           | `useCheckout` banner (verify return leg)                                                  |
 
 ## Do / Avoid
 
 **Do**
+
 - Route every tier check through server-side `getAuthContext` / `requireTier`; treat client tier as display-only.
 - Key every Stripe-driven write on a Stripe object id (session id, invoice id) so webhook retries and path races are no-ops.
 - Return 200 from the webhook for permanently-unprocessable events (missing metadata, unknown uid) and 5xx only for transient failures — Stripe retries non-2xx.
@@ -83,6 +90,7 @@ Only through the Customer Portal (Stripe prorates automatically). `customer.subs
 - Keep the portal return URL and checkout success/cancel URLs on `getAppUrl()` (APP_URL wins over VERCEL_URL).
 
 **Avoid**
+
 - Client-side tier mutation of any kind (the deleted `handleDowngrade` bug class).
 - Building in-app billing UI the portal already provides (invoices, card forms, cancel dialogs).
 - Creating a Checkout session for a user with a live `stripeSubscriptionId` (double-billing).

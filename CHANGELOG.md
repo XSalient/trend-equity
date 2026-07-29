@@ -6,21 +6,14 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/): **Added 
 
 ## Unreleased
 
-### Docs
-
-- **TE-08 Phase 2 planned (2026-07-29):** Subscription-lifecycle audit found the root cause of the "user already has this tier or higher" bug (client-only `handleDowngrade` desyncing UI tier from Firestore) plus five gaps: no cancel path, broken paid↔paid switches (double-billing risk), unenforced/undisplayed `proEndDate`, inaccurate billing dates, and unhandled `invoice.payment_failed` / `customer.subscription.updated`. Added stories TE-38…TE-42 (supersede TE-08b), a decision record (DECISIONS.md 2026-07-29), the canonical lifecycle reference `docs/PAYMENTS.md`, CLAUDE.md payment rules, and the task-by-task plan `docs/superpowers/plans/2026-07-29-stripe-subscription-lifecycle.md`.
-
-### Fixed
-
-- **TE-08 Stripe checkout was broken end-to-end.** Five independent defects, each sufficient on its own:
-  - `customer_email` was set to the Firebase uid, so Stripe rejected every session with "Invalid email address". Now sends the verified email claim (added to `AuthContext`) and puts the uid in `client_reference_id`/metadata.
-  - `server.ts` never mounted `/api/checkout` or `/api/webhook/stripe`, so local dev 404'd and the modal reported "Network error" (previously misdiagnosed as missing env vars in `docs/QUICK_FIX_STRIPE.md`).
-  - The webhook read the raw body off the request stream after Vercel/Express had already consumed it, so signature verification always failed and the tier was never written. Body parsing is now disabled for the route (`config.api.bodyParser = false`, `express.raw()` locally) and the parser reads pre-buffered bytes.
-  - Renewal and cancellation handlers read `metadata.uid` from Charge/Subscription objects, which never carry session metadata. Checkout now copies `uid`/`tier` onto `subscription_data.metadata`, and `resolveUid()` walks subscription → customer → Firestore.
-  - Config validation only rejected the literal string `placeholder`, so the `.env` stubs `sk_test_`/`price_` were passed to Stripe. Now validated by shape and surfaced as a 503 with an actionable message.
-
 ### Added
 
+- **TE-08 Phase 2 — subscription lifecycle (TE-38…TE-42, 2026-07-29).** Cancels, plan switches, card updates and invoice history now run through the Stripe Customer Portal (`POST /api/portal`), and the app reflects real subscription state:
+  - `useTier` exposes a read-only `SubscriptionInfo` (`proEndDate`, `cancelAtPeriodEnd`, `subscriptionStatus`, `hasBillingAccount`) straight from the Firestore snapshot; the pricing tab shows "Renews {date}" / "Ends {date}" and flags a payment issue while `past_due`.
+  - New `customer.subscription.updated` webhook mirrors portal plan-switches and cancel-at-period-end onto the user doc (price id → tier via `tierForPriceId`). It never writes `tier: 'free'` — deletion and the expiry backstop own the end of paid access.
+  - New `invoice.payment_failed` webhook sets `subscriptionStatus: 'past_due'` and raises a user alert with a fix path, deduped on the invoice id so dunning retries don't stack alerts. Tier is deliberately not dropped: Stripe's retries may still recover the payment.
+  - Expiry backstop: `resolveEffectiveTier` lapses a paid tier to free once `proEndDate` + 3 days has passed, so a missed webhook can't grant an indefinite free ride. Manual admin grants (no `proEndDate`) never expire. Runs per request — no cron (both Vercel Hobby slots are taken).
+  - Provisioning now records Stripe's real `current_period_end` instead of "purchase + 30 days", and every successful renewal writes an invoice-id-keyed `type: 'renewal'` row to `stripe_transactions` (checkout rows tagged `type: 'checkout'`).
 - `api/_lib/stripe.ts` — single Stripe client, price/app-URL resolution, and idempotent tier provisioning (deduped on the Stripe session id) shared by the checkout endpoint and the webhook.
 - `GET /api/checkout?session_id=…` — verifies a completed session on return from Stripe and provisions the tier immediately, so checkout works before a webhook endpoint is registered. Ownership-checked so a session id cannot be replayed by another user.
 - Post-checkout confirmation flow (`useCheckout`) with a status toast, replacing a dead hook that loaded Stripe.js for a redirect flow that never used it.
@@ -31,6 +24,26 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/): **Added 
 - `useTier` subscribes to `users/{uid}` via `onSnapshot` instead of a one-shot `getDoc`, so a server-side upgrade appears without a page reload.
 - Webhook returns 200 for permanently unprocessable events (missing metadata, unresolvable uid) so Stripe stops retrying; 5xx is reserved for transient failures.
 - Tier writes use `set(..., { merge: true })` — `update()` threw for users with no `users/{uid}` document, turning a successful payment into an unrecoverable error.
+
+### Fixed
+
+- **The "user already has this tier or higher" bug (TE-38).** `handleDowngrade` in `useTier.ts` only set local React state, so the UI showed Free/Pro while Firestore still said Builder and `api/checkout.ts` correctly refused the re-upgrade. All client-side tier mutation is gone — `useTier` no longer exports any tier setter, and `users/{uid}.tier` is written exclusively by server-side Stripe paths.
+- **Double-billing risk on paid→paid changes (TE-39).** A Pro user buying Builder through Checkout would have opened a _second_ Stripe subscription. `POST /api/checkout` now returns 409 `{ usePortal: true }` for anyone with a live `stripeSubscriptionId`; lapsed users are unaffected because `downgradeToFree` nulls that field.
+- **Firestore rules: every billing field was client-writable.** `proEndDate`, `cancelAtPeriodEnd`, `subscriptionStatus`, `stripeCustomerId`, `stripeSubscriptionId` and `stripeSessionId` are now in the unwritable allowlist alongside `tier`/`role`/`apiAccess`. A writable `proEndDate` would have defeated the new expiry backstop, and a writable `stripeCustomerId` would have let a user open another customer's billing portal.
+- **Firestore rules: `diff` was read as a property, not called as a method.** `request.resource.data.diff.delta` raised an evaluation error on every update, which meant users could never mark an alert as read (including the new payment-failure alert). Fixed in both `users/` and `user_alerts/` via `diff(resource.data).affectedKeys()`.
+- **`isProOrBuilder()` errored on a missing user doc** (`get()` returned null, `.data.tier` threw) instead of denying cleanly. Now `exists()`-guarded.
+- **The Firestore rules test suite had never run.** `describe.skipIf(!testEnv)` is evaluated while vitest collects the file — before `beforeEach` assigns `testEnv` — so all 79 rules tests silently skipped. Now guarded on `FIRESTORE_EMULATOR_HOST`; 81/81 pass against the emulator, and the file no longer hangs the full suite.
+- **`npm run test:unit` was unrunnable.** `--workers=4` is not a Vitest 2 flag (immediate "Unknown option" error), and the default `forks` pool crashes with "Worker exited unexpectedly" on Node 25. Scripts now pass `--pool=threads`.
+- **TE-08 Stripe checkout was broken end-to-end.** Five independent defects, each sufficient on its own:
+  - `customer_email` was set to the Firebase uid, so Stripe rejected every session with "Invalid email address". Now sends the verified email claim (added to `AuthContext`) and puts the uid in `client_reference_id`/metadata.
+  - `server.ts` never mounted `/api/checkout` or `/api/webhook/stripe`, so local dev 404'd and the modal reported "Network error" (previously misdiagnosed as missing env vars in `docs/QUICK_FIX_STRIPE.md`).
+  - The webhook read the raw body off the request stream after Vercel/Express had already consumed it, so signature verification always failed and the tier was never written. Body parsing is now disabled for the route (`config.api.bodyParser = false`, `express.raw()` locally) and the parser reads pre-buffered bytes.
+  - Renewal and cancellation handlers read `metadata.uid` from Charge/Subscription objects, which never carry session metadata. Checkout now copies `uid`/`tier` onto `subscription_data.metadata`, and `resolveUid()` walks subscription → customer → Firestore.
+  - Config validation only rejected the literal string `placeholder`, so the `.env` stubs `sk_test_`/`price_` were passed to Stripe. Now validated by shape and surfaced as a 503 with an actionable message.
+
+### Docs
+
+- **TE-08 Phase 2 planned (2026-07-29):** Subscription-lifecycle audit found the root cause of the "user already has this tier or higher" bug (client-only `handleDowngrade` desyncing UI tier from Firestore) plus five gaps: no cancel path, broken paid↔paid switches (double-billing risk), unenforced/undisplayed `proEndDate`, inaccurate billing dates, and unhandled `invoice.payment_failed` / `customer.subscription.updated`. Added stories TE-38…TE-42 (supersede TE-08b), a decision record (DECISIONS.md 2026-07-29), the canonical lifecycle reference `docs/PAYMENTS.md`, CLAUDE.md payment rules, and the task-by-task plan `docs/superpowers/plans/2026-07-29-stripe-subscription-lifecycle.md`.
 
 ## 2026-07-23
 

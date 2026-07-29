@@ -87,23 +87,23 @@ Canonical reference: `docs/PAYMENTS.md` — read it before touching anything bil
 
 ### Firestore Collections
 
-| Collection                                                               | Purpose                                                                                            |
-| ------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------- |
-| `users/{uid}`                                                            | tier, role, timestamps                                                                             |
-| `daily_generations/{date}`                                               | singleton daily idea set + generation metadata                                                     |
-| `user_saves/{saveId}`                                                    | user-saved ideas (feed or custom)                                                                  |
-| `user_latest_idea/{uid}`                                                 | most recent custom idea analysis (Pro/Builder)                                                     |
-| `user_alerts/{alertId}`                                                  | user notifications                                                                                 |
-| `comments/{commentId}`                                                   | public idea comments                                                                               |
-| `locks/{lockId}`                                                         | distributed locks preventing concurrent AI generation                                              |
-| `weeklyBest/**`                                                          | curated weekly ideas (Pro/Builder only)                                                            |
-| `idea_predictions/{date}_{ideaId}`                                       | server-only publish-time score snapshots for prediction-accuracy grading (reviewed after 6 months) |
-| `api_cache/{key}`                                                        | 24 h server-side cache of AI results                                                               |
-| `api_usage/{uid}_{feature}_{period}`                                     | daily + monthly quota counters                                                                     |
+| Collection                                                               | Purpose                                                                                                |
+| ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------ |
+| `users/{uid}`                                                            | tier, role, timestamps + billing fields (all server-written only — see `docs/PAYMENTS.md`)             |
+| `daily_generations/{date}`                                               | singleton daily idea set + generation metadata                                                         |
+| `user_saves/{saveId}`                                                    | user-saved ideas (feed or custom)                                                                      |
+| `user_latest_idea/{uid}`                                                 | most recent custom idea analysis (Pro/Builder)                                                         |
+| `user_alerts/{alertId}`                                                  | user notifications                                                                                     |
+| `comments/{commentId}`                                                   | public idea comments                                                                                   |
+| `locks/{lockId}`                                                         | distributed locks preventing concurrent AI generation                                                  |
+| `weeklyBest/**`                                                          | curated weekly ideas (Pro/Builder only)                                                                |
+| `idea_predictions/{date}_{ideaId}`                                       | server-only publish-time score snapshots for prediction-accuracy grading (reviewed after 6 months)     |
+| `api_cache/{key}`                                                        | 24 h server-side cache of AI results                                                                   |
+| `api_usage/{uid}_{feature}_{period}`                                     | daily + monthly quota counters                                                                         |
 | `stripe_transactions/{sessionId\|invoiceId}`                             | append-only payment audit ledger + idempotency keys (checkout + renewal rows) — see `docs/PAYMENTS.md` |
-| `daily_generations_history/{runId}`                                      | full run snapshots incl. rejected candidates (optimizer training signal)                           |
-| `idea_embeddings/{date}`                                                 | published idea vectors for semantic dedup                                                          |
-| `prompt_history`, `config`, `app_config`, `idea_reactions`, `idea_stats` | self-learning prompt loop + tier feature config                                                    |
+| `daily_generations_history/{runId}`                                      | full run snapshots incl. rejected candidates (optimizer training signal)                               |
+| `idea_embeddings/{date}`                                                 | published idea vectors for semantic dedup                                                              |
+| `prompt_history`, `config`, `app_config`, `idea_reactions`, `idea_stats` | self-learning prompt loop + tier feature config                                                        |
 
 Security rules are in `firestore.rules`; index definitions in `firestore.indexes.json`.
 
@@ -116,7 +116,8 @@ Security rules are in `firestore.rules`; index definitions in `firestore.indexes
 
 ### Testing
 
-- **Unit tests:** Vitest, Node environment, coverage targets `api/**/*.ts` only (`tests/unit/`)
+- **Unit tests:** Vitest, Node environment, coverage targets `api/**/*.ts` only (`tests/unit/`). The npm scripts pass `--pool=threads`: the default `forks` pool crashes with "Worker exited unexpectedly" on Node 25 and hangs the run
+- **Firestore rules tests:** `tests/unit/firestore.test.ts` needs the emulator and skips without it — run `npx firebase emulators:exec --only firestore --project trend-equity-test "npx vitest run tests/unit/firestore.test.ts --pool=threads"`. Guard on `FIRESTORE_EMULATOR_HOST`, never on a variable assigned in a hook (`skipIf` is evaluated at collection time)
 - **E2E tests:** Playwright, sequential (non-parallel), base URL `http://localhost:3000` (`tests/e2e/`)
 - Snapshots stored in `tests/e2e/snapshots/` and committed to repo
 

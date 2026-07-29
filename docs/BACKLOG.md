@@ -180,17 +180,11 @@ Sequencing note: TE-04 (now shipped) provided observability; use its data to inf
 
 **TE-08 Phase 2 (planned):** Superseded by TE-38…TE-42 below — see the [subscription lifecycle section](#now--p2-stripe-subscription-lifecycle-te-08-phase-2).
 
-## Now — P2: Stripe subscription lifecycle (TE-08 Phase 2)
+## Shipped — P2: Stripe subscription lifecycle (TE-08 Phase 2)
 
-Source: 2026-07-29 lifecycle audit — root cause of the "user already has this tier or higher" bug was the client-only `handleDowngrade` in `useTier.ts` desyncing UI tier from Firestore. Decision record: [DECISIONS.md 2026-07-29](../DECISIONS.md). Canonical lifecycle reference: [docs/PAYMENTS.md](PAYMENTS.md). Detailed implementation plan (task-by-task, TDD): [2026-07-29 Stripe subscription lifecycle](superpowers/plans/2026-07-29-stripe-subscription-lifecycle.md). Sequencing: TE-38 → TE-39 → TE-40 → TE-41 → TE-42 (plan Tasks 1–10 map onto the stories in order). Like Phase 1, live verification is **blocked on `STRIPE_SECRET_KEY`** being set.
+All five stories (TE-38…TE-42) shipped 2026-07-29 — rows are in [Recently shipped](#recently-shipped). Source: 2026-07-29 lifecycle audit — root cause of the "user already has this tier or higher" bug was the client-only `handleDowngrade` in `useTier.ts` desyncing UI tier from Firestore. Decision record: [DECISIONS.md 2026-07-29](../DECISIONS.md). Canonical lifecycle reference: [docs/PAYMENTS.md](PAYMENTS.md). Implementation plan: [2026-07-29 Stripe subscription lifecycle](superpowers/plans/2026-07-29-stripe-subscription-lifecycle.md).
 
-| ID    | Task                                                                                                                                                     | Status      | Owner | Effort |
-| ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- | ----- | ------ |
-| TE-38 | Server-truth tier UI: delete client-side tier mutations (`handleDowngrade` bug class); expose `SubscriptionInfo` (proEndDate, cancelAtPeriodEnd, status) | in progress | —     | S      |
-| TE-39 | Stripe Customer Portal: `POST /api/portal` + pricing-tab wiring (cancel, plan switch, invoices, cards); 409 checkout guard against double subscriptions  | in progress | —     | M      |
-| TE-40 | Lifecycle webhooks: `customer.subscription.updated` (plan switch, cancel-at-period-end, status) + `invoice.payment_failed` (past_due flag + user alert)  | in progress | —     | M      |
-| TE-41 | Expiry backstop: `getAuthContext` resolves paid tier as free after `proEndDate` + 3-day grace (missed-webhook safety net; manual grants never expire)    | in progress | —     | S      |
-| TE-42 | Billing accuracy: provision with Stripe's real `current_period_end`; renewal audit rows in `stripe_transactions` (invoice-id keyed, `type` field)        | in progress | —     | S      |
+**Remaining before charging real money:** the end-to-end Stripe sandbox run (plan Task 10 Step 2) — test keys are present in `.env`, but the portal/cancel/dunning legs have only been verified by unit tests and a local endpoint smoke test, not against live Stripe. The Customer Portal must also be configured in the Stripe dashboard (period-end cancellation + plan switching between both prices), and the webhook endpoint must subscribe to `customer.subscription.updated` and `invoice.payment_failed`.
 
 **TE-38 user story:** As a subscriber, I want the plan shown in the app to always match what the server will enforce — including my renewal or expiry date — so I never see a "downgrade" that didn't happen or get blocked from an upgrade I'm entitled to.
 
@@ -227,38 +221,43 @@ Source: 2026-07-29 lifecycle audit — root cause of the "user already has this 
 
 ## Recently shipped
 
-| ID    | Task                                                                                                                                                    | Shipped    | Commits          |
-| ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- | ---------------- |
-| TE-09 | Product analytics: `logEvent()` service + batch writes to `user_analytics`, tracks 5 core events for funnel analysis                                    | 2026-07-23 | (this commit)    |
-| TE-04 | Signal observability: `qualityStats.signals` tracks per-run sourceCount + degraded flag, admin alert at zero sources                                    | 2026-07-23 | (this commit)    |
-| TE-26 | Comments: Free read-only with inline "Pro feature" prompt, Pro+ can post, Firestore rules gate create by tier                                           | 2026-07-23 | c436d58          |
-| TE-25 | Pro next-steps cap of 7 (Free 3, Builder 10), sliced by TIER_LIMITS.roadmapSteps, with tier-specific upgrade messaging                                  | 2026-07-23 | f3a45f8          |
-| TE-24 | CSV export becomes Pro+: tier gate routes Free to pricing tab, "(Pro+)" label in Export dropdown, PDF remains free                                      | 2026-07-23 | 831afde          |
-| TE-23 | Market Evidence: server 403 gate + locked teaser button UI for Free tier, added to Pro pricing showcase                                                 | 2026-07-22 | d920a11          |
-| TE-22 | Basic-vs-Full VC analysis: lock unfair advantage, revenue model, market dynamics behind visible locked panels for Free tier                             | 2026-07-22 | 9a35413          |
-| TE-21 | Promise/copy reconciliation: saves wording, co-founder button gating, Weekly Radar tier, Twitter/X claims, Validation Toolkit tier, Email Digest status | 2026-07-22 | a602fef          |
-| TE-20 | `updateIdea` must sync Weekly Best list when ideas are updated across all feeds and tabs                                                                | 2026-07-21 | 14092b6          |
-| TE-19 | Dead-UI fixes: Tailwind literal classes, footer links, FilterBar stickiness, comment timestamps                                                         | 2026-07-21 | e9b267d          |
-| TE-17 | Cron for daily generation: automatic trigger at 06:30 UTC (before digest cron), removes admin dependency                                                | 2026-07-21 | 2404943          |
-| TE-16 | Anonymous read path: daily feed marked public so logged-out visitors can see the product                                                                | 2026-07-21 | 9ceb051          |
-| TE-33 | Merge code+docs workflow: eliminate serialized doc steps, single commit with BACKLOG/CHANGELOG/DECISIONS                                                | 2026-07-21 | d985f05          |
-| TE-32 | Parallelize AI handler pipeline: pre-fetch embeddings in parallel with generation batches                                                               | 2026-07-21 | c63cf5c          |
-| TE-29 | Dedup observability: per-run drop count + 0.75–0.85 near-miss distribution in qualityStats                                                              | 2026-07-21 | 288f826          |
-| TE-34 | Pre-load memory manifest (hot files, key patterns, line ranges)                                                                                         | 2026-07-21 | d6e7060          |
-| TE-28 | Tighten semantic dedup: lower threshold 0.85 → 0.80, embed headline+pitch+marketSize+revenueSkeleton                                                    | 2026-07-21 | 9e96561          |
-| TE-27 | Extend dedup window to 14 days + enrich prompt with headline + pitch per recent idea                                                                    | 2026-07-21 | b46310b          |
-| TE-15 | Anonymous lead capture: serverless endpoint accepts form submissions, stores in Firestore with server auth                                              | 2026-07-21 | adb53ef          |
-| TE-14 | Honest waitlist flow: replace fake tier upgrades with "Join Waitlist" modal, remove deceptive UI state                                                  | 2026-07-21 | a6a6a14          |
-| TE-13 | Server-side auth + tier gates on all 8 previously-ungated generate endpoints                                                                            | 2026-07-20 | b2bef09          |
-| TE-18 | Alerts stop generating (and spending AI budget) for Free/Pro — side effect of TE-13's Builder gate                                                      | 2026-07-20 | b2bef09          |
-| TE-12 | Production Firestore rules: per-collection least-privilege security (prevent self-upgrade, quota tampering)                                             | 2026-07-20 | 6fd7159          |
-| TE-01 | Restrict daily generation trigger to authed users + today's date only                                                                                   | 2026-07-08 | f11d6a7          |
-| TE-02 | Firestore-backed per-IP daily limit on daily generation (found the old limiter was dead code, never called)                                             | 2026-07-08 | f11d6a7          |
-| —     | Project tracking system (this file, CHANGELOG, doc map, CLAUDE.md sync)                                                                                 | 2026-07-08 | (this commit)    |
-| —     | Pain-point audit + remediation plan                                                                                                                     | 2026-07-08 | (this commit)    |
-| —     | DECISIONS.md cross-machine decision log                                                                                                                 | 2026-07-08 | 985347f          |
-| —     | `/api/generate/*` consolidation into dispatch catch-all (Vercel Hobby 12-fn limit)                                                                      | 2026-07-08 | 210be12, 85ab8dc |
-| —     | Custom requirement feed (Builder, 1 gen/24 h, peek/restore)                                                                                             | 2026-07-03 | 44ec85c, b5436d8 |
-| —     | Quality Engine Wave 1: critic pipeline, semantic dedup, evidence grounding, prediction tracking                                                         | 2026-07-03 | 5608d81          |
-| —     | CI pipeline + component tests                                                                                                                           | 2026-05-21 | 39f18be          |
-| —     | Self-learning prompt pipeline (AI critique + user reactions)                                                                                            | 2026-05-20 | 491b7 series     |
+| ID    | Task                                                                                                                                                    | Shipped    | Commits                   |
+| ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- | ------------------------- |
+| TE-38 | Server-truth tier UI: deleted client-side tier mutations (the `handleDowngrade` bug class); `useTier` exposes read-only `SubscriptionInfo`              | 2026-07-29 | c6a75da, e33feeb          |
+| TE-39 | Stripe Customer Portal: `POST /api/portal`, pricing-tab wiring (cancel, plan switch, invoices, cards) + 409 checkout guard against double subscriptions | 2026-07-29 | 5616578, 318a328, a77b2b6 |
+| TE-40 | Lifecycle webhooks: `customer.subscription.updated` (plan switch, cancel-at-period-end, status) + `invoice.payment_failed` (past_due flag + user alert) | 2026-07-29 | 30503d5, e0846e1          |
+| TE-41 | Expiry backstop: `getAuthContext` resolves a paid tier as free after `proEndDate` + 3-day grace; manual grants never expire                             | 2026-07-29 | 2de45ea                   |
+| TE-42 | Billing accuracy: provision with Stripe's real `current_period_end`; renewal audit rows in `stripe_transactions` (invoice-id keyed, `type` field)       | 2026-07-29 | af8a030                   |
+| TE-09 | Product analytics: `logEvent()` service + batch writes to `user_analytics`, tracks 5 core events for funnel analysis                                    | 2026-07-23 | (this commit)             |
+| TE-04 | Signal observability: `qualityStats.signals` tracks per-run sourceCount + degraded flag, admin alert at zero sources                                    | 2026-07-23 | (this commit)             |
+| TE-26 | Comments: Free read-only with inline "Pro feature" prompt, Pro+ can post, Firestore rules gate create by tier                                           | 2026-07-23 | c436d58                   |
+| TE-25 | Pro next-steps cap of 7 (Free 3, Builder 10), sliced by TIER_LIMITS.roadmapSteps, with tier-specific upgrade messaging                                  | 2026-07-23 | f3a45f8                   |
+| TE-24 | CSV export becomes Pro+: tier gate routes Free to pricing tab, "(Pro+)" label in Export dropdown, PDF remains free                                      | 2026-07-23 | 831afde                   |
+| TE-23 | Market Evidence: server 403 gate + locked teaser button UI for Free tier, added to Pro pricing showcase                                                 | 2026-07-22 | d920a11                   |
+| TE-22 | Basic-vs-Full VC analysis: lock unfair advantage, revenue model, market dynamics behind visible locked panels for Free tier                             | 2026-07-22 | 9a35413                   |
+| TE-21 | Promise/copy reconciliation: saves wording, co-founder button gating, Weekly Radar tier, Twitter/X claims, Validation Toolkit tier, Email Digest status | 2026-07-22 | a602fef                   |
+| TE-20 | `updateIdea` must sync Weekly Best list when ideas are updated across all feeds and tabs                                                                | 2026-07-21 | 14092b6                   |
+| TE-19 | Dead-UI fixes: Tailwind literal classes, footer links, FilterBar stickiness, comment timestamps                                                         | 2026-07-21 | e9b267d                   |
+| TE-17 | Cron for daily generation: automatic trigger at 06:30 UTC (before digest cron), removes admin dependency                                                | 2026-07-21 | 2404943                   |
+| TE-16 | Anonymous read path: daily feed marked public so logged-out visitors can see the product                                                                | 2026-07-21 | 9ceb051                   |
+| TE-33 | Merge code+docs workflow: eliminate serialized doc steps, single commit with BACKLOG/CHANGELOG/DECISIONS                                                | 2026-07-21 | d985f05                   |
+| TE-32 | Parallelize AI handler pipeline: pre-fetch embeddings in parallel with generation batches                                                               | 2026-07-21 | c63cf5c                   |
+| TE-29 | Dedup observability: per-run drop count + 0.75–0.85 near-miss distribution in qualityStats                                                              | 2026-07-21 | 288f826                   |
+| TE-34 | Pre-load memory manifest (hot files, key patterns, line ranges)                                                                                         | 2026-07-21 | d6e7060                   |
+| TE-28 | Tighten semantic dedup: lower threshold 0.85 → 0.80, embed headline+pitch+marketSize+revenueSkeleton                                                    | 2026-07-21 | 9e96561                   |
+| TE-27 | Extend dedup window to 14 days + enrich prompt with headline + pitch per recent idea                                                                    | 2026-07-21 | b46310b                   |
+| TE-15 | Anonymous lead capture: serverless endpoint accepts form submissions, stores in Firestore with server auth                                              | 2026-07-21 | adb53ef                   |
+| TE-14 | Honest waitlist flow: replace fake tier upgrades with "Join Waitlist" modal, remove deceptive UI state                                                  | 2026-07-21 | a6a6a14                   |
+| TE-13 | Server-side auth + tier gates on all 8 previously-ungated generate endpoints                                                                            | 2026-07-20 | b2bef09                   |
+| TE-18 | Alerts stop generating (and spending AI budget) for Free/Pro — side effect of TE-13's Builder gate                                                      | 2026-07-20 | b2bef09                   |
+| TE-12 | Production Firestore rules: per-collection least-privilege security (prevent self-upgrade, quota tampering)                                             | 2026-07-20 | 6fd7159                   |
+| TE-01 | Restrict daily generation trigger to authed users + today's date only                                                                                   | 2026-07-08 | f11d6a7                   |
+| TE-02 | Firestore-backed per-IP daily limit on daily generation (found the old limiter was dead code, never called)                                             | 2026-07-08 | f11d6a7                   |
+| —     | Project tracking system (this file, CHANGELOG, doc map, CLAUDE.md sync)                                                                                 | 2026-07-08 | (this commit)             |
+| —     | Pain-point audit + remediation plan                                                                                                                     | 2026-07-08 | (this commit)             |
+| —     | DECISIONS.md cross-machine decision log                                                                                                                 | 2026-07-08 | 985347f                   |
+| —     | `/api/generate/*` consolidation into dispatch catch-all (Vercel Hobby 12-fn limit)                                                                      | 2026-07-08 | 210be12, 85ab8dc          |
+| —     | Custom requirement feed (Builder, 1 gen/24 h, peek/restore)                                                                                             | 2026-07-03 | 44ec85c, b5436d8          |
+| —     | Quality Engine Wave 1: critic pipeline, semantic dedup, evidence grounding, prediction tracking                                                         | 2026-07-03 | 5608d81                   |
+| —     | CI pipeline + component tests                                                                                                                           | 2026-05-21 | 39f18be                   |
+| —     | Self-learning prompt pipeline (AI critique + user reactions)                                                                                            | 2026-05-20 | 491b7 series              |

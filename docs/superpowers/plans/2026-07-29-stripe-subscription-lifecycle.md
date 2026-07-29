@@ -15,7 +15,7 @@
 Observed bug: a Builder test user "downgraded" in the UI, then got `"User already has this tier or higher"` when re-upgrading. Root cause: `handleDowngrade` in `src/hooks/useTier.ts` only calls `setTier()` locally — Firestore still says `builder`, and `api/checkout.ts:57` correctly blocks the request based on the server-side tier. Full findings:
 
 1. **No real downgrade/cancel flow exists** — the only downgrade writer is the `customer.subscription.deleted` webhook, and nothing in the app can trigger it.
-2. **Paid→paid tier changes are broken both ways** — Builder→Pro is hard-blocked by the rank check; Pro→Builder through Checkout would create a *second* subscription (double-billing).
+2. **Paid→paid tier changes are broken both ways** — Builder→Pro is hard-blocked by the rank check; Pro→Builder through Checkout would create a _second_ subscription (double-billing).
 3. **`proEndDate` is written but never read** — a missed webhook leaves a paid tier granted forever.
 4. **`proEndDate` is inaccurate at purchase** — always "now + 30 days", never Stripe's real `current_period_end`.
 5. **`invoice.payment_failed` and `customer.subscription.updated` are unhandled** — users in dunning keep silent access with no warning; portal cancellations-at-period-end would be invisible until deletion.
@@ -34,22 +34,22 @@ Story mapping: TE-38 (server-truth tier UI), TE-39 (billing portal), TE-40 (life
 
 ## File structure
 
-| File | Change | Responsibility |
-| --- | --- | --- |
-| `api/_lib/stripe.ts` | Modify | + `tierForPriceId`, `updateSubscriptionState`, object-param `extendSubscription` with renewal audit row, `type` field on checkout audit rows |
-| `api/portal.ts` | **Create** | `POST /api/portal` → Stripe Customer Portal session (9th Vercel function, budget 9/12) |
-| `api/webhook/stripe.ts` | Modify | + `customer.subscription.updated`, `invoice.payment_failed` handlers; real period-end on checkout provisioning |
-| `api/checkout.ts` | Modify | 409 guard: active subscribers must use the portal; real period-end in `verifySession` |
-| `api/_lib/auth.ts` | Modify | `resolveEffectiveTier` — proEndDate + 3-day grace backstop |
-| `server.ts` | Modify | Mount `/api/portal` in the dev BFF (same shim pattern as `/api/checkout`) |
-| `src/hooks/useTier.ts` | Modify | Delete fake `handleUpgrade`/`handleDowngrade`/`upgradeToBuilder`; expose `SubscriptionInfo` from the user-doc snapshot |
-| `src/App.tsx` | Modify | Drop dead handler wiring; `onUpgradeToBuilder` routes to pricing tab; pass `subscription` down |
-| `src/components/PricingSection.tsx` | Modify | Downgrade/plan-switch buttons open the portal; show renew/expiry date; "Manage billing" button |
-| `tests/unit/api/portal.test.ts` | **Create** | Portal endpoint unit tests |
-| `tests/unit/api/webhook-stripe.test.ts` | Modify | New event handlers + updated `extendSubscription` call shape |
-| `tests/unit/api/checkout.test.ts` | Modify | 409-guard tests |
-| `tests/unit/api/stripe-lib.test.ts` | Modify | `tierForPriceId`, `updateSubscriptionState`, renewal audit |
-| `tests/unit/api/auth-tier.test.ts` | **Create** | `resolveEffectiveTier` tests |
+| File                                    | Change     | Responsibility                                                                                                                               |
+| --------------------------------------- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `api/_lib/stripe.ts`                    | Modify     | + `tierForPriceId`, `updateSubscriptionState`, object-param `extendSubscription` with renewal audit row, `type` field on checkout audit rows |
+| `api/portal.ts`                         | **Create** | `POST /api/portal` → Stripe Customer Portal session (9th Vercel function, budget 9/12)                                                       |
+| `api/webhook/stripe.ts`                 | Modify     | + `customer.subscription.updated`, `invoice.payment_failed` handlers; real period-end on checkout provisioning                               |
+| `api/checkout.ts`                       | Modify     | 409 guard: active subscribers must use the portal; real period-end in `verifySession`                                                        |
+| `api/_lib/auth.ts`                      | Modify     | `resolveEffectiveTier` — proEndDate + 3-day grace backstop                                                                                   |
+| `server.ts`                             | Modify     | Mount `/api/portal` in the dev BFF (same shim pattern as `/api/checkout`)                                                                    |
+| `src/hooks/useTier.ts`                  | Modify     | Delete fake `handleUpgrade`/`handleDowngrade`/`upgradeToBuilder`; expose `SubscriptionInfo` from the user-doc snapshot                       |
+| `src/App.tsx`                           | Modify     | Drop dead handler wiring; `onUpgradeToBuilder` routes to pricing tab; pass `subscription` down                                               |
+| `src/components/PricingSection.tsx`     | Modify     | Downgrade/plan-switch buttons open the portal; show renew/expiry date; "Manage billing" button                                               |
+| `tests/unit/api/portal.test.ts`         | **Create** | Portal endpoint unit tests                                                                                                                   |
+| `tests/unit/api/webhook-stripe.test.ts` | Modify     | New event handlers + updated `extendSubscription` call shape                                                                                 |
+| `tests/unit/api/checkout.test.ts`       | Modify     | 409-guard tests                                                                                                                              |
+| `tests/unit/api/stripe-lib.test.ts`     | Modify     | `tierForPriceId`, `updateSubscriptionState`, renewal audit                                                                                   |
+| `tests/unit/api/auth-tier.test.ts`      | **Create** | `resolveEffectiveTier` tests                                                                                                                 |
 
 **Conventions for every task:** run `npm run test:unit` and `npm run check` before each commit. Commit format `feat(stripe): TE-NN — <what>` plus the Co-Author line from CLAUDE.md. Update `docs/BACKLOG.md` status in the same commit that starts/finishes a story (TE-33 merged workflow).
 
@@ -58,9 +58,10 @@ Story mapping: TE-38 (server-truth tier UI), TE-39 (billing portal), TE-40 (life
 ### Task 1: `SubscriptionInfo` from the user-doc snapshot (TE-38, part 1)
 
 **Files:**
+
 - Modify: `src/hooks/useTier.ts`
 
-- [ ] **Step 1: Add the type and state.** In `src/hooks/useTier.ts`, add above `export function useTier`:
+- [x] **Step 1: Add the type and state.** In `src/hooks/useTier.ts`, add above `export function useTier`:
 
 ```ts
 export interface SubscriptionInfo {
@@ -84,13 +85,12 @@ const EMPTY_SUBSCRIPTION: SubscriptionInfo = {
 
 Inside the hook add `const [subscription, setSubscription] = useState<SubscriptionInfo>(EMPTY_SUBSCRIPTION);`
 
-- [ ] **Step 2: Populate it in the existing `onSnapshot` callback.** In the `docSnap.exists()` branch (after `setIsAdmin`):
+- [x] **Step 2: Populate it in the existing `onSnapshot` callback.** In the `docSnap.exists()` branch (after `setIsAdmin`):
 
 ```ts
 const end = data.proEndDate;
 setSubscription({
-  proEndDate:
-    end && typeof end.toDate === 'function' ? end.toDate() : end ? new Date(end) : null,
+  proEndDate: end && typeof end.toDate === 'function' ? end.toDate() : end ? new Date(end) : null,
   cancelAtPeriodEnd: data.cancelAtPeriodEnd === true,
   status: (data.subscriptionStatus as string) ?? null,
   hasBillingAccount: Boolean(data.stripeCustomerId),
@@ -99,24 +99,25 @@ setSubscription({
 
 In the `else` (doc missing), permission-denied, and signed-out branches add `setSubscription(EMPTY_SUBSCRIPTION);` alongside the existing `setTier('free')` calls. Add `subscription` to the hook's return object.
 
-- [ ] **Step 3: Verify.** Run: `npm run check` — expect 0 errors (no tests cover this hook; it's exercised via Task 5's UI and the E2E suite).
+- [x] **Step 3: Verify.** Run: `npm run check` — expect 0 errors (no tests cover this hook; it's exercised via Task 5's UI and the E2E suite).
 
-- [ ] **Step 4: Commit** — `feat(stripe): TE-38 — expose subscription info (proEndDate, cancelAtPeriodEnd, status) from useTier`
+- [x] **Step 4: Commit** — `feat(stripe): TE-38 — expose subscription info (proEndDate, cancelAtPeriodEnd, status) from useTier`
 
 ---
 
 ### Task 2: Delete client-side tier mutations (TE-38, part 2)
 
-The bug's root cause. After this task the client can *never* change `tier` state except via the Firestore snapshot.
+The bug's root cause. After this task the client can _never_ change `tier` state except via the Firestore snapshot.
 
 **Files:**
+
 - Modify: `src/hooks/useTier.ts`
 - Modify: `src/App.tsx:56`, `src/App.tsx:249-252`, `src/App.tsx:527-534`
 - Modify: `src/components/PricingSection.tsx` (props only — behavior replaced in Task 5)
 
-- [ ] **Step 1: Remove the dead handlers from `useTier.ts`.** Delete `handleUpgrade`, `handleDowngrade`, `upgradeToBuilder`, the `notify` helper, and `tierNotification` state (its only writers are the deleted handlers). Also delete `setTier` from the return object (keep it internal for the mockTier branch). New return: `{ tier, isAdmin, subscription }`.
+- [x] **Step 1: Remove the dead handlers from `useTier.ts`.** Delete `handleUpgrade`, `handleDowngrade`, `upgradeToBuilder`, the `notify` helper, and `tierNotification` state (its only writers are the deleted handlers). Also delete `setTier` from the return object (keep it internal for the mockTier branch). New return: `{ tier, isAdmin, subscription }`.
 
-- [ ] **Step 2: Update `App.tsx`.**
+- [x] **Step 2: Update `App.tsx`.**
   - Line 56: `const { tier, isAdmin, subscription } = useTier(user);`
   - `onUpgradeToBuilder` (line 249): replace the `upgradeToBuilder(handleLogin)` call:
 
@@ -131,27 +132,28 @@ const onUpgradeToBuilder = () => {
 };
 ```
 
-  - PricingSection call site (line 527): drop `onUpgrade`/`onDowngrade`, pass `subscription={subscription}`.
-  - Grep for remaining references and remove their render sites (the `tierNotification` toast block):
+- PricingSection call site (line 527): drop `onUpgrade`/`onDowngrade`, pass `subscription={subscription}`.
+- Grep for remaining references and remove their render sites (the `tierNotification` toast block):
 
 Run: `npx eslint src/App.tsx src/hooks/useTier.ts` — unused-variable errors point at any leftovers.
 
-- [ ] **Step 3: Update `PricingSection.tsx` props** so the app compiles: remove `onUpgrade`/`onDowngrade` from `PricingSectionProps` and the destructure; add `subscription?: SubscriptionInfo` (import the type from `../hooks/useTier`). Temporarily make `confirmDowngrade` a no-op that closes the modal (`setPendingDowngrade(null)`) — Task 5 wires it to the portal.
+- [x] **Step 3: Update `PricingSection.tsx` props** so the app compiles: remove `onUpgrade`/`onDowngrade` from `PricingSectionProps` and the destructure; add `subscription?: SubscriptionInfo` (import the type from `../hooks/useTier`). Temporarily make `confirmDowngrade` a no-op that closes the modal (`setPendingDowngrade(null)`) — Task 5 wires it to the portal.
 
-- [ ] **Step 4: Verify.** Run: `npm run check` — expect 0 errors. Run: `npm run test:unit` — expect all green (no unit tests reference the deleted symbols).
+- [x] **Step 4: Verify.** Run: `npm run check` — expect 0 errors. Run: `npm run test:unit` — expect all green (no unit tests reference the deleted symbols).
 
-- [ ] **Step 5: Commit** — `feat(stripe): TE-38 — remove client-side tier mutations (fake downgrade caused desynced tier state)`
+- [x] **Step 5: Commit** — `feat(stripe): TE-38 — remove client-side tier mutations (fake downgrade caused desynced tier state)`
 
 ---
 
 ### Task 3: Billing-portal endpoint (TE-39, part 1)
 
 **Files:**
+
 - Create: `api/portal.ts`
 - Create: `tests/unit/api/portal.test.ts`
 - Modify: `server.ts` (mount the route in the dev BFF, same as `/api/checkout`)
 
-- [ ] **Step 1: Write the failing tests** — `tests/unit/api/portal.test.ts`:
+- [x] **Step 1: Write the failing tests** — `tests/unit/api/portal.test.ts`:
 
 ```ts
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -252,9 +254,9 @@ describe('POST /api/portal', () => {
 });
 ```
 
-- [ ] **Step 2: Run tests to verify they fail.** Run: `npx vitest run tests/unit/api/portal.test.ts` — Expected: FAIL ("Cannot find module '../../../api/portal'").
+- [x] **Step 2: Run tests to verify they fail.** Run: `npx vitest run tests/unit/api/portal.test.ts` — Expected: FAIL ("Cannot find module '../../../api/portal'").
 
-- [ ] **Step 3: Implement `api/portal.ts`:**
+- [x] **Step 3: Implement `api/portal.ts`:**
 
 ```ts
 import type { VercelRequest, VercelResponse } from '@vercel/node';
@@ -312,11 +314,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 }
 ```
 
-- [ ] **Step 4: Run tests to verify they pass.** Run: `npx vitest run tests/unit/api/portal.test.ts` — Expected: 5 passed.
+- [x] **Step 4: Run tests to verify they pass.** Run: `npx vitest run tests/unit/api/portal.test.ts` — Expected: 5 passed.
 
-- [ ] **Step 5: Mount in the dev BFF.** In `server.ts`, find where `/api/checkout` is mounted (search `checkout`) and mirror it exactly for `/api/portal` with the new handler (same dynamic-import/shim style used there).
+- [x] **Step 5: Mount in the dev BFF.** In `server.ts`, find where `/api/checkout` is mounted (search `checkout`) and mirror it exactly for `/api/portal` with the new handler (same dynamic-import/shim style used there).
 
-- [ ] **Step 6: Commit** — `feat(stripe): TE-39 — POST /api/portal creates a Customer Portal session`
+- [x] **Step 6: Commit** — `feat(stripe): TE-39 — POST /api/portal creates a Customer Portal session`
 
 ---
 
@@ -325,10 +327,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 Prevents the double-subscription bug when a Pro user buys Builder through Checkout.
 
 **Files:**
+
 - Modify: `api/checkout.ts` (POST branch, after the tier-rank check at line 57-59)
 - Modify: `tests/unit/api/checkout.test.ts`
 
-- [ ] **Step 1: Write the failing test** (add to the `POST — create session` describe block; the file already mocks `../../../api/_lib/admin`? It does not — add the same `vi.mock('../../../api/_lib/admin', …)` and `mockUserDoc` helper as in `portal.test.ts`, and make `beforeEach` default to `mockUserDoc({})`):
+- [x] **Step 1: Write the failing test** (add to the `POST — create session` describe block; the file already mocks `../../../api/_lib/admin`? It does not — add the same `vi.mock('../../../api/_lib/admin', …)` and `mockUserDoc` helper as in `portal.test.ts`, and make `beforeEach` default to `mockUserDoc({})`):
 
 ```ts
 it('returns 409 with usePortal for a user who already has an active subscription', async () => {
@@ -337,16 +340,14 @@ it('returns 409 with usePortal for a user who already has an active subscription
   mockReq.body = { tier: 'builder' };
   await handler(mockReq as VercelRequest, mockRes as VercelResponse);
   expect(mockRes.status).toHaveBeenCalledWith(409);
-  expect(mockRes.json).toHaveBeenCalledWith(
-    expect.objectContaining({ usePortal: true })
-  );
+  expect(mockRes.json).toHaveBeenCalledWith(expect.objectContaining({ usePortal: true }));
   expect(stripeClient.checkout.sessions.create).not.toHaveBeenCalled();
 });
 ```
 
-- [ ] **Step 2: Run it.** Run: `npx vitest run tests/unit/api/checkout.test.ts` — Expected: the new test FAILS (200 instead of 409); pre-existing tests may also fail on the unmocked admin module — fix by mocking as described.
+- [x] **Step 2: Run it.** Run: `npx vitest run tests/unit/api/checkout.test.ts` — Expected: the new test FAILS (200 instead of 409); pre-existing tests may also fail on the unmocked admin module — fix by mocking as described.
 
-- [ ] **Step 3: Implement.** In `api/checkout.ts` add `import { getAdminDb } from './_lib/admin';` and insert after the rank check:
+- [x] **Step 3: Implement.** In `api/checkout.ts` add `import { getAdminDb } from './_lib/admin';` and insert after the rank check:
 
 ```ts
 // A live subscription must be changed in the Customer Portal — a second
@@ -362,18 +363,19 @@ if (userSnap.data()?.stripeSubscriptionId) {
 
 (`downgradeToFree` nulls `stripeSubscriptionId`, so lapsed users can re-subscribe through Checkout normally.)
 
-- [ ] **Step 4: Run the whole file.** Run: `npx vitest run tests/unit/api/checkout.test.ts` — Expected: all pass.
+- [x] **Step 4: Run the whole file.** Run: `npx vitest run tests/unit/api/checkout.test.ts` — Expected: all pass.
 
-- [ ] **Step 5: Commit** — `feat(stripe): TE-39 — reject checkout for users with a live subscription (portal handles plan changes)`
+- [x] **Step 5: Commit** — `feat(stripe): TE-39 — reject checkout for users with a live subscription (portal handles plan changes)`
 
 ---
 
 ### Task 5: Pricing UI — portal wiring + subscription visibility (TE-39, part 3)
 
 **Files:**
+
 - Modify: `src/components/PricingSection.tsx`
 
-- [ ] **Step 1: Add portal state + opener** inside the component:
+- [x] **Step 1: Add portal state + opener** inside the component:
 
 ```ts
 const [portalBusy, setPortalBusy] = useState(false);
@@ -402,7 +404,7 @@ const openPortal = async () => {
 };
 ```
 
-- [ ] **Step 2: Reroute the three tier-change buttons.**
+- [x] **Step 2: Reroute the three tier-change buttons.**
   - Free card (`line ~202`): `handleDowngradeClick('free')` stays (the "features you'll lose" modal is good retention UX) — but `confirmDowngrade` becomes:
 
 ```ts
@@ -412,10 +414,10 @@ const confirmDowngrade = () => {
 };
 ```
 
-  - Pro card (`line ~259`): `builder → pro` keeps `handleDowngradeClick('pro')` (same confirm-then-portal flow).
-  - Builder card (`line ~321`): current code opens Checkout for *any* non-builder plan. Split it: `free` → Checkout modal (unchanged); `pro` → `void openPortal()` (plan switch with proration, no second subscription).
+- Pro card (`line ~259`): `builder → pro` keeps `handleDowngradeClick('pro')` (same confirm-then-portal flow).
+- Builder card (`line ~321`): current code opens Checkout for _any_ non-builder plan. Split it: `free` → Checkout modal (unchanged); `pro` → `void openPortal()` (plan switch with proration, no second subscription).
 
-- [ ] **Step 3: Show subscription state on the current-plan card.** Under the "Current" badge area of whichever card matches `currentPlan` (extract a small helper above the return):
+- [x] **Step 3: Show subscription state on the current-plan card.** Under the "Current" badge area of whichever card matches `currentPlan` (extract a small helper above the return):
 
 ```tsx
 const renewalLine =
@@ -449,9 +451,9 @@ Render `{currentPlan === 'pro' && renewalLine}` / `{currentPlan === 'builder' &&
 </div>
 ```
 
-- [ ] **Step 4: Verify in the browser.** Run: `npm run dev`, sign in as the test user, open the pricing tab. Expect: "Manage billing" appears only when `stripeCustomerId` exists; downgrade buttons open the confirm modal and then redirect to the Stripe portal (with test keys configured). `npm run check` clean.
+- [x] **Step 4: Verify in the browser.** Run: `npm run dev`, sign in as the test user, open the pricing tab. Expect: "Manage billing" appears only when `stripeCustomerId` exists; downgrade buttons open the confirm modal and then redirect to the Stripe portal (with test keys configured). `npm run check` clean.
 
-- [ ] **Step 5: Commit** — `feat(stripe): TE-39 — pricing tab drives downgrades/plan switches through the Customer Portal, shows renewal date`
+- [x] **Step 5: Commit** — `feat(stripe): TE-39 — pricing tab drives downgrades/plan switches through the Customer Portal, shows renewal date`
 
 ---
 
@@ -460,11 +462,12 @@ Render `{currentPlan === 'pro' && renewalLine}` / `{currentPlan === 'builder' &&
 Propagates portal plan-switches, cancel-at-period-end flags, and status changes into Firestore. **Never writes `tier: 'free'`** — only `customer.subscription.deleted` (existing) and the TE-41 backstop end access.
 
 **Files:**
+
 - Modify: `api/_lib/stripe.ts` (+ `tierForPriceId`, `updateSubscriptionState`)
 - Modify: `api/webhook/stripe.ts`
 - Modify: `tests/unit/api/stripe-lib.test.ts`, `tests/unit/api/webhook-stripe.test.ts`
 
-- [ ] **Step 1: Failing lib tests** — add to `tests/unit/api/stripe-lib.test.ts` (follow the file's existing admin-mock pattern for `updateSubscriptionState`):
+- [x] **Step 1: Failing lib tests** — add to `tests/unit/api/stripe-lib.test.ts` (follow the file's existing admin-mock pattern for `updateSubscriptionState`):
 
 ```ts
 describe('tierForPriceId', () => {
@@ -479,9 +482,9 @@ describe('tierForPriceId', () => {
 });
 ```
 
-- [ ] **Step 2: Run.** `npx vitest run tests/unit/api/stripe-lib.test.ts` — Expected: FAIL (`tierForPriceId` not exported).
+- [x] **Step 2: Run.** `npx vitest run tests/unit/api/stripe-lib.test.ts` — Expected: FAIL (`tierForPriceId` not exported).
 
-- [ ] **Step 3: Implement in `api/_lib/stripe.ts`:**
+- [x] **Step 3: Implement in `api/_lib/stripe.ts`:**
 
 ```ts
 /** Maps a Stripe price id back to a tier — how portal plan-switches resolve. */
@@ -519,7 +522,7 @@ export async function updateSubscriptionState(params: SubscriptionStateParams): 
 }
 ```
 
-- [ ] **Step 4: Failing webhook test** — add to `tests/unit/api/webhook-stripe.test.ts` (extend the stripe-lib mock at the top with `tierForPriceId: actual.tierForPriceId` and `updateSubscriptionState: vi.fn()`):
+- [x] **Step 4: Failing webhook test** — add to `tests/unit/api/webhook-stripe.test.ts` (extend the stripe-lib mock at the top with `tierForPriceId: actual.tierForPriceId` and `updateSubscriptionState: vi.fn()`):
 
 ```ts
 it('mirrors subscription.updated onto the user doc (plan switch + cancel flag)', async () => {
@@ -551,7 +554,7 @@ it('mirrors subscription.updated onto the user doc (plan switch + cancel flag)',
 });
 ```
 
-- [ ] **Step 5: Implement the handler** in `api/webhook/stripe.ts` — add the switch case and function:
+- [x] **Step 5: Implement the handler** in `api/webhook/stripe.ts` — add the switch case and function:
 
 ```ts
 case 'customer.subscription.updated':
@@ -590,19 +593,20 @@ async function onSubscriptionUpdated(
 
 Import `tierForPriceId` and `updateSubscriptionState` from `../_lib/stripe`.
 
-- [ ] **Step 6: Run.** `npx vitest run tests/unit/api/webhook-stripe.test.ts tests/unit/api/stripe-lib.test.ts` — Expected: all pass.
+- [x] **Step 6: Run.** `npx vitest run tests/unit/api/webhook-stripe.test.ts tests/unit/api/stripe-lib.test.ts` — Expected: all pass.
 
-- [ ] **Step 7: Commit** — `feat(stripe): TE-40 — handle customer.subscription.updated (plan switches, cancel-at-period-end, status)`
+- [x] **Step 7: Commit** — `feat(stripe): TE-40 — handle customer.subscription.updated (plan switches, cancel-at-period-end, status)`
 
 ---
 
 ### Task 7: Webhook — `invoice.payment_failed` (TE-40, part 2)
 
 **Files:**
+
 - Modify: `api/webhook/stripe.ts`
 - Modify: `tests/unit/api/webhook-stripe.test.ts`
 
-- [ ] **Step 1: Failing test** (mock `../../_lib/admin` in this file if not already; simplest is asserting the handler acks and reads the invoice — the Firestore write shape is covered by inspection + the transaction test below):
+- [x] **Step 1: Failing test** (mock `../../_lib/admin` in this file if not already; simplest is asserting the handler acks and reads the invoice — the Firestore write shape is covered by inspection + the transaction test below):
 
 ```ts
 it('acks invoice.payment_failed and marks the user past_due with an alert', async () => {
@@ -627,7 +631,7 @@ it('acks invoice.payment_failed and marks the user past_due with an alert', asyn
 
 (Add `vi.mock('../../../api/_lib/admin', () => ({ getAdminDb: vi.fn() }));` and its import at the top of the test file; give the other tests a default `getAdminDb` mock in `beforeEach` so they keep passing.)
 
-- [ ] **Step 2: Implement.** In `api/webhook/stripe.ts` add `import { getAdminDb } from '../_lib/admin';`, the switch case:
+- [x] **Step 2: Implement.** In `api/webhook/stripe.ts` add `import { getAdminDb } from '../_lib/admin';`, the switch case:
 
 ```ts
 case 'invoice.payment_failed':
@@ -642,7 +646,11 @@ and the handler:
  * drop the tier here (subscription.deleted / the proEndDate backstop own
  * that). We flag the account and tell the user how to fix their card.
  */
-async function onInvoicePaymentFailed(stripe: Stripe, invoice: Stripe.Invoice, res: VercelResponse) {
+async function onInvoicePaymentFailed(
+  stripe: Stripe,
+  invoice: Stripe.Invoice,
+  res: VercelResponse
+) {
   const subscriptionId = readInvoiceSubscriptionId(invoice);
   const customerId = typeof invoice.customer === 'string' ? invoice.customer : invoice.customer?.id;
 
@@ -678,9 +686,9 @@ async function onInvoicePaymentFailed(stripe: Stripe, invoice: Stripe.Invoice, r
 
 (The alert doc matches the `Alert` shape in `src/types.ts:160` and the `userId`/`timestamp`/`isRead` fields `useAlerts.ts` queries on.)
 
-- [ ] **Step 3: Run.** `npx vitest run tests/unit/api/webhook-stripe.test.ts` — Expected: all pass.
+- [x] **Step 3: Run.** `npx vitest run tests/unit/api/webhook-stripe.test.ts` — Expected: all pass.
 
-- [ ] **Step 4: Commit** — `feat(stripe): TE-40 — handle invoice.payment_failed (past_due flag + user alert, dedup on invoice id)`
+- [x] **Step 4: Commit** — `feat(stripe): TE-40 — handle invoice.payment_failed (past_due flag + user alert, dedup on invoice id)`
 
 ---
 
@@ -689,10 +697,11 @@ async function onInvoicePaymentFailed(stripe: Stripe, invoice: Stripe.Invoice, r
 If the `subscription.deleted` webhook is ever missed, paid access still ends: any request after `proEndDate + 3 days` resolves as `free`. Admin-granted tiers (no `proEndDate`) never expire.
 
 **Files:**
+
 - Modify: `api/_lib/auth.ts`
 - Create: `tests/unit/api/auth-tier.test.ts`
 
-- [ ] **Step 1: Failing tests** — `tests/unit/api/auth-tier.test.ts`:
+- [x] **Step 1: Failing tests** — `tests/unit/api/auth-tier.test.ts`:
 
 ```ts
 import { describe, it, expect } from 'vitest';
@@ -727,9 +736,9 @@ describe('resolveEffectiveTier', () => {
 });
 ```
 
-- [ ] **Step 2: Run.** `npx vitest run tests/unit/api/auth-tier.test.ts` — Expected: FAIL (not exported).
+- [x] **Step 2: Run.** `npx vitest run tests/unit/api/auth-tier.test.ts` — Expected: FAIL (not exported).
 
-- [ ] **Step 3: Implement in `api/_lib/auth.ts`:**
+- [x] **Step 3: Implement in `api/_lib/auth.ts`:**
 
 ```ts
 /** Grace after proEndDate before paid access lapses — covers a missed webhook
@@ -766,20 +775,21 @@ Then replace the inline tier resolution in `getAuthContext` (lines 53-56) with:
 const tier = resolveEffectiveTier(userDoc.exists ? userDoc.data() : undefined);
 ```
 
-- [ ] **Step 4: Run everything.** `npm run test:unit` — Expected: all pass (existing auth-dependent tests unaffected: they stub `getAuthContext` itself).
+- [x] **Step 4: Run everything.** `npm run test:unit` — Expected: all pass (existing auth-dependent tests unaffected: they stub `getAuthContext` itself).
 
-- [ ] **Step 5: Commit** — `feat(stripe): TE-41 — enforce proEndDate (+3d grace) as tier backstop in getAuthContext`
+- [x] **Step 5: Commit** — `feat(stripe): TE-41 — enforce proEndDate (+3d grace) as tier backstop in getAuthContext`
 
 ---
 
 ### Task 9: Accurate period end + renewal audit rows (TE-42)
 
 **Files:**
+
 - Modify: `api/_lib/stripe.ts` (`extendSubscription` object params + audit row; `type: 'checkout'` on provision rows)
 - Modify: `api/webhook/stripe.ts` (`onCheckoutCompleted` + `onInvoicePaid`), `api/checkout.ts` (`verifySession`)
 - Modify: `tests/unit/api/webhook-stripe.test.ts`, `tests/unit/api/stripe-lib.test.ts`
 
-- [ ] **Step 1: Change `extendSubscription`** in `api/_lib/stripe.ts` to:
+- [x] **Step 1: Change `extendSubscription`** in `api/_lib/stripe.ts` to:
 
 ```ts
 export interface RenewalParams {
@@ -836,9 +846,9 @@ await extendSubscription({
 
 Update the existing renewal test in `webhook-stripe.test.ts` to expect this object shape, and any `extendSubscription` tests in `stripe-lib.test.ts` to the new signature.
 
-- [ ] **Step 2: Tag checkout audit rows.** In `provisionSubscription`, add `type: 'checkout',` to the `auditRef` payload so history rows are distinguishable from renewals.
+- [x] **Step 2: Tag checkout audit rows.** In `provisionSubscription`, add `type: 'checkout',` to the `auditRef` payload so history rows are distinguishable from renewals.
 
-- [ ] **Step 3: Real period end at purchase.** In both `onCheckoutCompleted` (webhook) and `verifySession` (`api/checkout.ts`), before calling `provisionSubscription`, resolve the true period end (both scopes already have a `stripe` client — in `verifySession` it's the local `stripe` const):
+- [x] **Step 3: Real period end at purchase.** In both `onCheckoutCompleted` (webhook) and `verifySession` (`api/checkout.ts`), before calling `provisionSubscription`, resolve the true period end (both scopes already have a `stripe` client — in `verifySession` it's the local `stripe` const):
 
 ```ts
 let currentPeriodEnd: number | null = null;
@@ -854,15 +864,15 @@ if (subscriptionId) {
 
 and pass `currentPeriodEnd` into the `provisionSubscription` call (the param already exists). In `onCheckoutCompleted`, note the handler signature must gain the `stripe` client: change the switch case to `onCheckoutCompleted(stripe, event.data.object as Stripe.Checkout.Session, res)` and the function signature to match. Import `getPeriodEnd` in `api/checkout.ts`.
 
-- [ ] **Step 4: Run everything.** `npm run test:unit` — Expected: all pass after the call-shape updates. `npm run check` — clean.
+- [x] **Step 4: Run everything.** `npm run test:unit` — Expected: all pass after the call-shape updates. `npm run check` — clean.
 
-- [ ] **Step 5: Commit** — `feat(stripe): TE-42 — real current_period_end at provisioning + renewal audit rows in stripe_transactions`
+- [x] **Step 5: Commit** — `feat(stripe): TE-42 — real current_period_end at provisioning + renewal audit rows in stripe_transactions`
 
 ---
 
 ### Task 10: Rules verification, live smoke test, ship
 
-- [ ] **Step 1: Firestore rules.** Confirm the client cannot write any billing field. Run: `npx vitest run tests/unit/firestore.test.ts` and inspect the `users` match block in `firestore.rules` — the safe-field allowlist (TE-12) must NOT include `tier`, `proEndDate`, `cancelAtPeriodEnd`, `subscriptionStatus`, `stripeCustomerId`, `stripeSubscriptionId`. If any new field is writable, extend the rules test with an `assertFails` case and tighten the rule.
+- [x] **Step 1: Firestore rules.** Confirm the client cannot write any billing field. Run: `npx vitest run tests/unit/firestore.test.ts` and inspect the `users` match block in `firestore.rules` — the safe-field allowlist (TE-12) must NOT include `tier`, `proEndDate`, `cancelAtPeriodEnd`, `subscriptionStatus`, `stripeCustomerId`, `stripeSubscriptionId`. If any new field is writable, extend the rules test with an `assertFails` case and tighten the rule.
 
 - [ ] **Step 2: End-to-end sandbox test** (requires `STRIPE_SECRET_KEY` — still the blocking item from Phase 1):
   1. `npm run dev` + `stripe listen --forward-to localhost:3001/api/webhook/stripe`
@@ -872,7 +882,7 @@ and pass `currentPeriodEnd` into the `provisionSubscription` call (the param alr
   5. `stripe trigger invoice.payment_failed` → alert appears in the bell, user doc `subscriptionStatus: 'past_due'`.
   6. Manually set `proEndDate` 4 days back on a paid user → any API call resolves tier free (TE-41).
 
-- [ ] **Step 3: Docs + ship.** Update `docs/BACKLOG.md` (TE-38…42 → Recently shipped), `CHANGELOG.md`, and `DECISIONS.md` if anything deviated from this plan — same commit. `git push origin main`, verify live at https://trend-equity.vercel.app within ~2 min (post-story checklist).
+- [x] **Step 3: Docs + ship.** Update `docs/BACKLOG.md` (TE-38…42 → Recently shipped), `CHANGELOG.md`, and `DECISIONS.md` if anything deviated from this plan — same commit. `git push origin main`, verify live at https://trend-equity.vercel.app within ~2 min (post-story checklist).
 
 ---
 
