@@ -199,6 +199,8 @@ Stated plainly so this isn't an unfalsifiable wish-list:
 2. **Validate the must-have hypothesis with 5 real users** using the test plan in the companion findings doc §6, adding two prompts: _"Would you miss this if it vanished? What would you replace it with?"_ (tests the content-vs-tool thesis) and _"Which of these would make you keep it on your phone: a radar on your space, tracked validation, or a build streak?"_ (ranks the pillars from the user's mouth).
 3. **Then build Wave 6 in dependency order:** TE-68 (cheap churn signal) and TE-61→TE-62 (radar → push) are the highest value-per-effort; TE-60 (home) is the presentation spine that makes the rest legible.
 
+The full cross-wave order — where these items sit relative to Wave 5, the TE-59 defect, and the TE-30/31 quality lane, and behind which decision gate — is in the [execution roadmap](../superpowers/plans/2026-07-30-execution-roadmap.md).
+
 ---
 
 _Method note: persona findings trace to cited on-screen states and data-model fields in the current build; quotes are persona-voiced interpretations, not real transcripts. No code was changed. Treat every item as a hypothesis to validate against TE-49 data, not as measured behaviour._

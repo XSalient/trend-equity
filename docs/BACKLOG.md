@@ -12,6 +12,8 @@ Single source of truth for all planned, in-progress, and recently shipped work. 
 
 Related docs: [PRD.md](../PRD.md) (what the product is) · [DECISIONS.md](../DECISIONS.md) (why things are the way they are) · [CHANGELOG.md](../CHANGELOG.md) (what shipped when) · [CLAUDE.md](../CLAUDE.md) (how to work in this codebase).
 
+**▶ Execution order across all waves:** the single end-to-end sequence — defect fix → measurement → activation → conversion → **decision gate** → retention/value — is in [2026-07-30 execution roadmap](superpowers/plans/2026-07-30-execution-roadmap.md). The wave tables below define _what_ each item is; the roadmap defines _in what order_ and _behind which gate_. Fastest path to a measured decision: **TE-59 → TE-49 → TE-52 → TE-50 → TE-53 → read the data.**
+
 ---
 
 ## Now — P1 (wave 5): subscriber-growth redesign (activation → conversion → retention)
