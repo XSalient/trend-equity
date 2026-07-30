@@ -2,157 +2,246 @@
 
 ## 1. Product Overview
 
-**Trend Equity** is a high-conviction business opportunity platform that delivers data-driven startup ideas daily. It leverages AI (Gemini) to analyze current trends, market shifts, and cultural events to provide entrepreneurs with actionable, VC-ready business concepts.
+**Trend Equity** is a personal opportunity-radar and execution platform. It monitors current market signals, identifies high-conviction business opportunities, verifies them with evidence, and helps entrepreneurs decide what to validate and build.
 
-### 1.1. Mission
+### 1.1 Mission
 
-To empower entrepreneurs by providing high-signal business opportunities and the roadmap to execute them, reducing the friction between "idea" and "execution."
+Help entrepreneurs move from market change to an evidence-based decision and then to accountable execution, reducing wasted time on generic or unverified ideas.
+
+### 1.2 Core product loop
+
+**Follow a market → detect a meaningful change → verify the opportunity → decide → validate → build → track.**
+
+The daily idea feed is an entry point to this loop, not the complete product.
 
 ---
 
 ## 2. Target Audience
 
-- **Aspiring Entrepreneurs:** Individuals looking for their next big project.
-- **Serial Founders:** Experienced builders seeking validated market gaps.
-- **Side-Hustlers:** Professionals looking for high-potential, low-effort business models.
-- **Investors/VCs:** Staying ahead of emerging trends and early-stage concepts.
-- **Corporate Innovation Teams:** Monitoring sector shifts and white space analysis for strategic planning.
+- **Aspiring entrepreneurs:** looking for a credible opportunity and a practical starting point.
+- **Serial founders:** monitoring markets and validating new wedges.
+- **Side-hustlers:** seeking opportunities that fit their time, budget, and skills.
+- **Investors and VCs:** identifying early shifts and opportunity spaces.
+- **Corporate innovation teams:** monitoring sectors and white space.
 
 ---
 
-## 3. User Tiers & Monetization
+## 3. User Tiers and Monetization
 
-Trend Equity uses a tiered subscription model:
+Trend Equity uses a three-tier consumer model plus Enterprise. The target promises below supersede the earlier 10/25/35 partially locked free-feed model. Current code still contains old limits until the tier-v2 migration is implemented.
 
-| Feature                    | Free              | Pro                        | Builder                           | Enterprise (Validation)           |
-| :------------------------- | :---------------- | :------------------------- | :-------------------------------- | :------------------------------- |
-| **Daily Ideas**            | 10 ideas / day    | 25 ideas / day             | 35 ideas / day                    | Custom / Full Access             |
-| **Saves**                  | 5 saved ideas     | Unlimited                  | Unlimited                         | Unlimited                        |
-| **Custom Idea Analysis**   | —                 | 5 / month                  | 20 / month                        | Unlimited                        |
-| **Custom Requirement Feed** | Locked            | 1 keyword, 5 ideas / 24h   | Natural language, 5 ideas / 24h   | Custom thesis feeds             |
-| **Exporting**              | PDF Pitch Deck    | PDF, CSV, Notion/GDocs (clipboard) | PDF, CSV, Notion/GDocs (clipboard)  | Custom Data Integration (API)    |
-| **Analysis**               | Basic VC Analysis (pitch, justification, trend sources) | Full VC Analysis (+ unfair advantage, revenue model, market dynamics) | Full VC Analysis + Expert Vetting | Proprietary Thesis Alignment     |
-| **Market Evidence**        | Locked (teaser)   | ✓ Search-grounded evidence | ✓ Search-grounded evidence        | ✓ + Custom research              |
-| **Execution**              | 3 Next Steps      | 7 Next Steps               | Full 10+ Step Roadmap             | Full 10+ Step Roadmap            |
-| **Validation Toolkit**      | —                 | ✓                          | ✓                                 | ✓                                |
-| **Weekly Best**            | —                 | ✓                          | ✓                                 | ✓                                |
-| **Advanced Tools**         | Locked            | Email Digest *(planned)*   | Radar, Futurecasting, TE100, API  | Custom Alerts + Dashboard        |
-| **Community**              | Read-only         | Post & Reply               | Priority Threads                  | Private Slack/Discord Connect    |
+| Capability | Discover — Free | Evaluate — Pro | Execute — Builder | Enterprise |
+| :--- | :--- | :--- | :--- | :--- |
+| **Core promise** | Evaluate one real opportunity completely | Continuously discover and evaluate qualified opportunities | Validate and execute a chosen opportunity | Custom opportunity intelligence |
+| **Daily opportunities** | **1 complete Idea of the Day** | All opportunities passing the daily quality standard, subject to an operational cap | Same qualified set as Pro | Custom feeds and full access |
+| **Idea evaluation** | Full evaluation of the featured idea | Full evaluation of all qualified ideas | Full evaluation plus execution workflows | Proprietary thesis alignment |
+| **Market evidence** | Included for the featured idea, with real source links | Included across qualified ideas and custom analyses | Included | Custom research |
+| **Saves** | 5 concurrent saves | Unlimited | Unlimited | Unlimited |
+| **Custom idea analysis** | Not included | 5 per month | 20 per month | Custom or unlimited |
+| **Custom requirement feed** | Not included | Focused requirement feed | Advanced natural-language requirement feed | Custom thesis feeds |
+| **Monitoring and personalization** | Not included beyond the daily featured idea | Founder-fit ranking, saved-idea changes, thesis monitoring as implemented | Advanced radar, futurecasting, and alerts | Custom monitoring and dashboards |
+| **Execution** | Concise starter next steps inside the featured evaluation | Validation toolkit and intermediate action support | Full customizable roadmap, tracked validation, build packs, and accountability | Custom roadmap and advisory workflow |
+| **Exporting** | PDF/share for the featured idea | PDF, CSV, Notion/Google Docs clipboard | Same plus advanced portfolio exports | Custom integration/API |
+| **Community** | Read-only discussion and reactions | Post and reply | Priority/build-oriented participation | Private community or workspace integration |
+| **Advanced intelligence** | Not included | Weekly Best and appropriate digest | Weekly Radar, Futurecasting, TE100, and API-oriented access | Custom intelligence |
+
+### 3.1 Free completeness rule
+
+The Free Idea of the Day has **no blurred sections, disabled evidence controls, or paywalls inside the idea**. It includes, when the data exists:
+
+- live-signal context and provenance;
+- headline, pitch, score, cost/effort, and timing;
+- complete VC analysis;
+- market size, competitors, regulatory risks, revenue model, and realistic moat;
+- search-grounded market evidence and source links;
+- a concise starter action plan;
+- save/share actions after sign-in.
+
+Paid value starts when the user asks for more breadth or a recurring workflow: more opportunities, custom analysis, continuous monitoring, validation tracking, advanced exports, or execution tools.
+
+### 3.2 Quality determines quantity
+
+New product and marketing copy must not guarantee 10, 25, or 35 ideas. Pro and Builder receive all opportunities that pass the daily publishing standard, up to an operational cap. If none passes, the product shows an honest unavailable state rather than publishing a weak idea to satisfy a count.
 
 ---
 
 ## 4. Key Features
 
-### 4.1. Daily Feed
+### 4.1 Daily opportunity service
 
-- A curated list of business opportunities refreshed every 24 hours.
-- Contextualized insights based on current dates and global trends.
-- **Signal Sources:** AI-driven scanning of Google Trends, Product Hunt, Reddit, Hacker News, and TechCrunch.
+- A curated set of qualified opportunities refreshed every 24 hours.
+- One stable `featuredIdeaId` designates the complete Free Idea of the Day.
+- Anonymous and signed-in Free users receive one full server-authorized idea.
+- Pro and Builder receive the qualified daily set.
+- Signal sources currently include Google Trends, Product Hunt, Reddit, Hacker News, and TechCrunch.
+- Quantitative signal claims require structured provenance: source, URL or source ID, timestamp, metric, current value, comparison value/window, delta, and data-quality state.
+- Until structured metrics exist, the UI uses honest provenance labels without invented percentages.
 
-### 4.2. Idea Cards
+### 4.2 Idea evaluation
 
-- **Headline & Pitch:** Concise summary of the opportunity.
-- **Potential Score:** A 1-10 rating of revenue potential.
-- **Cost & Effort:** Assessment of technical and financial requirements.
-- **Expert Vetting:** AI-driven score, verdict (High Conviction, Moderate, Pass), and pivot suggestions.
-- **Next Steps:** Tier-based roadmap for immediate execution.
+Each complete evaluation can include:
 
-### 4.3. Market Intelligence (Pro/Builder)
+- headline and concise pitch;
+- potential score and justification;
+- cost/effort and timing;
+- unfair advantage or realistic moat;
+- revenue model;
+- market size and competitor landscape;
+- regulatory and structural risks;
+- expert-vetting verdict and pivots when supported;
+- search-grounded evidence and citations;
+- immediate next steps.
 
-- **Weekly Best (Pro/Builder):** Aggregated top-performing ideas based on user engagement and market signals.
-- **Weekly Trend Radar (Builder):** Macro analysis of emerging market shifts and opportunity areas.
-- **Futurecasting (Builder):** Long-term predictions for 2027, 2030, and 2035 horizons with rationale and impact analysis.
-- **Email Digest (Pro/Builder):** Daily summaries of high-signal opportunities delivered at 8:00 AM. Weekly Trend Radar digests available to Builder tier.
+### 4.3 Custom idea analysis — Pro and Builder
 
-### 4.3b. Custom Idea Analysis (Pro/Builder)
+- Submit a user-owned concept for rigorous AI-driven analysis.
+- Pro quota: 5 per month.
+- Builder quota: 20 per month.
+- Output includes the same evaluation depth as a complete feed idea.
+- The most recent result is persisted in `user_latest_idea/{uid}` and surfaced in the user library.
 
-- **Analyze Any Idea:** Submit a custom business concept for full AI-driven VC analysis outside the daily feed.
-- **Monthly Quota:** Pro users receive 5 analyses/month; Builder users receive 20 analyses/month.
-- **Output:** Same VC analysis depth as feed ideas — justification, revenue model, unfair advantage, market size, competitor landscape, and regulatory flags.
-- **Persistence:** Most recent analysis is stored per-user in `user_latest_idea/{uid}` and surfaced in the Saved tab.
+### 4.4 Custom requirement feed — Pro and Builder
 
+- Generate a focused feed from current market signals using user requirements.
+- Pro supports a focused keyword or constrained request.
+- Builder supports richer natural-language requirements.
+- Results are cached per user for 24 hours.
+- The API distinguishes complete, partial, and empty results rather than padding low-quality output.
 
-### 4.3c. Custom Requirement Feed (Pro/Builder)
+### 4.5 Personal opportunity radar — paid, phased
 
-- **Purpose:** Generate a focused feed from current market signals based on user-defined requirements rather than browsing only the global daily feed.
-- **Free:** Control is visible but locked/disabled as an upgrade path.
-- **Pro:** One keyword can be submitted per 24-hour window; returns up to 5 matching ideas.
-- **Builder:** Natural-language requirements can be submitted per 24-hour window; returns up to 5 matching ideas.
-- **Caching:** The first custom feed generated in a 24-hour window is cached per user and returned on repeat requests until the window expires.
-- **Result States:** The API must distinguish complete results (5 ideas), partial results (1-4 ideas), and empty results (0 ideas) so the UI can explain whether strong signal-backed matches were found.
+- Users follow markets, keywords, sectors, or saved ideas.
+- The system detects meaningful changes and records why they matter.
+- Alerts and digests are personal and trigger-based, not generic “new ideas” broadcasts.
+- Push notifications ship only after the radar produces a useful personal trigger.
 
-### 4.3d. Validation Toolkit (Pro/Builder)
+### 4.6 Validation and execution workspace
 
-- **Purpose:** Frameworks and templates for testing demand before launch.
-- **Contents:** AI-generated landing page copy, interview scripts, and validation checklists.
-- **Pro:** Access to validation toolkit generation for analyzed ideas.
-- **Builder:** Same as Pro, with advanced customization options.
+**Pro:**
 
-### 4.4. VC Analysis & Vetting
+- validation toolkit generation;
+- landing-page copy, interview scripts, and validation checklists;
+- intermediate action support.
 
-- **VC Justification:** Why this idea is venture-backable.
-- **Unfair Advantage:** Moats, patents, or unique distribution channels.
-- **Revenue Model:** Detailed breakdown of SaaS, Marketplace, or Service models.
-- **Market Dynamics:** Analysis of market size, competitor landscape, and regulatory flags.
+**Builder:**
 
-### 4.5. Builder-Specific Features
+- full 10+ step roadmap with milestones, tools, and risks;
+- step customization and completion tracking;
+- tracked experiments, notes, outcomes, and go/no-go decisions;
+- build packs and starter-repository prompts;
+- cross-idea “What I’m building” view;
+- progress/accountability and ship-log.
 
-- **Full Action Plan:** AI-generated 10+ step roadmap with milestones, tools, and risks.
-- **Plan Customization:** Add custom steps, remove steps, and mark steps as completed.
-- **VC Deep Dive:** AI-driven explanations for specific plan sections (Roadmap, Stack, Risks).
-- **Persistence:** Customized plans are saved and cached for fast viewing in the "Saved" tab.
-- **Build with Me:** Automated generation of prompt packs and starter repository structures.
-- **TE100 & API Access:** Priority access to the top 100 trending ideas and programmatic API integration.
-- **Weekly Trend Radar:** Macro analysis of emerging market shifts and opportunity areas.
-- **Futurecasting Engine:** Long-term predictions for 2027, 2030, and 2035 horizons with rationale and impact analysis.
-- **Advanced Alerts:** Real-time notifications for system updates and trend shifts.
-- **Expert Vetting:** AI-driven expert assessment and pivot suggestions for each idea.
+### 4.7 Saved library and personal Today view
 
-### 4.6. Exporting & Sharing
+- Saved ideas, custom analyses, tracked experiments, and build progress accrue in a user-owned workspace.
+- Saved ideas may show new evidence or meaningful market movement.
+- Paying users eventually open on a personal Today view: what changed, what needs action, and what progressed.
+- The generic daily feed becomes one module within the paid workspace.
 
-- One-click export to **PDF** (generated client-side via jsPDF).
-- **Notion / Google Docs:** Generates formatted Markdown copied to clipboard for direct paste — no OAuth integration required.
-- **CSV Export:** Bulk export of idea lists for external analysis.
+### 4.8 Market intelligence
 
-### 4.7. Community & Interaction
+- **Weekly Best — Pro/Builder:** strongest qualified opportunities and relevant changes.
+- **Weekly Trend Radar — Builder:** emerging shifts with evidence and implications.
+- **Futurecasting — Builder:** longer-horizon predictions with explicit rationale and uncertainty.
+- **Track record:** may be public only after prediction outcomes have a defined review and grading workflow. Publish-time snapshots alone are not a hit rate.
 
-- **Idea Threads:** Real-time commenting and feedback loop for every business concept.
-- **Alerts System:** Instant notifications for system updates, trend shifts, or community replies.
+### 4.9 Exporting and sharing
 
-### 4.8. Enterprise Landing Page (`/enterprise`)
+- Free: PDF/share of the featured idea.
+- Pro/Builder: PDF, CSV, and formatted Markdown for Notion/Google Docs clipboard.
+- Enterprise: custom data integration or API access.
 
-- **B2B Positioning:** A dedicated landing page targeted at VCs and Corporate Innovation teams.
-- **Messaging:** Focused on "Deal Flow Intelligence," "Sector Trend Monitoring," and "White Space Analysis."
-- **Lead Capture:** Integrated submission form for investment teams to request early access.
-- **Persistence:** Leads are captured in the `enterprise_leads` Firestore collection with source tracking.
+### 4.10 Community and co-founder features
 
----
+- Public idea threads and reactions may support evaluation and feedback.
+- Free remains read-only for comments; Pro+ may post.
+- Co-founder matching is future work. A cosmetic “seeking partner” toggle must not be marketed as matching until a genuine opt-in builders list, discovery flow, privacy model, and contact path exist.
 
-## 5. Technical Stack
+### 4.11 Enterprise
 
-- **Frontend:** React 19, TypeScript, Tailwind CSS 4.0, Vite 6.
-- **Mobile:** Capacitor 8 (Android & iOS integration).
-- **Animations:** Motion (framer-motion v12).
-- **Icons:** Lucide-React.
-- **Backend/Database:** Firebase (Authentication & Firestore); Vercel Serverless Functions (production API); Express BFF (local dev only, port 3001).
-- **AI Engine:** Google Gemini SDK (`@google/genai`).
-- **PDF Generation:** jsPDF.
-
----
-
-## 6. User Experience (UX) Design
-
-- **Dark Mode First:** A premium, high-tech aesthetic using Zinc and Emerald color palettes.
-- **Mobile-First & Native:** Fully responsive web design with native mobile support via Capacitor.
-- **Accessibility:** ARIA-compliant navigation, semantic HTML, and inclusive UI patterns.
-- **Performance:** Optimized loading with Skeleton Screens and optimistic UI states.
-- **Interactive Feedback:** Real-time saving, filtering, and community engagement.
+- Dedicated positioning for investors and corporate innovation teams.
+- Deal-flow intelligence, sector monitoring, and white-space analysis.
+- Anonymous lead capture through the serverless enterprise endpoint.
+- Custom feeds, dashboards, research, and integration based on contract.
 
 ---
 
-## 7. Future Roadmap
+## 5. Conversion and Subscription Experience
 
-- **Co-founder Matching:** Connect users interested in building the same concept.
-- **Live Market Data:** Integration with real-time stock, crypto, and market sentiment APIs.
-- **Advanced Analytics:** Dashboard for tracking personal portfolio performance and trend hit rates.
-- **Native Push Notifications:** Enhanced mobile engagement via Capacitor plugins.
+- The Free Idea of the Day remains uninterrupted.
+- Upgrade prompts appear after the complete idea or when the user requests a paid job such as seeing all ideas, custom analysis, radar, validation, or roadmap execution.
+- Context is preserved; users are not teleported to an unrelated pricing screen.
+- Discover / Evaluate / Execute is the canonical plan framing.
+- A reverse trial is a later isolated experiment, not part of the initial tier-v2 launch.
+- Cancellation flows should capture a concise reason and may offer a suitable pause, downgrade, or retention option without trapping the user.
+
+---
+
+## 6. Analytics and Success Measures
+
+### 6.1 Funnel events
+
+Track at minimum:
+
+- landing viewed;
+- featured idea viewed and depth reached;
+- evidence source opened;
+- save/sign-in attempted and completed;
+- more ideas or custom analysis requested;
+- contextual upgrade prompt viewed;
+- checkout started and completed;
+- day-2 and day-7 return.
+
+Anonymous activation must not disappear solely because there is no account ID. Use privacy-respecting session or aggregate event handling.
+
+### 6.2 North-star direction
+
+The long-term north-star is **Weekly Active Operators**: users who complete a meaningful opportunity-intelligence or execution action, not merely open the app.
+
+Examples include reviewing a change, saving with intent, updating a validation experiment, completing a roadmap step, or acting on a thesis alert.
+
+---
+
+## 7. Technical Stack
+
+- **Frontend:** React 19, TypeScript, Tailwind CSS 4, Vite 6.
+- **Mobile:** Capacitor 8.
+- **Backend:** Firebase Authentication and Firestore; Vercel Serverless Functions; Express BFF for local development.
+- **AI engine:** Google Gemini through the unified provider layer.
+- **Evidence:** Google Search grounding.
+- **Payments:** Stripe for web subscription lifecycle; native Android paid distribution requires an explicit Play Billing or eligible alternative-billing architecture decision before launch.
+- **Export:** jsPDF and structured client exports.
+
+---
+
+## 8. Security and Entitlement Requirements
+
+- The server re-reads tier from Firestore; the client never grants a tier.
+- Free clients receive one full featured idea through a server-side projection. The paid set must not be sent to the browser and hidden with CSS or array slicing.
+- Featured evidence is precomputed or cached so Free cannot invoke arbitrary paid evidence generation for other ideas.
+- New user fields require Firestore-rule allowlist review.
+- Account-scoped state is cleared on sign-out and account switch.
+- Checkout remains free-to-paid only; paid plan changes and cancellation use the Customer Portal.
+
+---
+
+## 9. UX Requirements
+
+- Dark-mode-first, mobile-first, accessible, and responsive.
+- Signal provenance and verified evidence are visually distinct from promotional copy.
+- No unsupported numerical signal decoration.
+- Loading, empty, error, anonymous, Free, Pro, Builder, and tier-loading states are designed explicitly.
+- A passing API call is not a completed journey; each action must have a usable end state.
+
+---
+
+## 10. Implementation Reference
+
+Canonical tier-v2 strategy and migration plan:
+
+`docs/superpowers/plans/2026-07-30-one-complete-free-idea-strategy.md`
+
+Cross-agent status and continuation guide:
+
+`docs/PROJECT_HANDOFF.md`
