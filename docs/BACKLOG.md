@@ -34,6 +34,7 @@ Strategy + full rationale: [2026-07-30 subscriber-growth redesign](superpowers/p
 | TE-56 | **Phase 3** — founder-fit onboarding + feed tuning: capture skills/budget/time, tune ordering via existing `founderFit` / `buyer` / `firstWedge` (un-parks the 2026-07-02 personalization item — Stripe has since shipped) | todo   | —     | L      |
 | TE-57 | **Phase 3** — public track record: surface `prediction-tracker` publish-time snapshots as an "our hit rate" trust view                                                                                                     | todo   | —     | M      |
 | TE-58 | **Phase 3** — habit loop: "what changed since yesterday" + a light streak + Builder roadmap-progress resurfacing                                                                                                           | todo   | —     | M      |
+| TE-59 | **Defect (ships alone)** — free-tier Evidence "Upgrade →" CTA is unreachable: `pointer-events-none` on the tooltip container blocks the click, and hover-only reveal hides it entirely on touch (`IdeaCard.tsx:277–298`)   | todo   | —     | S      |
 
 **TE-49 user story:** As the product owner, I want the real funnel drop-offs logged end to end — land → open an idea → hit an evidence teaser → see a paywall → start checkout → return on day 2 — so this wave is prioritized from evidence, not from my reading of the code.
 
@@ -54,6 +55,8 @@ Strategy + full rationale: [2026-07-30 subscriber-growth redesign](superpowers/p
 **TE-57 user story:** As a prospective subscriber, I want to see how the platform's past scored ideas actually did, so I can trust the scores enough to pay for them.
 
 **TE-58 user story:** As a subscriber, I want a daily payoff for opening the app — what changed, my streak, my roadmap progress — so the habit that retains me actually forms.
+
+**TE-59 user story:** As a free user who wants market evidence, I want the "Upgrade" prompt on the Evidence button to actually respond when I tap or click it, so the path to paying for the product's core feature isn't a dead control. **Defect, not design** — same class as TE-19 (dead upgrade buttons) and TE-45 (`checkoutTier` never passed): a CTA with no reachable handler. `IdeaCard.tsx:285` puts `pointer-events-none` on the tooltip wrapper and nests the "Upgrade →" `<button>` inside it, so the click never lands; the tooltip is also `group-hover`-only, so touch users never see it. Should ship independently of the wave-5 redesign, and any conversion metric taken before it is a broken baseline.
 
 ---
 
