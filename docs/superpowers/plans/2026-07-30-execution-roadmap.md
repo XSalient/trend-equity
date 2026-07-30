@@ -1,70 +1,123 @@
-# Execution Roadmap — what to do, in what order (all waves)
+# Execution Roadmap — Subscriber Growth and Must-Have Value
 
-**Date:** 2026-07-30
-**Status:** Proposed sequencing — single source of order across the defect fix, quality debt, Wave 5 (repackage) and Wave 6 (net-new value)
-**Companion docs:** [funnel playbook](2026-07-30-funnel-strategy-playbook.md) · [Wave 5 strategy](2026-07-30-subscriber-growth-redesign.md) · [Wave 6 value & re-engagement research](../../research/2026-07-30-value-and-reengagement-research.md) · [redesign concepts](../../design/2026-07-30-redesign-concepts.md) · [user research findings](../../research/2026-07-30-user-research-findings.md)
+**Date:** 2026-07-30  
+**Status:** Adopted sequencing for `claude/merge-subscriber-growth-branches`; implementation not started  
+**Canonical product model:** [One Complete Free Idea strategy](2026-07-30-one-complete-free-idea-strategy.md)  
+**Cross-agent status:** [Project handoff](../../PROJECT_HANDOFF.md)
 
-This doc exists because ordering was previously **scattered** across four docs (Wave 5 phases, Wave 6 dependency column, the redesign build-order table, the funnel sequencing note). This is the one place that says, end to end, _do this, then this, and here's the gate where you re-decide._
-
----
-
-## The two rules that fix the order
-
-1. **You can't fix a funnel you can't see, and you can't measure against a broken control.** So the defect fix (TE-59) and instrumentation (TE-49) come before everything — any conversion number taken before them is a lie.
-2. **Value before scaffolding.** Wave 5 _repackages_ existing value; Wave 6 _adds_ new value. Neither survives a feed that feels repetitive (TE-30/31) or a visitor who bounces in five seconds (activation). So the order is: **fix → see → activate → convert → DECIDE from data → retain/add-value.** The decision gate is load-bearing; the stages after it are re-ranked by what TE-49 shows, not by this doc's guesses.
+This roadmap replaces the earlier sequence that centered on a locked ten-card Free feed, a one-time evidence sample, and an immediate reverse trial. The new sequence first proves one complete daily evaluation, then sells breadth and recurring workflows.
 
 ---
 
-## The critical path (one list, in order)
+## 1. Rules that control the order
 
-Legend — **Gate** = do not proceed past until true. Effort S/M/L. "∥" = can run in parallel.
-
-| #   | Stage                                      | Item                                                                                        | Why here / gate                                                                                                                                                                                                       | Effort |
-| --- | ------------------------------------------ | ------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
-| 1   | **0 · Fix**                                | **TE-59** — reachable Evidence upgrade CTA (defect)                                         | Ships alone, first. It's the primary persona's dead end (findings U1) and a broken baseline for every conversion metric.                                                                                              | S      |
-| 2   | **0 · See**                                | **TE-49** — funnel instrumentation (land→open→teaser→paywall→checkout→day2)                 | Decides whether the rest of this order is right. Everything downstream is a hypothesis until this reports.                                                                                                            | S      |
-| 3   | **0 · Verify**                             | **Gate: confirm TE-16 anon read path actually works**                                       | Backlog says TE-16 shipped, but findings U2 still saw an empty anonymous landing. Activation (step 4–6) is pointless if a logged-out visitor sees nothing. **Reproduce in a real signed-out browser before Stage 1.** | S      |
-| 4   | **1 · Activate**                           | **TE-52** — why-now SignalRibbon on every card                                              | Cheapest activation win; surfaces the one thing an LLM can't say. Do first in the stage.                                                                                                                              | S      |
-| 5   | 1 · Activate                               | **TE-50** — plain-language WelcomeHero (kill the "five investability dimensions" jargon)    | Fixes the first five seconds (findings U3).                                                                                                                                                                           | S      |
-| 6   | 1 · Activate                               | **TE-51** — one fully-unlocked hero idea for anon visitors                                  | Needs the anon evidence payload (depends on step 3). Doubles as the anonymous _preview_ — pull forward if step 3 shows the landing is still thin.                                                                     | M      |
-| 7   | **2 · Convert**                            | **TE-53** — `UpgradePrompt` contextual paywall + blurred-real teaser                        | Core conversion surface; replaces every `setActiveTab('pro')` teleport (findings U5).                                                                                                                                 | M      |
-| 8   | 2 · Convert                                | **TE-54** — one-time evidence sample (taste the aha)                                        | Rides on TE-53.                                                                                                                                                                                                       | M      |
-| 9   | 2 · Convert                                | **TE-55** — job-based pricing (Discover/Evaluate/Execute)                                   | Copy/layout only; nearly free. ∥ with TE-54.                                                                                                                                                                          | S      |
-| 10  | 2 · Convert                                | **TE-67** — reverse trial (7-day full Pro) + annual pricing                                 | Net-new (Wave 6). Samples _breadth_ where TE-54 samples one idea. After TE-53/54 give a baseline.                                                                                                                     | M      |
-| —   | **★ GATE**                                 | **Read TE-49 data. Where is the biggest leak — activation, conversion, or retention?**      | **Re-rank everything below by the answer.** Kill criteria in the Wave 6 research doc. If day-2 return is already healthy, deprioritise the value pillars; if activation still leaks, loop back to Stage 1.            | —      |
-| 11  | **3 · Retain (trust)**                     | **TE-57** — public track record from `prediction-tracker`                                   | Trust in the score is trust in the subscription (findings U8). Also an acquisition asset.                                                                                                                             | M      |
-| 12  | 3 · Retain                                 | **TE-68** — cancellation exit-reason + save offer                                           | Cheapest churn instrument; turns the loudest signal into data. Pull earlier if churn is already visible.                                                                                                              | S      |
-| 13  | 3 · Retain                                 | **TE-56** — founder-fit onboarding + feed tuning **(with the `founderProfile` correction)** | `Idea.founderFit` is triage, not skill-fit — add `users/{uid}.founderProfile`, match on `buyer`/`firstWedge`/`costEffort`. Largest Wave 5 item.                                                                       | L      |
-| 14  | 3 · Retain                                 | **TE-58** — habit loop ("what changed" + streak + roadmap resurfacing)                      | Seed for TE-60/TE-65 below.                                                                                                                                                                                           | M      |
-| —   | **Quality lane (parallel, gates Stage 4)** | **TE-30 / TE-31** — intra-day diversity + right-sized publish count                         | Pillar 0. Run alongside Stages 1–3; **must be healthy before Stage 4** — no must-have workspace survives a repetitive feed.                                                                                           | M+S    |
-| 15  | **4 · Add value (must-have)**              | **TE-60** — "Today" personal home (presentation spine)                                      | Makes every pillar legible; v1 aggregates existing state (saves, roadmap progress). Gated on the ★ gate favouring retention/value.                                                                                    | L      |
-| 16  | 4 · Add value                              | **TE-61** — "My Thesis" radar + live monitoring                                             | The single highest-leverage must-have; also the engine that gives push a personal reason to exist.                                                                                                                    | L      |
-| 17  | 4 · Add value                              | **TE-62** — native + web push                                                               | **Gated on TE-61** so the first push is personal, never a generic broadcast.                                                                                                                                          | M      |
-| 18  | 4 · Add value                              | **TE-63** — personalized re-engagement digest                                               | Extends the Resend digest; ∥ with TE-62. Uses TE-56 fit + TE-61 radar.                                                                                                                                                | M      |
-| 19  | 4 · Add value                              | **TE-64** — validation-in-the-loop (tracked experiments)                                    | Switching-cost / churn defense; builds on the existing toolkit. ∥ with the radar chain.                                                                                                                               | L      |
-| 20  | 4 · Add value                              | **TE-65** — build accountability + ship-log                                                 | Extends TE-58 into an accountability loop.                                                                                                                                                                            | M      |
-| 21  | 4 · Add value                              | **TE-66** — real social proof + co-founder matching                                         | Last: network effects need density, and fabricated counts would break trust. Highest risk.                                                                                                                            | M      |
+1. **Repair known reliability debt before trusting funnel data.** The daily-generation test suite and anonymous read path must be verified.
+2. **Server-authoritative access before presentation.** Free must receive one full featured idea from the server, not all paid data hidden by the client.
+3. **Quality before quantity.** A weak idea is not published merely to satisfy 10/25/35 counts.
+4. **Complete value before upgrade pressure.** The featured free idea contains no locks or inline paywalls.
+5. **Measure the complete-free-idea funnel before adding trials or large retention infrastructure.**
+6. **Personal triggers before notifications.** Radar/change detection precedes push and personalized digest work.
+7. **Execution and user-owned state are the retention moat.** Build them after activation and conversion behaviour confirms the need.
 
 ---
 
-## Why this order and not another
+## 2. Critical path
 
-- **Stage 0 is non-negotiable and first.** The funnel playbook, the findings doc, and the Wave 6 research all independently land on "fix TE-59, ship TE-49, before anything." Three docs, one conclusion.
-- **Activation before conversion.** You cannot convert a visitor who never reached value — findings show the primary persona bounces at the door, not at the paywall.
-- **Conversion before the big retention/value bets.** Retention (Wave 5 Phase 3) and must-have value (Wave 6) are the most engineering. Spend it only after activation+conversion prove the value is landing and the ★ gate says retention/value is the real leak.
-- **The ★ gate is the point of the whole plan.** Everything before it is cheap and near-certain. Everything after it is expensive and data-dependent. The plan's job is to get you to that gate fast and honest, then let the data — not this table — rank Stages 3–4.
-- **Quality (TE-30/31) runs in parallel and gates Stage 4** rather than sitting in the serial line, because it's pipeline work independent of the funnel UI, but the value pillars are worthless on top of a repetitive feed.
+Legend: **Gate** means do not proceed until the condition is true. `∥` means the work can run in parallel.
+
+| # | Stage | Work | Result / gate | Effort |
+| --- | --- | --- | --- | --- |
+| 1 | **0 · Stabilize** | Repair TE-46 daily-generation tests and narrow programming-error masking | Generation, quality, signal, and tier behaviour have trustworthy tests | S |
+| 2 | 0 · Stabilize | Verify anonymous cached daily read in a real signed-out browser and API test | Anonymous users can receive the designated daily payload without triggering generation | S |
+| 3 | **0 · Observe** | Extend funnel instrumentation for anonymous and signed-in journeys | Landing → featured idea → source → save/sign-in → more requested → upgrade → checkout is measurable | M |
+| 4 | **1 · Define contract** | Specify anonymous/Free/Pro/Builder response shapes and low-quality-day behaviour | One testable entitlement contract, no client-only assumptions | S |
+| 5 | 1 · Define contract | Add structured signal-provenance schema or remove unsupported quantitative claims | Active UI and designs make only verifiable claims | M |
+| 6 | **2 · Tier-v2 backend** | Add deterministic `featuredIdeaId` and hard publishing threshold | Daily generation identifies one qualified featured idea and can publish a variable qualified count | M |
+| 7 | 2 · Tier-v2 backend | Implement server-side daily-read projection | Anonymous/Free receive one full idea; Pro/Builder receive the qualified paid set | M |
+| 8 | 2 · Tier-v2 backend | Precompute/cache featured evidence and lock arbitrary evidence generation by entitlement | Complete Free evidence works without exposing paid calls or uncontrolled cost | M |
+| 9 | **3 · Tier-v2 frontend** | Build one complete Idea of the Day, including honest empty/loading/error states | No blurred or locked sections inside the free idea | M |
+| 10 | 3 · Tier-v2 frontend | Add post-idea and intent-preserving upgrade surfaces | Upgrade is triggered by “more ideas” or a new workflow, not missing paragraphs | M |
+| 11 | 3 · Tier-v2 frontend | Reframe pricing as Discover / Evaluate / Execute | Tier promises match the PRD and implementation | S |
+| 12 | 3 · Tier-v2 frontend | Remove or quarantine stale locked-feed and evidence-sample behaviour | No active path contradicts the new free promise | M |
+| 13 | **4 · Verify** | Unit, integration, and mobile E2E tests for all tier and auth states | `npm run check` and targeted test suites pass; full user journey is exercised | M |
+| — | **★ DECISION GATE** | Read meaningful tier-v2 cohorts | Re-rank subsequent work using observed activation, request-more, checkout, and retention behaviour | — |
+| 14 | **5A · Trust** | Quality/diversity improvements and structured source provenance | The complete sample is consistently credible and non-repetitive | M–L |
+| 15 | 5A · Trust | Define prediction outcome review and grading before publishing a track record | Public credibility claims have a writer, reviewer, methodology, and misses | M |
+| 16 | **5B · Personal value** | Founder profile and personalized ranking | Paid feed and monitoring answer “for me,” not only “generally interesting” | L |
+| 17 | 5B · Personal value | My Thesis radar vertical slice: follow → detect change → explain → open | First recurring must-have workflow exists end to end | L |
+| 18 | 5B · Personal value | Saved-idea change detection | Saved items accrue new value instead of dead-ending | M |
+| 19 | 5B · Personal value | Personal Today view aggregating existing and new state | Paid users open on their work and changes, not a generic feed | L |
+| 20 | **5C · Re-engagement** | Personalized digest and web/native push | Messages are triggered by radar or saved changes; never generic broadcasts | M |
+| 21 | **5D · Retention moat** | Tracked validation experiments and portfolio | User evidence and decisions accrue in the product | L |
+| 22 | 5D · Retention moat | What I’m building, roadmap progress, accountability, and ship-log | Builder becomes a persistent execution workspace | L |
+| 23 | **5E · Churn learning** | Cancellation reason capture and suitable save options | Churn creates structured data and appropriate recovery paths | S–M |
+| 24 | **Later experiment** | Reverse trial, tested separately | Only after tier-v2 baseline; isolated cohort and economics | M |
+| 25 | **Last** | Genuine co-founder discovery and contact journey | Only after sufficient builder density, privacy design, and real user demand | L |
 
 ---
 
-## Fastest path to signal (if you only do six things)
+## 3. First implementation milestone
 
-For a resource-constrained sprint, this subset reaches a measured decision with minimum spend:
+The first milestone is a complete, deployable vertical slice—not a collection of mock components.
 
-**TE-59 → TE-49 → TE-52 → TE-50 → TE-53 → (read data).**
+### Included
 
-That is: fix the dead button, turn on measurement, make the moat visible, say what the app is in plain words, convert in place — then let the funnel tell you whether to invest in conversion depth (TE-54/55/67) or jump to retention/value (Stage 3–4). Everything else is sequenced but should wait for that first read.
+- stable featured-idea selection;
+- server projection for anonymous/Free/Pro/Builder;
+- complete free evidence and analysis;
+- honest zero-qualified-idea state;
+- one mobile-first Idea of the Day screen;
+- post-idea upgrade module;
+- Discover/Evaluate/Execute pricing copy;
+- funnel events;
+- automated contract and user-journey tests.
+
+### Excluded
+
+- reverse trial;
+- push notifications;
+- generic digest expansion;
+- public hit-rate claims;
+- large Today dashboard;
+- co-founder matching;
+- cosmetic signal percentages not supported by source data.
 
 ---
 
-_All effort/ordering is a proposal, not a commitment past the ★ gate. Item definitions and user stories live in [`docs/BACKLOG.md`](../../BACKLOG.md); this doc only orders them._
+## 4. Decision gate interpretation
+
+After enough real traffic exists to avoid reacting to isolated sessions:
+
+- **Low featured-idea viewing or scroll depth:** repair first-run presentation, latency, mobile layout, or idea quality.
+- **Deep evaluation but few requests for more:** paid differentiation is unclear; strengthen breadth, monitoring, personalization, and workflow messaging.
+- **Many requests for more but weak checkout starts:** examine price, trust, plan composition, or contextual upgrade copy.
+- **Checkout starts but weak completion:** examine Stripe journey, billing confidence, payment errors, and plan selection.
+- **Healthy conversion but weak day-7/30 return:** prioritize radar, saved changes, validation, Today view, and execution state.
+- **Healthy retention without large workspace features:** avoid unnecessary engineering; improve the proven loop instead.
+
+---
+
+## 5. Parallel quality lane
+
+The following can run alongside tier-v2 work but must not destabilize the critical path:
+
+- intra-day and cross-day semantic diversity;
+- source normalization and provenance;
+- strict quality threshold and variable publish count;
+- performance/cost monitoring for featured evidence;
+- correction of the current `founderFit` naming mismatch before personalization;
+- replacement of generic digest content with personal triggers only after the trigger model exists.
+
+---
+
+## 6. Documentation and continuation rule
+
+Every implementation milestone updates in the same change:
+
+- `docs/PROJECT_HANDOFF.md` for current state and next action;
+- `docs/BACKLOG.md` for task status;
+- `DECISIONS.md` for material decisions;
+- `PRD.md` when the promised product changes;
+- `CHANGELOG.md` only when implementation ships.
+
+Work remains on `claude/merge-subscriber-growth-branches`. Do not push or merge to `main` without explicit owner approval.
