@@ -1,75 +1,127 @@
-# Design workstream — subscriber-growth redesign
+# Design Workstream — Subscriber Growth Redesign
 
-**Branch:** `claude/subscriber-growth-redesign-x5fipt`
-**Status:** design plans + generated concepts committed; no app code changed, nothing merged.
-**Purpose of this file:** a single entry point so the design work can be picked up from **any device with any AI tool** — everything below is in the repo (or reproducible from it), not in a session scratchpad.
+**Working branch:** `claude/merge-subscriber-growth-branches`  
+**Status:** historical concepts generated; product behaviour requires tier-v2 redesign before implementation  
+**Cross-agent entry point:** [`../PROJECT_HANDOFF.md`](../PROJECT_HANDOFF.md)
 
----
-
-## What's here (read in this order)
-
-| #   | Doc                                                                                                                      | What it is                                                           |
-| --- | ------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------- |
-| 1   | [`../research/2026-07-30-user-research-findings.md`](../research/2026-07-30-user-research-findings.md)                   | The user-side evidence (persona walkthroughs, findings U1–U15)       |
-| 2   | [`../research/2026-07-30-value-and-reengagement-research.md`](../research/2026-07-30-value-and-reengagement-research.md) | Net-new value + re-engagement (Q1/Q2/Q4, Wave 6 items)               |
-| 3   | [`2026-07-30-redesign-concepts.md`](2026-07-30-redesign-concepts.md)                                                     | Component-level concepts (A/B/C campaigns)                           |
-| 4   | [`2026-07-30-mobile-home-screens.md`](2026-07-30-mobile-home-screens.md)                                                 | First pass — the 3 home states (activation / conversion / retention) |
-| 5   | [`2026-07-30-mobile-screens.md`](2026-07-30-mobile-screens.md)                                                           | **Current plan** — 8 full-product screens, user-journey-first        |
-| 6   | [`stitch/DESIGN.md`](stitch/DESIGN.md)                                                                                   | The generated design system (tokens, type, components)               |
-| 7   | [`stitch/README.md`](stitch/README.md)                                                                                   | Stitch project + all screen ids (view/export)                        |
-| 8   | [`stitch/generate/`](stitch/generate/)                                                                                   | The scripts + exact prompts to reproduce every screen                |
-
-> **Note on doc 4 vs 5:** doc 5 is the current, broader plan (whole product). Doc 4
-> is kept because its three home _states_ (anonymous / free / subscriber) are more
-> detailed than doc 5's single "Daily Feed" entry — they're complementary, not
-> duplicates.
-
-## Generated designs (Google Stitch, Gemini 3 Pro)
-
-- **Project:** `projects/13591160038311824941` — one project, so all 11 screens
-  share the design system in `stitch/DESIGN.md`. Open it in the Stitch web app
-  (signed in as the API-key owner) to view, edit, or export.
-- **Screen ids:** in [`stitch/README.md`](stitch/README.md).
-- **Reproduce / extend:** [`stitch/generate/`](stitch/generate/) — `STITCH_API_KEY` in env, `node 02-full-product-screens.mjs`.
-
-## Viewable mockup boards (Claude artifacts)
-
-High-fidelity HTML boards, useful when the Stitch pixels can't be pulled into a
-sandbox (see egress note below). These are session artifacts, not repo files —
-re-render from the plan docs if the links expire:
-
-- Full-product set (8 screens): `claude.ai/code/artifact/90d1b567-551f-477f-ab36-2a479f9af1b7`
-- Home states (3 screens): `claude.ai/code/artifact/34038a2d-0a21-420a-8049-1b2aaa8f5284`
-
-## Known environment limitation
-
-Stitch streams rendered HTML/PNG from `contribution.usercontent.google.com` and
-`lh3.googleusercontent.com`. **Claude Code's web sandbox blocks those two hosts**
-(egress-policy 403 on CONNECT), so from that environment only the design-system
-spec (`DESIGN.md`, from the allowed `stitch.googleapis.com`) can be retrieved.
-From a normal machine the SDK downloads work; or export from the Stitch web app.
+This directory contains research-derived screen plans and Google Stitch outputs. It is reproducible and useful as a visual reference, but it is **not a final product specification**. The owner has adopted a new Free model after these screens were generated: one complete Idea of the Day with no locks inside it.
 
 ---
 
-## Status & what's next
+## Canonical read order
 
-**Done**
+1. [`../PROJECT_HANDOFF.md`](../PROJECT_HANDOFF.md) — current branch status and continuation rules.
+2. [`../superpowers/plans/2026-07-30-one-complete-free-idea-strategy.md`](../superpowers/plans/2026-07-30-one-complete-free-idea-strategy.md) — current product model.
+3. [`../../PRD.md`](../../PRD.md) — tier promises and requirements.
+4. [`../superpowers/plans/2026-07-30-execution-roadmap.md`](../superpowers/plans/2026-07-30-execution-roadmap.md) — build order.
+5. This directory’s concept and generated-design documents.
 
-- Research (findings + value/re-engagement) and component concepts.
-- Two screen plans: 3 home states + 8 full-product screens.
-- All 11 screens generated in Stitch (shared design system) + scripts/prompts committed.
+Where an older design conflicts with the first four files, the older design must be revised rather than implemented literally.
 
-**Open / next**
+---
 
-- Decide the reference of record: Stitch project vs the HTML boards.
-- Deepen unhappy states (empty / loading / `tierLoading` / anonymous) per screen — plans currently show mostly the happy path.
-- Type decision: adopt the Stitch pairing (Archivo Narrow + Geist) or keep the current system stack.
-- Onboarding / founder-fit (TE-56) screen once that ticket is built (deliberately out of the developed-only set today).
-- When building: the plans map each screen to its components and roadmap tickets — start from doc 5's tables.
+## What is available
 
-## How to continue from any device / tool
+| Artifact | Purpose | Current status |
+| --- | --- | --- |
+| [`../research/2026-07-30-user-research-findings.md`](../research/2026-07-30-user-research-findings.md) | Expert persona walkthroughs and product findings | Useful hypotheses; not moderated user research |
+| [`../research/2026-07-30-value-and-reengagement-research.md`](../research/2026-07-30-value-and-reengagement-research.md) | Must-have value and re-engagement reasoning | Useful strategic input |
+| [`2026-07-30-redesign-concepts.md`](2026-07-30-redesign-concepts.md) | Component and campaign concepts | Requires tier-v2 reconciliation |
+| [`2026-07-30-mobile-home-screens.md`](2026-07-30-mobile-home-screens.md) | Three home states | Free state is stale; subscriber state remains directionally useful |
+| [`2026-07-30-mobile-screens.md`](2026-07-30-mobile-screens.md) | Whole-product mobile screen plan | Daily Feed and Pricing screens require revision |
+| [`stitch/DESIGN.md`](stitch/DESIGN.md) | Visual tokens, type, color, component direction | Reusable visual reference |
+| [`stitch/README.md`](stitch/README.md) | Stitch project and screen IDs | Historical run manifest |
+| [`stitch/generate/`](stitch/generate/) | Exact generation scripts/prompts | Reproducible, but prompts contain stale tier behaviour |
 
-1. `git checkout claude/subscriber-growth-redesign-x5fipt`
-2. Read this file, then docs 5, 6, 7 above.
-3. To regenerate or add screens: `docs/design/stitch/generate/` (needs `STITCH_API_KEY`).
-4. To re-render a viewable board: the plan docs contain the full per-screen content; rebuild the HTML from them.
+---
+
+## Adopted design behaviour
+
+### Anonymous and Free home
+
+The primary home surface is one complete **Idea of the Day**:
+
+1. Plain-language value statement.
+2. Honest signal provenance.
+3. Complete idea evaluation.
+4. Verified evidence and source links.
+5. Starter next actions.
+6. Save/share or sign-in actions where relevant.
+7. A clean post-idea module offering paid breadth or a new workflow.
+
+The screen must not show:
+
+- a second blurred card as the main conversion mechanism;
+- locked sections within the featured idea;
+- a one-time “sample evidence” allowance;
+- unsupported momentum percentages;
+- “10 free ideas” copy.
+
+### Pro and Builder home
+
+The subscriber Today direction remains useful: personal radar, saved changes, what the user is building, validation state, and a smaller daily-feed module. It remains future work and must follow the tier-v2 activation/conversion slice and decision gate.
+
+### Pricing
+
+Use the job-based framing:
+
+- **Discover — Free:** one complete daily opportunity.
+- **Evaluate — Pro:** all qualified opportunities and repeatable evaluation/monitoring.
+- **Execute — Builder:** validation, roadmap, build, accountability, and advanced intelligence.
+
+Do not describe Builder primarily as a larger daily idea count.
+
+---
+
+## Visual system that remains valid
+
+The generated visual system can be reused after accessibility and bundle impact are checked:
+
+- near-black `#09090b` background;
+- zinc `#18181b` surfaces and `#27272a` structural borders;
+- emerald `#10b981` for primary actions and growth;
+- cyan `#22d3ee` only for verified evidence/citations;
+- amber-to-coral only for live market signal;
+- matte tonal layering rather than glass effects;
+- strong display hierarchy with calm body/data typography.
+
+The Archivo Narrow + Geist pairing is a proposal, not an adopted dependency decision. The system font stack remains valid until font performance, licensing/distribution, and visual consistency are reviewed.
+
+---
+
+## Required next design work
+
+Before production implementation, create a revised tier-v2 screen set covering:
+
+1. Anonymous first visit with one complete featured idea.
+2. Signed-in Free state with the same content entitlement plus save/persistence.
+3. Post-idea upgrade module: see all qualified ideas / analyze my idea.
+4. Pro daily set and contextual paid workflow entry points.
+5. Builder execution workspace entry point.
+6. Zero-qualified-idea day.
+7. Loading, error, offline, evidence-unavailable, and `tierLoading` states.
+8. Mobile billing handoff state once Android billing architecture is decided.
+
+The first production design target is the complete Idea-of-the-Day vertical slice, not the full Today dashboard.
+
+---
+
+## Stitch project
+
+- Project: `projects/13591160038311824941`
+- Existing screen IDs: [`stitch/README.md`](stitch/README.md)
+- Generation scripts: [`stitch/generate/`](stitch/generate/)
+- Environment: `STITCH_API_KEY` must be supplied through environment configuration and never committed.
+
+The existing screen IDs are historical references. Generate new screen IDs for tier-v2 revisions instead of silently overwriting the old manifest; this preserves design history and makes comparisons possible.
+
+---
+
+## Continuation from any tool or device
+
+1. Check out `claude/merge-subscriber-growth-branches`.
+2. Read `docs/PROJECT_HANDOFF.md` and the one-complete-free-idea strategy.
+3. Treat existing screens as visual references, not behaviour requirements.
+4. Record new generated screen IDs and prompts in-repo.
+5. Update this file’s status when the revised tier-v2 screen set is created.
+6. Do not merge or push changes to `main` without explicit owner approval.
