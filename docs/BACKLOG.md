@@ -60,6 +60,48 @@ Strategy + full rationale: [2026-07-30 subscriber-growth redesign](superpowers/p
 
 ---
 
+## Next — P2 (wave 6): net-new value, must-have & re-engagement
+
+Research + full rationale: [2026-07-30 value, must-have & re-engagement research](research/2026-07-30-value-and-reengagement-research.md).
+
+**Thesis:** Wave 5 _repackages_ existing value (by its own statement, "no feature is invented"). But an AI idea feed is **content**, and content is nice-to-have — every target user says they'd replace it with a prompt or a newsletter. Must-have comes from turning the user from **reader** into **operator**: give them **accrued personal state** (a thesis radar, tracked validation, build progress) and **switching cost**, and a **personal, time-sensitive reason to return**. This wave adds the value layer Wave 5 excluded, plus the two conversion/churn levers Wave 5 left on the table (reverse trial, exit-reason capture).
+
+**Sequencing constraint (non-negotiable):** nothing here precedes TE-49 measurement or Wave 5's activation/conversion fixes. A workspace built for users who bounce in five seconds is wasted engineering. Every item is a hypothesis until TE-49 shows day-2 return is the real leak — see the kill criteria in the research doc. Pillar 0 (idea quality / anti-repetition, existing TE-30/TE-31) gates all of it.
+
+| ID    | Task                                                                                                                                                                                                                                                | Status | Owner | Effort |
+| ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ | ----- | ------ |
+| TE-60 | **"Today" personal home** — open the app on a dashboard of _my_ state (radar, experiments, what I'm building, streak, saved-idea deltas); the daily feed becomes one module. v1 aggregates existing state (saves, roadmap progress)                 | todo   | —     | L      |
+| TE-61 | **"My Thesis" radar + live monitoring** — follow spaces/keywords/ideas; server monitors `signals.ts` for the user's thesis and emits personal alerts (spike / new match / saved-idea market move); new `users/{uid}` follow state + rules allowlist | todo   | —     | L      |
+| TE-62 | **Native + web push** — add `@capacitor/push-notifications` + FCM (Android + web), permission UX, token storage, delivery pipeline. Gated on TE-61 so the first push is personal, never generic                                                     | todo   | —     | M      |
+| TE-63 | **Personalized re-engagement digest** — extend the Resend digest + push from generic to personal (radar + founder-fit + "you missed N that fit you"); tier- and consent-aware recipients                                                            | todo   | —     | M      |
+| TE-64 | **Validation-in-the-loop** — turn validation-toolkit output into a tracked experiment on a saved idea (status, outcomes, notes) + a validation portfolio view; completes the thesis's "track if it worked" for the _user's_ actions                 | todo   | —     | L      |
+| TE-65 | **Build accountability & ship-log** — cross-idea "What I'm building", ethical streak tied to _completed roadmap steps_ (not app opens), weekly check-in; extends TE-58 from a resurfacing strip into an accountability loop                         | todo   | —     | M      |
+| TE-66 | **Real social proof + co-founder matching** — show genuine "N looking · N building" from `idea_stats`/`idea_reactions`; convert the cosmetic `seekingPartner` toggle into an opt-in builders list with a contact path. Never fabricate counts       | todo   | —     | M      |
+| TE-67 | **Reverse trial + annual pricing** — 7-day full-Pro trial that drops to Free (samples _breadth_, where TE-54 samples one idea); annual + founding-member options in `PricingSection`. Trial state server-enforced, never client-written             | todo   | —     | M      |
+| TE-68 | **Cancellation exit-reason + save offer** — one-tap reason + pause / downgrade-keeping-radar / discount in the portal return path; writes to an analytics collection. Cheapest, earliest Q4 item — turns the loudest signal into data               | todo   | —     | S      |
+
+**TE-60 user story:** As a returning user, I want the app to open on _my_ workspace — my radar, my experiments, what I'm building, what changed on the ideas I saved — not a generic feed, so it becomes a dashboard I check rather than a feed I sometimes visit.
+
+**TE-61 user story:** As a founder or investor, I want to follow the 1–3 spaces I actually care about and be told when _my_ corner of the market moves, so the app does a job I currently do by hand every week — and gives every notification a personal reason to exist.
+
+**TE-62 user story:** As someone who installed the app and drifted away, I want a timely, personal nudge when something in _my_ space or on _my_ saved ideas changes, so there's a reason to reopen it that a newsletter can't give me. (Push is gated on TE-61 so it is never a generic "10 new ideas" broadcast — that would burn the channel.)
+
+**TE-63 user story:** As a subscriber, I want my digest to be about _me_ — the ideas that fit my profile, the moves in my radar, the ones I missed — so it's worth opening instead of one more generic newsletter.
+
+**TE-64 user story:** As a founder validating an idea, I want my landing-page results and interview notes tracked next to the idea, with a go/no-go verdict, so my validation work accrues here and I keep coming back to update it — and cancelling means abandoning my own experiments.
+
+**TE-65 user story:** As a builder, I want a persistent view of what I'm building and a streak that rewards _shipping steps_ (not opening the app), so momentum is visible and quitting feels like a loss.
+
+**TE-66 user story:** As a user weighing an idea, I want to see how many others are looking at and building it, and to reach the ones open to a co-founder, so the decision isn't made alone — and the network keeps me here.
+
+**TE-67 user story:** As a free user whose "aha" is the whole experience, not one idea, I want a short window of full Pro so I can feel whether it fits how I work before paying; and as someone ready to commit, I want an annual option that costs less.
+
+**TE-68 user story:** As the owner, when a subscriber cancels I want to know _why_ in one tap and offer them a pause, a radar-keeping downgrade, or a discount, so the loudest signal in the business becomes data and some cancels become saves. (Exit-reason capture is flagged as missing in the funnel playbook's Campaign C.)
+
+**Wave 6 cross-references:** TE-56 needs a refinement — `Idea.founderFit` is a quality-triage enum (`keeper|salvageable|cut`), _not_ skill-fit; personalization must add `users/{uid}.founderProfile` and match on `buyer`/`firstWedge`/`costEffort`. TE-58 is the seed for TE-60 (home) and TE-65 (accountability) — build TE-58 first, then extend. TE-30/TE-31 (idea quality, anti-repetition) gate the whole wave.
+
+---
+
 ## Now — P0: cost & abuse hardening
 
 Detailed steps for TE-01…TE-10: [2026-07-08 pain-point remediation plan](superpowers/plans/2026-07-08-pain-point-remediation.md).

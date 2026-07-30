@@ -118,6 +118,8 @@ Filed as **TE-49 … TE-58** — status `todo`, sequenced by phase:
 
 Nothing here is adopted in `DECISIONS.md` yet — this plan is `Proposed`, and the reframe becomes a recorded decision only once Phase 0 data backs it or you accept it outright.
 
+**Follow-on (Wave 6, net-new value):** this plan deliberately invents nothing — it re-sequences existing features. The question of what value to _add_ to make the app must-have, and how to re-engage dormant installed users, is researched separately in [value, must-have & re-engagement research](../../research/2026-07-30-value-and-reengagement-research.md) (filed as TE-60…TE-68). That wave is gated behind this one: a workspace built for users who don't activate is wasted engineering.
+
 ---
 
 _Grounds: `App.tsx`, `PricingSection.tsx`, `IdeaCard_`components,`constants.ts` (`TIER_LIMITS`), `PRD.md`, and the value-ladder decision in `DECISIONS.md` (Free = discover, Pro = evaluate, Builder = execute). No feature in this plan is invented — all exist in the codebase and are re-sequenced, not added.\*
