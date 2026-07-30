@@ -12,6 +12,96 @@ Single source of truth for all planned, in-progress, and recently shipped work. 
 
 Related docs: [PRD.md](../PRD.md) (what the product is) · [DECISIONS.md](../DECISIONS.md) (why things are the way they are) · [CHANGELOG.md](../CHANGELOG.md) (what shipped when) · [CLAUDE.md](../CLAUDE.md) (how to work in this codebase).
 
+**▶ Execution order across all waves:** the single end-to-end sequence — defect fix → measurement → activation → conversion → **decision gate** → retention/value — is in [2026-07-30 execution roadmap](superpowers/plans/2026-07-30-execution-roadmap.md). The wave tables below define _what_ each item is; the roadmap defines _in what order_ and _behind which gate_. Fastest path to a measured decision: **TE-59 → TE-49 → TE-52 → TE-50 → TE-53 → read the data.**
+
+---
+
+## Now — P1 (wave 5): subscriber-growth redesign (activation → conversion → retention)
+
+Strategy + full rationale: [2026-07-30 subscriber-growth redesign](superpowers/plans/2026-07-30-subscriber-growth-redesign.md).
+
+**Thesis:** stop selling "ideas" — AI idea generation is commodity now (free vs. any LLM). Sell the four things a free prompt can't: live-signal grounding (`signals.ts`), verified evidence (`evidence.ts`), curation (`quality-engine.ts`), and the build→track loop (roadmap + `prediction-tracker.ts`). The funnel leaks at all three stages (people don't activate, don't convert, and churn), so it's fixed as one system, in order — you cannot fix conversion if nobody activates.
+
+**Sequencing constraint:** TE-49 (Phase 0 instrumentation) lands first. Every priority below is a hypothesis derived from reading the code, not from funnel data — TE-49 decides whether the ranking holds. `logEvent` already exists (TE-09) with 5 events; this wave _fills gaps_, it doesn't rebuild.
+
+| ID    | Task                                                                                                                                                                                                                       | Status | Owner | Effort |
+| ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ | ----- | ------ |
+| TE-49 | **Phase 0** — funnel instrumentation: add activation + paywall + return events (`first_idea_opened`, `evidence_teaser_tapped`, `paywall_shown`, `checkout_started`, `day2_return`) on top of TE-09's `logEvent`            | todo   | —     | S      |
+| TE-50 | **Phase 1** — first-run value moment: replace the "five investability dimensions" intro (`App.tsx`) with a plain-language "why this beats a free prompt" hook for new/anonymous visitors                                   | todo   | —     | S      |
+| TE-51 | **Phase 1** — hero-idea taste: show new/anonymous visitors one fully-unlocked idea (signal + evidence + analysis) before the locked feed                                                                                   | todo   | —     | M      |
+| TE-52 | **Phase 1** — why-now signal prominence: lead each card with the live signal ("▲ trending on Product Hunt this week") from existing `signals` / `trendSources` data                                                        | todo   | —     | S      |
+| TE-53 | **Phase 2** — `UpgradePrompt` contextual paywall: replace every `setActiveTab('pro')` gate with an in-context modal framed around the action the user took                                                                 | todo   | —     | M      |
+| TE-54 | **Phase 2** — one-time evidence sample: let a free user fully unlock Market Evidence on one idea, once, then paywall the rest (server one-shot flag + client)                                                              | todo   | —     | M      |
+| TE-55 | **Phase 2** — job-based pricing: reframe tiers as Discover / Evaluate / Execute (same features + prices, decision-first framing) in `PricingSection`                                                                       | todo   | —     | S      |
+| TE-56 | **Phase 3** — founder-fit onboarding + feed tuning: capture skills/budget/time, tune ordering via existing `founderFit` / `buyer` / `firstWedge` (un-parks the 2026-07-02 personalization item — Stripe has since shipped) | todo   | —     | L      |
+| TE-57 | **Phase 3** — public track record: surface `prediction-tracker` publish-time snapshots as an "our hit rate" trust view                                                                                                     | todo   | —     | M      |
+| TE-58 | **Phase 3** — habit loop: "what changed since yesterday" + a light streak + Builder roadmap-progress resurfacing                                                                                                           | todo   | —     | M      |
+| TE-59 | **Defect (ships alone)** — free-tier Evidence "Upgrade →" CTA is unreachable: `pointer-events-none` on the tooltip container blocks the click, and hover-only reveal hides it entirely on touch (`IdeaCard.tsx:277–298`)   | todo   | —     | S      |
+
+**TE-49 user story:** As the product owner, I want the real funnel drop-offs logged end to end — land → open an idea → hit an evidence teaser → see a paywall → start checkout → return on day 2 — so this wave is prioritized from evidence, not from my reading of the code.
+
+**TE-50 user story:** As a first-time visitor, I want the opening screen to tell me in plain words what this is and why it beats asking ChatGPT for ideas, so I understand the value in five seconds instead of parsing "five investability dimensions."
+
+**TE-51 user story:** As a new visitor, I want to see one complete idea — live signal, cited evidence, full analysis — before I hit the locked feed, so I feel the product's core value instead of only reading about it behind locks.
+
+**TE-52 user story:** As a user scanning the feed, I want each idea to lead with why it's surfacing _now_ (the live signal), so the one thing a static LLM can't tell me is the first thing I see.
+
+**TE-53 user story:** As a free user who taps a locked feature, I want an upgrade prompt about _that_ feature right where I am, not to be dumped on a pricing tab away from what I wanted — and as the owner, I want the paywall to convert at the moment of peak intent.
+
+**TE-54 user story:** As a free user, I want to unlock the evidence on one idea once so I can feel what Pro delivers, so my decision to pay is based on the real aha, not a feature list.
+
+**TE-55 user story:** As someone choosing a plan, I want the three tiers framed as where I am — discovering, evaluating, or executing — so picking one is a decision about me, not a feature-count comparison.
+
+**TE-56 user story:** As a returning user, I want the feed tuned to my skills, budget and time so it reads as "ideas for me," giving me a reason to come back daily and a reason to pay. (Un-parks the 2026-07-02 personalization decision, now that Stripe has shipped and proven the paid path.)
+
+**TE-57 user story:** As a prospective subscriber, I want to see how the platform's past scored ideas actually did, so I can trust the scores enough to pay for them.
+
+**TE-58 user story:** As a subscriber, I want a daily payoff for opening the app — what changed, my streak, my roadmap progress — so the habit that retains me actually forms.
+
+**TE-59 user story:** As a free user who wants market evidence, I want the "Upgrade" prompt on the Evidence button to actually respond when I tap or click it, so the path to paying for the product's core feature isn't a dead control. **Defect, not design** — same class as TE-19 (dead upgrade buttons) and TE-45 (`checkoutTier` never passed): a CTA with no reachable handler. `IdeaCard.tsx:285` puts `pointer-events-none` on the tooltip wrapper and nests the "Upgrade →" `<button>` inside it, so the click never lands; the tooltip is also `group-hover`-only, so touch users never see it. Should ship independently of the wave-5 redesign, and any conversion metric taken before it is a broken baseline.
+
+---
+
+## Next — P2 (wave 6): net-new value, must-have & re-engagement
+
+Research + full rationale: [2026-07-30 value, must-have & re-engagement research](research/2026-07-30-value-and-reengagement-research.md).
+
+**Thesis:** Wave 5 _repackages_ existing value (by its own statement, "no feature is invented"). But an AI idea feed is **content**, and content is nice-to-have — every target user says they'd replace it with a prompt or a newsletter. Must-have comes from turning the user from **reader** into **operator**: give them **accrued personal state** (a thesis radar, tracked validation, build progress) and **switching cost**, and a **personal, time-sensitive reason to return**. This wave adds the value layer Wave 5 excluded, plus the two conversion/churn levers Wave 5 left on the table (reverse trial, exit-reason capture).
+
+**Sequencing constraint (non-negotiable):** nothing here precedes TE-49 measurement or Wave 5's activation/conversion fixes. A workspace built for users who bounce in five seconds is wasted engineering. Every item is a hypothesis until TE-49 shows day-2 return is the real leak — see the kill criteria in the research doc. Pillar 0 (idea quality / anti-repetition, existing TE-30/TE-31) gates all of it.
+
+| ID    | Task                                                                                                                                                                                                                                                | Status | Owner | Effort |
+| ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ | ----- | ------ |
+| TE-60 | **"Today" personal home** — open the app on a dashboard of _my_ state (radar, experiments, what I'm building, streak, saved-idea deltas); the daily feed becomes one module. v1 aggregates existing state (saves, roadmap progress)                 | todo   | —     | L      |
+| TE-61 | **"My Thesis" radar + live monitoring** — follow spaces/keywords/ideas; server monitors `signals.ts` for the user's thesis and emits personal alerts (spike / new match / saved-idea market move); new `users/{uid}` follow state + rules allowlist | todo   | —     | L      |
+| TE-62 | **Native + web push** — add `@capacitor/push-notifications` + FCM (Android + web), permission UX, token storage, delivery pipeline. Gated on TE-61 so the first push is personal, never generic                                                     | todo   | —     | M      |
+| TE-63 | **Personalized re-engagement digest** — extend the Resend digest + push from generic to personal (radar + founder-fit + "you missed N that fit you"); tier- and consent-aware recipients                                                            | todo   | —     | M      |
+| TE-64 | **Validation-in-the-loop** — turn validation-toolkit output into a tracked experiment on a saved idea (status, outcomes, notes) + a validation portfolio view; completes the thesis's "track if it worked" for the _user's_ actions                 | todo   | —     | L      |
+| TE-65 | **Build accountability & ship-log** — cross-idea "What I'm building", ethical streak tied to _completed roadmap steps_ (not app opens), weekly check-in; extends TE-58 from a resurfacing strip into an accountability loop                         | todo   | —     | M      |
+| TE-66 | **Real social proof + co-founder matching** — show genuine "N looking · N building" from `idea_stats`/`idea_reactions`; convert the cosmetic `seekingPartner` toggle into an opt-in builders list with a contact path. Never fabricate counts       | todo   | —     | M      |
+| TE-67 | **Reverse trial + annual pricing** — 7-day full-Pro trial that drops to Free (samples _breadth_, where TE-54 samples one idea); annual + founding-member options in `PricingSection`. Trial state server-enforced, never client-written             | todo   | —     | M      |
+| TE-68 | **Cancellation exit-reason + save offer** — one-tap reason + pause / downgrade-keeping-radar / discount in the portal return path; writes to an analytics collection. Cheapest, earliest Q4 item — turns the loudest signal into data               | todo   | —     | S      |
+
+**TE-60 user story:** As a returning user, I want the app to open on _my_ workspace — my radar, my experiments, what I'm building, what changed on the ideas I saved — not a generic feed, so it becomes a dashboard I check rather than a feed I sometimes visit.
+
+**TE-61 user story:** As a founder or investor, I want to follow the 1–3 spaces I actually care about and be told when _my_ corner of the market moves, so the app does a job I currently do by hand every week — and gives every notification a personal reason to exist.
+
+**TE-62 user story:** As someone who installed the app and drifted away, I want a timely, personal nudge when something in _my_ space or on _my_ saved ideas changes, so there's a reason to reopen it that a newsletter can't give me. (Push is gated on TE-61 so it is never a generic "10 new ideas" broadcast — that would burn the channel.)
+
+**TE-63 user story:** As a subscriber, I want my digest to be about _me_ — the ideas that fit my profile, the moves in my radar, the ones I missed — so it's worth opening instead of one more generic newsletter.
+
+**TE-64 user story:** As a founder validating an idea, I want my landing-page results and interview notes tracked next to the idea, with a go/no-go verdict, so my validation work accrues here and I keep coming back to update it — and cancelling means abandoning my own experiments.
+
+**TE-65 user story:** As a builder, I want a persistent view of what I'm building and a streak that rewards _shipping steps_ (not opening the app), so momentum is visible and quitting feels like a loss.
+
+**TE-66 user story:** As a user weighing an idea, I want to see how many others are looking at and building it, and to reach the ones open to a co-founder, so the decision isn't made alone — and the network keeps me here.
+
+**TE-67 user story:** As a free user whose "aha" is the whole experience, not one idea, I want a short window of full Pro so I can feel whether it fits how I work before paying; and as someone ready to commit, I want an annual option that costs less.
+
+**TE-68 user story:** As the owner, when a subscriber cancels I want to know _why_ in one tap and offer them a pause, a radar-keeping downgrade, or a discount, so the loudest signal in the business becomes data and some cancels become saves. (Exit-reason capture is flagged as missing in the funnel playbook's Campaign C.)
+
+**Wave 6 cross-references:** TE-56 needs a refinement — `Idea.founderFit` is a quality-triage enum (`keeper|salvageable|cut`), _not_ skill-fit; personalization must add `users/{uid}.founderProfile` and match on `buyer`/`firstWedge`/`costEffort`. TE-58 is the seed for TE-60 (home) and TE-65 (accountability) — build TE-58 first, then extend. TE-30/TE-31 (idea quality, anti-repetition) gate the whole wave.
+
 ---
 
 ## Now — P0: cost & abuse hardening
