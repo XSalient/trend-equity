@@ -2,7 +2,7 @@
 
 **Date:** 2026-07-30
 **Status:** Proposed (for review — nothing built, nothing merged)
-**Companion docs:** [funnel strategy playbook](../superpowers/plans/2026-07-30-funnel-strategy-playbook.md) (the why) · [subscriber-growth strategy](../superpowers/plans/2026-07-30-subscriber-growth-redesign.md) (the thesis)
+**Companion docs:** [funnel strategy playbook](../superpowers/plans/2026-07-30-funnel-strategy-playbook.md) (the why) · [subscriber-growth strategy](../superpowers/plans/2026-07-30-subscriber-growth-redesign.md) (the thesis) · [user research findings](../research/2026-07-30-user-research-findings.md) (the user-side evidence — persona walkthroughs validating A/B/C from the user's seat)
 **Visual companion:** the rendered mobile board covers the hero, feed, locked detail, contextual paywall, Pro evidence, Builder execution, and pricing screens — this doc specifies them in build terms and adds the retention screens the board didn't cover.
 
 These are **design concepts**, not final visuals — enough for a build to start or a design tool to render accurately, with real copy, real states, and the component each maps to. Each concept names the campaign, the problem it attacks, and its ticket.

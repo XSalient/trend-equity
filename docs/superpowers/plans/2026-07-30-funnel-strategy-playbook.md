@@ -41,6 +41,8 @@ So anonymous _idea impressions_ are visible; anonymous _journeys_ are not. Nobod
 
 **Consequence for this playbook:** every priority below is a _hypothesis derived from reading code_, not a finding from data. Campaign A's first move is making the funnel observable. Until then, ranking between the three problems is judgement, not evidence.
 
+**Partial user-side check (still not real data):** a persona walkthrough of the current build — [user research findings](../../research/2026-07-30-user-research-findings.md) — independently confirms A1/A2/A4/A5, B1/B2/B3/B5/B6, C1/C3/C4/C5 from the user's seat and re-ranks the cliffs (the dead Evidence button TE-59 and the empty anonymous landing TE-16 stop the primary persona before any C-work matters). It is an expert walkthrough, not moderated sessions — it sharpens the hypotheses but does not replace TE-49.
+
 ---
 
 ## Campaign A — "People don't use it" (activation)
