@@ -116,12 +116,14 @@ spacing:
 ---
 
 ## Brand & Style
-The design system for this product is engineered for high-velocity decision-making in the startup ecosystem. It targets founders, investors, and analysts who require a high-density, data-driven environment that feels authoritative and urgent. 
+
+The design system for this product is engineered for high-velocity decision-making in the startup ecosystem. It targets founders, investors, and analysts who require a high-density, data-driven environment that feels authoritative and urgent.
 
 The aesthetic is **High-Contrast Modernism** with a **Technical/Developer** edge. It leverages a deep, monochromatic foundation to make signal-based data points vibrate with importance. The personality is professional and unsentimental, stripping away decorative fluff in favor of raw information clarity. High-contrast accents and sharp geometry evoke a sense of precision and "bleeding edge" technology.
 
 ## Colors
-The palette is built on a "Total Dark" architecture. Backgrounds utilize a near-black Zinc (#09090b) to ensure maximum contrast for accent colors. 
+
+The palette is built on a "Total Dark" architecture. Backgrounds utilize a near-black Zinc (#09090b) to ensure maximum contrast for accent colors.
 
 - **Primary (Emerald):** Used for primary actions, success states, and growth indicators.
 - **Evidence (Cyan):** Dedicated to verified data, citations, and structural "proof" points.
@@ -129,13 +131,15 @@ The palette is built on a "Total Dark" architecture. Backgrounds utilize a near-
 - **Borders:** A consistent 1px Zinc (#27272a) is used to define structure without creating heavy visual noise.
 
 ## Typography
-The typographic strategy balances raw impact with technical legibility. 
 
-**Headlines** use *Archivo Narrow* in heavy weights and italics. This creates a "newsroom urgency" and a sense of forward momentum. Letter-spacing is intentionally tight to keep the data-dense UI feeling cohesive.
+The typographic strategy balances raw impact with technical legibility.
 
-**Body and Data** use *Geist*. This provides a clean, monospaced-influenced feel that suggests technical accuracy. For body text, line heights are kept generous (1.5 - 1.6x) to ensure readability against the dark background, preventing "halation" (where white text appears to glow/blur on black).
+**Headlines** use _Archivo Narrow_ in heavy weights and italics. This creates a "newsroom urgency" and a sense of forward momentum. Letter-spacing is intentionally tight to keep the data-dense UI feeling cohesive.
+
+**Body and Data** use _Geist_. This provides a clean, monospaced-influenced feel that suggests technical accuracy. For body text, line heights are kept generous (1.5 - 1.6x) to ensure readability against the dark background, preventing "halation" (where white text appears to glow/blur on black).
 
 ## Layout & Spacing
+
 This design system follows a **Mobile-First Fluid Grid**. Given the data-rich nature of the app, spacing is disciplined and based on a 4px baseline grid.
 
 - **Mobile:** Single column with 16px side margins. Cards span the full width minus margins.
@@ -143,6 +147,7 @@ This design system follows a **Mobile-First Fluid Grid**. Given the data-rich na
 - **Rhythm:** Use "Lg" (24px) spacing between major sections and "Sm" (8px) for internal element grouping. The goal is to maximize information density while using sharp margins to maintain a sense of order.
 
 ## Elevation & Depth
+
 Depth in this system is achieved through **Tonal Layering** and **Subtle Outlines** rather than traditional shadows.
 
 - **Level 0 (Base):** #09090b.
@@ -152,28 +157,35 @@ Depth in this system is achieved through **Tonal Layering** and **Subtle Outline
 Do not use blurs or frosted glass. The intent is to look like a high-end terminal or industrial interface—matte, flat, and structured.
 
 ## Shapes
-The shape language is **Technical and Precise**. The default roundedness is "Soft" (0.25rem/4px) for UI elements like buttons and input fields. This is enough to prevent the UI from feeling aggressive but sharp enough to maintain a professional, "engineered" look. 
+
+The shape language is **Technical and Precise**. The default roundedness is "Soft" (0.25rem/4px) for UI elements like buttons and input fields. This is enough to prevent the UI from feeling aggressive but sharp enough to maintain a professional, "engineered" look.
 
 Larger containers (Cards) use a slightly more pronounced 8px radius to subtly distinguish them from the background structure.
 
 ## Components
 
 ### Buttons
+
 - **Primary:** Background Emerald (#10b981), Text Black (#000), Weight 600. No shadow.
 - **Secondary:** Border #27272a, Background Transparent, Text White.
 - **Signal:** Background is the Signal Gradient, Text Black. Reserved for "Analyze" or "Live Feed" triggers.
 
 ### Data Ribbons & Signals
+
 - Used for market alerts. These should be thin, full-bleed strips using the Signal Gradient with scrolling "Ticker" text using the `mono-data` typography style.
 
 ### Cards
+
 - Use #18181b background. Header sections of cards should have a 1px bottom border of #27272a. Card titles must use `headline-md`.
 
 ### Input Fields
+
 - Background #09090b (inset feel), 1px border #27272a. Focus state: Border color shifts to Primary Emerald (#10b981) with a 1px solid outer ring.
 
 ### Evidence Tags (Chips)
+
 - Small, uppercase labels. Background: #22d3ee at 10% opacity. Text: #22d3ee. Border: 1px #22d3ee at 20% opacity.
 
 ### Lists
+
 - High-density. Each row separated by a 1px #27272a border. Active/Hover state: Background shifts to #1d1d20.

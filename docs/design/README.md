@@ -8,19 +8,19 @@
 
 ## What's here (read in this order)
 
-| # | Doc | What it is |
-| --- | --- | --- |
-| 1 | [`../research/2026-07-30-user-research-findings.md`](../research/2026-07-30-user-research-findings.md) | The user-side evidence (persona walkthroughs, findings U1–U15) |
-| 2 | [`../research/2026-07-30-value-and-reengagement-research.md`](../research/2026-07-30-value-and-reengagement-research.md) | Net-new value + re-engagement (Q1/Q2/Q4, Wave 6 items) |
-| 3 | [`2026-07-30-redesign-concepts.md`](2026-07-30-redesign-concepts.md) | Component-level concepts (A/B/C campaigns) |
-| 4 | [`2026-07-30-mobile-home-screens.md`](2026-07-30-mobile-home-screens.md) | First pass — the 3 home states (activation / conversion / retention) |
-| 5 | [`2026-07-30-mobile-screens.md`](2026-07-30-mobile-screens.md) | **Current plan** — 8 full-product screens, user-journey-first |
-| 6 | [`stitch/DESIGN.md`](stitch/DESIGN.md) | The generated design system (tokens, type, components) |
-| 7 | [`stitch/README.md`](stitch/README.md) | Stitch project + all screen ids (view/export) |
-| 8 | [`stitch/generate/`](stitch/generate/) | The scripts + exact prompts to reproduce every screen |
+| #   | Doc                                                                                                                      | What it is                                                           |
+| --- | ------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------- |
+| 1   | [`../research/2026-07-30-user-research-findings.md`](../research/2026-07-30-user-research-findings.md)                   | The user-side evidence (persona walkthroughs, findings U1–U15)       |
+| 2   | [`../research/2026-07-30-value-and-reengagement-research.md`](../research/2026-07-30-value-and-reengagement-research.md) | Net-new value + re-engagement (Q1/Q2/Q4, Wave 6 items)               |
+| 3   | [`2026-07-30-redesign-concepts.md`](2026-07-30-redesign-concepts.md)                                                     | Component-level concepts (A/B/C campaigns)                           |
+| 4   | [`2026-07-30-mobile-home-screens.md`](2026-07-30-mobile-home-screens.md)                                                 | First pass — the 3 home states (activation / conversion / retention) |
+| 5   | [`2026-07-30-mobile-screens.md`](2026-07-30-mobile-screens.md)                                                           | **Current plan** — 8 full-product screens, user-journey-first        |
+| 6   | [`stitch/DESIGN.md`](stitch/DESIGN.md)                                                                                   | The generated design system (tokens, type, components)               |
+| 7   | [`stitch/README.md`](stitch/README.md)                                                                                   | Stitch project + all screen ids (view/export)                        |
+| 8   | [`stitch/generate/`](stitch/generate/)                                                                                   | The scripts + exact prompts to reproduce every screen                |
 
 > **Note on doc 4 vs 5:** doc 5 is the current, broader plan (whole product). Doc 4
-> is kept because its three home *states* (anonymous / free / subscriber) are more
+> is kept because its three home _states_ (anonymous / free / subscriber) are more
 > detailed than doc 5's single "Daily Feed" entry — they're complementary, not
 > duplicates.
 
@@ -54,11 +54,13 @@ From a normal machine the SDK downloads work; or export from the Stitch web app.
 ## Status & what's next
 
 **Done**
+
 - Research (findings + value/re-engagement) and component concepts.
 - Two screen plans: 3 home states + 8 full-product screens.
 - All 11 screens generated in Stitch (shared design system) + scripts/prompts committed.
 
 **Open / next**
+
 - Decide the reference of record: Stitch project vs the HTML boards.
 - Deepen unhappy states (empty / loading / `tierLoading` / anonymous) per screen — plans currently show mostly the happy path.
 - Type decision: adopt the Stitch pairing (Archivo Narrow + Geist) or keep the current system stack.

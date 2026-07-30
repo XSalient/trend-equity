@@ -25,11 +25,11 @@ One home component, three states. Everything below composes components already p
 
 Each screen obeys the six principles, but each **leads** with the ones that move its stage's problem:
 
-| Screen | Leads with | Because the job is |
-| --- | --- | --- |
-| 1 · First-Run Home | _Value before locks_ · _Lead with what an LLM can't say_ | Prove it's real in 5 seconds |
-| 2 · Free Signed-In Home | _Convert in place_ · _Every claim is provable_ | Sample the aha, convert without a teleport |
-| 3 · Subscriber Home ("Today") | _Make progress visible_ · _State is legible_ | Make leaving feel like a loss |
+| Screen                        | Leads with                                               | Because the job is                         |
+| ----------------------------- | -------------------------------------------------------- | ------------------------------------------ |
+| 1 · First-Run Home            | _Value before locks_ · _Lead with what an LLM can't say_ | Prove it's real in 5 seconds               |
+| 2 · Free Signed-In Home       | _Convert in place_ · _Every claim is provable_           | Sample the aha, convert without a teleport |
+| 3 · Subscriber Home ("Today") | _Make progress visible_ · _State is legible_             | Make leaving feel like a loss              |
 
 Visual language is unchanged from the current build: zinc-950 canvas, emerald-500 primary, black italic uppercase display type. Two semantic accents from the redesign concepts are used consistently across all three screens: a **warm "heat" accent** (amber→coral) for live momentum/signal, and a **cool accent** reserved for verified evidence, so proof reads differently from promotion.
 
@@ -79,6 +79,7 @@ Visual language is unchanged from the current build: zinc-950 canvas, emerald-50
 **Why this order.** The hero copy answers "what is this" in words a founder says out loud; the SignalRibbon answers "why now / why real" _above the fold on every card_; the one unlocked hero idea lets desire form from a real taste before any lock appears (principle 1). Locks only appear on card 2+, and even there they blur **genuine** truncated data — the contrast between card 1 (complete) and card 2 (blurred-real) _is_ the pitch.
 
 **States (principle 6 — all designed, not just the happy path):**
+
 - **Anonymous read path healthy** → as drawn.
 - **Anon read path still thin** (roadmap Stage 0 gate open) → the hero idea is server-generated for the daily hero only, so the screen is never empty; the "Daily Feed Coming" empty state is retired for first-run.
 - **Returning signed-in visitor** → `WelcomeHero` collapses to a one-line date/count header (`localStorage` "seen" flag); they are not re-sold.
@@ -128,6 +129,7 @@ Visual language is unchanged from the current build: zinc-950 canvas, emerald-50
 **Why this shape.** The home stays put; conversion happens in a bottom sheet framed around the exact thing the user tapped (principle 2). The free user gets to **sample** the real evidence once (principle 1 → desire from a taste, not a grey wall), so the pricing decision is made _after_ the aha, not before it. The Evidence control is a live, tappable button on touch — the TE-59 defect (a `pointer-events-none`, hover-only tooltip) is designed out at the source.
 
 **States:**
+
 - **Sample allowance unused** → sheet shows "Sample it free on this idea"; server-enforced one-shot (`users/{uid}.evidenceSampleUsedOn`), never a client flag.
 - **Allowance spent** → primary becomes "You've seen it. Unlock everywhere → Pro."
 - **`tierLoading`** (between sign-in and first Firestore tier snapshot) → CTAs disabled, per the TE-45 rule; no plan action fires before tier is read.
@@ -175,6 +177,7 @@ Visual language is unchanged from the current build: zinc-950 canvas, emerald-50
 **Why this is the retention screen.** The value research is blunt: an AI idea feed is _content_, and content is nice-to-have — you'd "just prompt ChatGPT." Must-have products have **accrued personal state** and **switching cost**. This home leads with three surfaces that are _mine_ and _grow with use_ — a radar on my spaces, my build progress, a track record that makes my scores trustworthy — and demotes the generic feed to one module. That is the move from **reader to operator**. It is also the engine of re-engagement (Q2): every one of these modules can emit a _personal, time-sensitive_ notification ("your space spiked +240%"), which is the only kind the research permits shipping.
 
 **States:**
+
 - **Pro (not Builder)** → "What you're building" hides Builder-only roadmap; radar + track record + feed remain.
 - **New subscriber, no accrued state yet** → radar shows "Follow your first space," BuildProgress shows "Start a roadmap from any idea"; the screen onboards rather than showing empty modules.
 - **Dormant returning user (P4)** → a "here's what changed in your spaces while you were away" re-entry banner replaces the greeting; reward return, never punish absence.

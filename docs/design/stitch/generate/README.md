@@ -17,11 +17,11 @@ none should ever be committed to this repo.
 
 ## Scripts
 
-| File | Generates | Notes |
-| --- | --- | --- |
-| `01-home-screens.mjs` | The 3 first-run home states | Creates a **new** project |
-| `02-full-product-screens.mjs` | The 8 full-product screens | Reuses the existing project id → shared design system |
-| `retry-single.mjs` | One screen (retry template) | Stitch occasionally returns a transient "service unavailable"; re-run |
+| File                          | Generates                   | Notes                                                                 |
+| ----------------------------- | --------------------------- | --------------------------------------------------------------------- |
+| `01-home-screens.mjs`         | The 3 first-run home states | Creates a **new** project                                             |
+| `02-full-product-screens.mjs` | The 8 full-product screens  | Reuses the existing project id → shared design system                 |
+| `retry-single.mjs`            | One screen (retry template) | Stitch occasionally returns a transient "service unavailable"; re-run |
 
 ```bash
 node 01-home-screens.mjs          # writes result.json + downloads DESIGN.md

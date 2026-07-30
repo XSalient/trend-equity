@@ -108,11 +108,11 @@ Research + full rationale: [2026-07-30 value, must-have & re-engagement research
 
 Design plans + generated screen concepts — no app code changed, nothing merged. Single entry point (continuable from any device / tool): **[docs/design/README.md](design/README.md)**.
 
-| Item                                                                    | Status              | Owner  | Artifacts                                     |
-| ----------------------------------------------------------------------- | ------------------- | ------ | --------------------------------------------- |
-| Mobile screen designs (8 full-product screens, user-journey-first)      | design done (todo)  | Claude | `docs/design/2026-07-30-mobile-screens.md`    |
-| Mobile home-screen states (3: activation / conversion / retention)      | design done (todo)  | Claude | `docs/design/2026-07-30-mobile-home-screens.md` |
-| Generated in Google Stitch (11 screens, shared design system) + scripts | done                | Claude | `docs/design/stitch/` (project + prompts)     |
+| Item                                                                    | Status             | Owner  | Artifacts                                       |
+| ----------------------------------------------------------------------- | ------------------ | ------ | ----------------------------------------------- |
+| Mobile screen designs (8 full-product screens, user-journey-first)      | design done (todo) | Claude | `docs/design/2026-07-30-mobile-screens.md`      |
+| Mobile home-screen states (3: activation / conversion / retention)      | design done (todo) | Claude | `docs/design/2026-07-30-mobile-home-screens.md` |
+| Generated in Google Stitch (11 screens, shared design system) + scripts | done               | Claude | `docs/design/stitch/` (project + prompts)       |
 
 Implementation of these designs is tracked by the redesign tickets (TE-50…TE-61) in the redesign plan docs, not duplicated here.
 

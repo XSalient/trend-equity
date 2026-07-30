@@ -14,11 +14,11 @@ The first pass covered three home-page states. The gap was twofold: it stopped a
 
 Users don't experience "tabs." They experience a job: _find something real, decide if it's worth my time, make it mine, and know when to act._ The eight screens below are grouped by that arc, not by the navigation.
 
-| Arc stage | Screens | The user's question here |
-| --- | --- | --- |
-| **Discover & evaluate** | 1 Daily Feed · 2 Idea Detail · 3 Analyze My Idea | "What's out there, is it real, and what about _my_ idea?" |
-| **Make it yours (retention)** | 4 Saved / Library · 5 Today dashboard · 6 Market Intelligence | "What's mine, what changed, and what's coming?" |
-| **Convert & grow** | 7 Pricing & Upgrade · 8 Enterprise | "Which plan is me — and is this credible for my fund?" |
+| Arc stage                     | Screens                                                       | The user's question here                                  |
+| ----------------------------- | ------------------------------------------------------------- | --------------------------------------------------------- |
+| **Discover & evaluate**       | 1 Daily Feed · 2 Idea Detail · 3 Analyze My Idea              | "What's out there, is it real, and what about _my_ idea?" |
+| **Make it yours (retention)** | 4 Saved / Library · 5 Today dashboard · 6 Market Intelligence | "What's mine, what changed, and what's coming?"           |
+| **Convert & grow**            | 7 Pricing & Upgrade · 8 Enterprise                            | "Which plan is me — and is this credible for my fund?"    |
 
 **Visual system (shared by every screen).** Dark-mode-first (PRD §6), near-black `#09090b` canvas, `#18181b` surfaces on hairline `#27272a` borders, emerald `#10b981` primary. Three semantic accents are used with discipline: **cyan `#22d3ee` only for verified evidence/citations**, an **amber→coral gradient only for live market signal**, and emerald for growth/primary. Depth is tonal layering, not shadow — a matte, terminal-grade calm. This is the design system Google Stitch settled on from the brief; it is captured in [`stitch/DESIGN.md`](stitch/DESIGN.md) (with an _Archivo Narrow + Geist_ type pairing to evaluate against the current system-font stack).
 
