@@ -14,6 +14,49 @@ Related docs: [PRD.md](../PRD.md) (what the product is) · [DECISIONS.md](../DEC
 
 ---
 
+## Now — P1 (wave 5): subscriber-growth redesign (activation → conversion → retention)
+
+Strategy + full rationale: [2026-07-30 subscriber-growth redesign](superpowers/plans/2026-07-30-subscriber-growth-redesign.md).
+
+**Thesis:** stop selling "ideas" — AI idea generation is commodity now (free vs. any LLM). Sell the four things a free prompt can't: live-signal grounding (`signals.ts`), verified evidence (`evidence.ts`), curation (`quality-engine.ts`), and the build→track loop (roadmap + `prediction-tracker.ts`). The funnel leaks at all three stages (people don't activate, don't convert, and churn), so it's fixed as one system, in order — you cannot fix conversion if nobody activates.
+
+**Sequencing constraint:** TE-49 (Phase 0 instrumentation) lands first. Every priority below is a hypothesis derived from reading the code, not from funnel data — TE-49 decides whether the ranking holds. `logEvent` already exists (TE-09) with 5 events; this wave _fills gaps_, it doesn't rebuild.
+
+| ID    | Task                                                                                                                                                                                                                       | Status | Owner | Effort |
+| ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ | ----- | ------ |
+| TE-49 | **Phase 0** — funnel instrumentation: add activation + paywall + return events (`first_idea_opened`, `evidence_teaser_tapped`, `paywall_shown`, `checkout_started`, `day2_return`) on top of TE-09's `logEvent`            | todo   | —     | S      |
+| TE-50 | **Phase 1** — first-run value moment: replace the "five investability dimensions" intro (`App.tsx`) with a plain-language "why this beats a free prompt" hook for new/anonymous visitors                                   | todo   | —     | S      |
+| TE-51 | **Phase 1** — hero-idea taste: show new/anonymous visitors one fully-unlocked idea (signal + evidence + analysis) before the locked feed                                                                                   | todo   | —     | M      |
+| TE-52 | **Phase 1** — why-now signal prominence: lead each card with the live signal ("▲ trending on Product Hunt this week") from existing `signals` / `trendSources` data                                                        | todo   | —     | S      |
+| TE-53 | **Phase 2** — `UpgradePrompt` contextual paywall: replace every `setActiveTab('pro')` gate with an in-context modal framed around the action the user took                                                                 | todo   | —     | M      |
+| TE-54 | **Phase 2** — one-time evidence sample: let a free user fully unlock Market Evidence on one idea, once, then paywall the rest (server one-shot flag + client)                                                              | todo   | —     | M      |
+| TE-55 | **Phase 2** — job-based pricing: reframe tiers as Discover / Evaluate / Execute (same features + prices, decision-first framing) in `PricingSection`                                                                       | todo   | —     | S      |
+| TE-56 | **Phase 3** — founder-fit onboarding + feed tuning: capture skills/budget/time, tune ordering via existing `founderFit` / `buyer` / `firstWedge` (un-parks the 2026-07-02 personalization item — Stripe has since shipped) | todo   | —     | L      |
+| TE-57 | **Phase 3** — public track record: surface `prediction-tracker` publish-time snapshots as an "our hit rate" trust view                                                                                                     | todo   | —     | M      |
+| TE-58 | **Phase 3** — habit loop: "what changed since yesterday" + a light streak + Builder roadmap-progress resurfacing                                                                                                           | todo   | —     | M      |
+
+**TE-49 user story:** As the product owner, I want the real funnel drop-offs logged end to end — land → open an idea → hit an evidence teaser → see a paywall → start checkout → return on day 2 — so this wave is prioritized from evidence, not from my reading of the code.
+
+**TE-50 user story:** As a first-time visitor, I want the opening screen to tell me in plain words what this is and why it beats asking ChatGPT for ideas, so I understand the value in five seconds instead of parsing "five investability dimensions."
+
+**TE-51 user story:** As a new visitor, I want to see one complete idea — live signal, cited evidence, full analysis — before I hit the locked feed, so I feel the product's core value instead of only reading about it behind locks.
+
+**TE-52 user story:** As a user scanning the feed, I want each idea to lead with why it's surfacing _now_ (the live signal), so the one thing a static LLM can't tell me is the first thing I see.
+
+**TE-53 user story:** As a free user who taps a locked feature, I want an upgrade prompt about _that_ feature right where I am, not to be dumped on a pricing tab away from what I wanted — and as the owner, I want the paywall to convert at the moment of peak intent.
+
+**TE-54 user story:** As a free user, I want to unlock the evidence on one idea once so I can feel what Pro delivers, so my decision to pay is based on the real aha, not a feature list.
+
+**TE-55 user story:** As someone choosing a plan, I want the three tiers framed as where I am — discovering, evaluating, or executing — so picking one is a decision about me, not a feature-count comparison.
+
+**TE-56 user story:** As a returning user, I want the feed tuned to my skills, budget and time so it reads as "ideas for me," giving me a reason to come back daily and a reason to pay. (Un-parks the 2026-07-02 personalization decision, now that Stripe has shipped and proven the paid path.)
+
+**TE-57 user story:** As a prospective subscriber, I want to see how the platform's past scored ideas actually did, so I can trust the scores enough to pay for them.
+
+**TE-58 user story:** As a subscriber, I want a daily payoff for opening the app — what changed, my streak, my roadmap progress — so the habit that retains me actually forms.
+
+---
+
 ## Now — P0: cost & abuse hardening
 
 Detailed steps for TE-01…TE-10: [2026-07-08 pain-point remediation plan](superpowers/plans/2026-07-08-pain-point-remediation.md).
