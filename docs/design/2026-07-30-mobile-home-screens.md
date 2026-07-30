@@ -3,6 +3,7 @@
 **Date:** 2026-07-30
 **Status:** Proposed (design plan — nothing built, nothing merged)
 **Companion docs:** [user research findings](../research/2026-07-30-user-research-findings.md) (the persona walkthroughs) · [value & re-engagement research](../research/2026-07-30-value-and-reengagement-research.md) (Q1/Q2 net-new value) · [redesign concepts](2026-07-30-redesign-concepts.md) (the component-level sketches) · [execution roadmap](../superpowers/plans/2026-07-30-execution-roadmap.md) (sequencing)
+**Generated visual reference:** all three concepts below were generated as real mobile UI with **Google Stitch** (Gemini 3 Pro) — see [`stitch/README.md`](stitch/README.md) for the project/screen ids and how to open or export them, and [`stitch/DESIGN.md`](stitch/DESIGN.md) for the generated design system (Archivo Narrow + Geist, with the emerald / cyan-evidence / amber-coral-signal accents preserved as briefed).
 
 These are **three home-screen designs for the mobile app**, each optimised for the dominant job a user has _at a particular point in the funnel_. They are not three competing visual themes to pick one from — they are the **same home surface rendered for three user states**, because the research is unambiguous that the mobile home fails different users in different ways:
 
