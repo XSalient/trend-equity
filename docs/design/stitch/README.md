@@ -4,17 +4,32 @@
 **Tool:** [Google Stitch](https://stitch.withgoogle.com) via `@google/stitch-sdk` (MCP → `stitch.googleapis.com`), model `GEMINI_3_PRO`, device `MOBILE`
 **Companion:** [mobile home-screen design plan](../2026-07-30-mobile-home-screens.md) — the three concepts these screens render.
 
-The three home-screen concepts in the design plan were generated as real UI in Stitch. This file is the manifest so the screens can be opened, viewed, and exported. The generated design system is in [`DESIGN.md`](DESIGN.md) alongside this file.
+The screen concepts in the design plans were generated as real UI in Stitch. This file is the manifest so the screens can be opened, viewed, and exported. The generated design system is in [`DESIGN.md`](DESIGN.md) alongside this file. All screens live in **one project**, so they share that design system.
 
 ## Project & screens
 
 **Project:** `projects/13591160038311824941`
 
-| Screen | Funnel stage | Stitch screen id | Gen time |
-| --- | --- | --- | --- |
-| 1 · First-Run Home | Activation | `projects/13591160038311824941/screens/989ae7cf42744ed08a4053e994975980` | 68s |
-| 2 · Free Signed-In Home | Conversion | `projects/13591160038311824941/screens/e4c26dd4984443d3942592696145e666` | 49s |
-| 3 · Subscriber "Today" | Retention | `projects/13591160038311824941/screens/b8a3d43590b74e5eb7a429579432205a` | 77s |
+### Full-product screen set (mobile) — [design plan](../2026-07-30-mobile-screens.md)
+
+| Screen | Arc | Stitch screen id |
+| --- | --- | --- |
+| 1 · Daily Feed | Discover | `.../screens/a72121df00b845dd9350cdd76d6608cd` |
+| 2 · Idea Detail | Evaluate | `.../screens/2212963c089148bbbf68b93a5ac5a44f` |
+| 3 · Analyze My Idea | Evaluate | `.../screens/7489d814f3a64367bdfaf7d92744f0e7` |
+| 4 · Saved / Library | Retain | `.../screens/82da85a623f0439facc3a61c2a56c837` |
+| 5 · Today dashboard | Retain | `.../screens/67649552121d4f29856c27eac235dc8e` |
+| 6 · Market Intelligence | Retain | `.../screens/020059cb4f6643e887f1dd040bd1e4ad` |
+| 7 · Pricing & Upgrade | Convert | `.../screens/db002927f1c648f8ae6904a30ddd5474` |
+| 8 · Enterprise | Grow | `.../screens/f23dc8240ae84b298cf656156ba1f3d9` |
+
+### First-run home states (earlier pass) — [design plan](../2026-07-30-mobile-home-screens.md)
+
+| Screen | Funnel stage | Stitch screen id |
+| --- | --- | --- |
+| First-Run Home | Activation | `.../screens/989ae7cf42744ed08a4053e994975980` |
+| Free Signed-In Home | Conversion | `.../screens/e4c26dd4984443d3942592696145e666` |
+| Subscriber "Today" | Retention | `.../screens/b8a3d43590b74e5eb7a429579432205a` |
 
 Open the project in the Stitch web app (signed in as the account that owns the API key) to view, tweak, or export each screen's HTML/CSS and screenshot.
 
