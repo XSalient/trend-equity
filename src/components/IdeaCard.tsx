@@ -15,6 +15,7 @@ import {
   ThumbsDown,
   Hammer,
   Search,
+  Lock,
 } from 'lucide-react';
 import { Idea } from '../types';
 import { useIdeaActions } from '../hooks/useIdeaActions';
@@ -274,26 +275,36 @@ export const IdeaCard: React.FC<IdeaCardProps> = ({
             </button>
 
             {isFree ? (
+              // The gated Evidence control is itself the upgrade CTA. It used to be a
+              // `disabled` button with the real "Upgrade →" button nested inside a
+              // `pointer-events-none` hover tooltip, so the click never landed on desktop
+              // and touch users never saw the tooltip at all (TE-59). Without `onUpgrade`
+              // there is nowhere to send the user, so fall back to the inert locked state
+              // rather than render a control that looks clickable and does nothing.
               <div className="relative group/evidence">
                 <button
-                  className="flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-xl transition-all border bg-zinc-800/50 text-zinc-500 border-zinc-700/50 cursor-not-allowed opacity-50"
-                  disabled
+                  type="button"
+                  onClick={
+                    onUpgrade
+                      ? () => {
+                          trackEvent('upgrade_click', idea.id);
+                          onUpgrade();
+                        }
+                      : undefined
+                  }
+                  disabled={!onUpgrade}
+                  aria-label="Market evidence requires a Pro plan — upgrade to unlock"
+                  className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-xl transition-all border ${
+                    onUpgrade
+                      ? 'bg-zinc-800/50 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 border-zinc-700/50 hover:border-zinc-600/50'
+                      : 'bg-zinc-800/50 text-zinc-500 border-zinc-700/50 cursor-not-allowed opacity-50'
+                  }`}
                 >
-                  <Search className="w-4 h-4" />
+                  <Lock className="w-4 h-4" />
                   Evidence
                 </button>
                 <div className="absolute bottom-full mb-2 left-0 w-48 p-2 bg-zinc-800 text-xs text-zinc-300 rounded-lg opacity-0 invisible group-hover/evidence:opacity-100 group-hover/evidence:visible transition-all z-50 border border-zinc-700 shadow-xl pointer-events-none leading-relaxed">
-                  Market evidence requires a Pro plan.{' '}
-                  <button
-                    onClick={(e) => {
-                      e.preventDefault();
-                      trackEvent('upgrade_click', idea.id);
-                      onUpgrade?.();
-                    }}
-                    className="text-sky-400 hover:text-sky-300 font-semibold underline"
-                  >
-                    Upgrade →
-                  </button>
+                  Market evidence requires a Pro plan.
                 </div>
               </div>
             ) : (

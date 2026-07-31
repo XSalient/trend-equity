@@ -99,6 +99,7 @@ export const SavedIdeasTab: React.FC<SavedIdeasTabProps> = ({
                 user={user}
                 handleLogin={handleLogin}
                 userInput={save.userInput}
+                onUpgrade={onUpgradeNeeded}
               />
             ))}
           </div>
@@ -142,6 +143,7 @@ export const SavedIdeasTab: React.FC<SavedIdeasTabProps> = ({
                 onExport={(fmt) => exportToPDF(save.idea, fmt)}
                 user={user}
                 handleLogin={handleLogin}
+                onUpgrade={onUpgradeNeeded}
               />
             ))}
           </div>
