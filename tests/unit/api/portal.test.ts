@@ -16,6 +16,7 @@ vi.mock('../../../api/_lib/stripe', async () => {
     getPriceId: vi.fn((tier: string) =>
       tier === 'builder' ? 'price_builder_live' : 'price_pro_live'
     ),
+    syncSubscriptionToUser: vi.fn().mockResolvedValue('builder'),
   };
 });
 
@@ -25,7 +26,7 @@ vi.mock('../../../api/_lib/admin', () => ({
 
 import handler from '../../../api/portal';
 import { getAuthContext } from '../../../api/_lib/auth';
-import { getStripe, StripeConfigError } from '../../../api/_lib/stripe';
+import { getStripe, StripeConfigError, syncSubscriptionToUser } from '../../../api/_lib/stripe';
 import { getAdminDb } from '../../../api/_lib/admin';
 
 describe('POST /api/portal', () => {
@@ -45,11 +46,23 @@ describe('POST /api/portal', () => {
     });
   };
 
-  /** A live single-item subscription — the shape every paid↔paid switch needs. */
+  /**
+   * A live single-item subscription — the shape every paid↔paid switch needs.
+   * TE-60: the item carries its **price**, because that is what Stripe prices
+   * the flow against. The priceless fixture let every assertion below pass
+   * while production was refusing the same flow for a price it could see and
+   * the test could not.
+   */
   const liveSubscription = {
     id: 'sub_123',
     status: 'active',
-    items: { data: [{ id: 'si_123' }] },
+    items: { data: [{ id: 'si_123', price: { id: 'price_pro_live' } }] },
+  };
+
+  /** The same subscription after a switch to Builder. */
+  const builderSubscription = {
+    ...liveSubscription,
+    items: { data: [{ id: 'si_123', price: { id: 'price_builder_live' } }] },
   };
 
   beforeEach(() => {
@@ -136,6 +149,7 @@ describe('POST /api/portal', () => {
       // Deferral to the period end is the portal configuration's job
       // (schedule_at_period_end), not something the session can request.
       (getAuthContext as any).mockResolvedValue({ ...authedPro, tier: 'builder' });
+      stripeClient.subscriptions.retrieve.mockResolvedValue(builderSubscription);
       mockReq.body = { targetTier: 'pro' };
       await handler(mockReq as VercelRequest, mockRes as VercelResponse);
 
@@ -257,6 +271,37 @@ describe('POST /api/portal', () => {
         expect(mockRes.json).toHaveBeenCalledWith({ error: 'Failed to open the billing portal' });
       });
 
+      /**
+       * TE-60: the 503 is right for any refused flow, but the *log* is the
+       * operator's only lead. Pointing every rejection at
+       * `stripe:configure-portal` sent the next investigation to re-run a
+       * script that was already correct.
+       */
+      it('names configure-portal only when Stripe blamed the portal configuration', async () => {
+        const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
+        stripeClient.billingPortal.sessions.create.mockRejectedValue(configDisabled());
+        mockReq.body = { targetTier: 'builder' };
+        await handler(mockReq as VercelRequest, mockRes as VercelResponse);
+
+        expect(logged.mock.calls[0][0]).toContain('stripe:configure-portal');
+        logged.mockRestore();
+      });
+
+      it('does not blame the configuration for a rejection about something else', async () => {
+        const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
+        stripeClient.billingPortal.sessions.create.mockRejectedValue(
+          Object.assign(new Error('No such subscription item: si_123'), {
+            type: 'StripeInvalidRequestError',
+          })
+        );
+        mockReq.body = { targetTier: 'builder' };
+        await handler(mockReq as VercelRequest, mockRes as VercelResponse);
+
+        expect(logged.mock.calls[0][0]).not.toContain('stripe:configure-portal');
+        expect(logged.mock.calls[0][0]).toContain('No such subscription item');
+        logged.mockRestore();
+      });
+
       it('does not mistake a transient Stripe outage for a misconfiguration', async () => {
         stripeClient.billingPortal.sessions.create.mockRejectedValue(
           Object.assign(new Error('Connection to Stripe timed out'), {
@@ -267,6 +312,64 @@ describe('POST /api/portal', () => {
         await handler(mockReq as VercelRequest, mockRes as VercelResponse);
 
         expect(mockRes.status).toHaveBeenCalledWith(500);
+      });
+    });
+
+    /**
+     * TE-60. The production failure the TE-48 handling misreported:
+     *
+     *   Cannot update the subscription `sub_…` because there are no changes to
+     *   confirm. Provide a different `price` or `quantity`.
+     *
+     * The flow is priced off the Firestore tier; Stripe validates it against
+     * the subscription item. When the user doc is stale — a portal switch whose
+     * `customer.subscription.updated` never landed — the two disagree and every
+     * press of UPGRADE NOW builds a no-op flow Stripe refuses. The fixture that
+     * carried no price could not express this, so the suite stayed green.
+     */
+    describe('when Firestore and Stripe disagree about the plan (TE-60)', () => {
+      beforeEach(() => {
+        // Stored as pro (authedPro); Stripe already has them on Builder.
+        stripeClient.subscriptions.retrieve.mockResolvedValue(builderSubscription);
+        mockReq.body = { targetTier: 'builder' };
+      });
+
+      it('never sends a flow Stripe can only refuse', async () => {
+        await handler(mockReq as VercelRequest, mockRes as VercelResponse);
+        expect(stripeClient.billingPortal.sessions.create).not.toHaveBeenCalled();
+      });
+
+      it('reconciles the user doc from the live subscription', async () => {
+        await handler(mockReq as VercelRequest, mockRes as VercelResponse);
+        expect(syncSubscriptionToUser).toHaveBeenCalledWith(
+          stripeClient,
+          'user123',
+          builderSubscription
+        );
+      });
+
+      it('tells the caller the plan is already active, not that billing broke', async () => {
+        await handler(mockReq as VercelRequest, mockRes as VercelResponse);
+        expect(mockRes.status).toHaveBeenCalledWith(409);
+        expect(mockRes.json).toHaveBeenCalledWith({
+          error: 'You are already on Builder. Your account has been refreshed.',
+          reconciledTier: 'builder',
+        });
+      });
+
+      it('still opens a normal upgrade flow when the prices really do differ', async () => {
+        stripeClient.subscriptions.retrieve.mockResolvedValue(liveSubscription);
+        await handler(mockReq as VercelRequest, mockRes as VercelResponse);
+        expect(syncSubscriptionToUser).not.toHaveBeenCalled();
+        expect(flowData().subscription_update_confirm.items[0].price).toBe('price_builder_live');
+        expect(mockRes.status).toHaveBeenCalledWith(200);
+      });
+
+      it('leaves the cancel flow alone — a cancel changes no price', async () => {
+        mockReq.body = { targetTier: 'free' };
+        await handler(mockReq as VercelRequest, mockRes as VercelResponse);
+        expect(flowData().type).toBe('subscription_cancel');
+        expect(mockRes.status).toHaveBeenCalledWith(200);
       });
     });
 

@@ -13,11 +13,13 @@ vi.mock('../../../api/_lib/stripe', async () => {
     provisionSubscription: vi.fn(),
     extendSubscription: vi.fn(),
     downgradeToFree: vi.fn(),
-    updateSubscriptionState: vi.fn(),
     resolveUid: vi.fn(),
-    // TE-47: default to "nothing scheduled"; the scheduled-downgrade tests
-    // override it. Its own behaviour is covered in stripe-lib.test.ts.
-    resolveScheduledTierChange: vi.fn().mockResolvedValue({ tier: null, effectiveAt: null }),
+    // TE-60: the price → tier mapping, the schedule read and the doc write all
+    // live behind this one call now (shared with api/portal.ts). What lands in
+    // the user doc is asserted against a real Firestore mock in
+    // stripe-lib.test.ts; the webhook's own job is resolving the uid and
+    // handing the subscription over.
+    syncSubscriptionToUser: vi.fn().mockResolvedValue('builder'),
   };
 });
 
@@ -32,9 +34,8 @@ import {
   provisionSubscription,
   extendSubscription,
   downgradeToFree,
-  updateSubscriptionState,
   resolveUid,
-  resolveScheduledTierChange,
+  syncSubscriptionToUser,
 } from '../../../api/_lib/stripe';
 
 describe('POST /api/webhook/stripe', () => {
@@ -46,10 +47,6 @@ describe('POST /api/webhook/stripe', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    // Re-assert the default explicitly: most events have no pending switch, and
-    // an undefined return here would throw inside the handler rather than fail
-    // the assertion that actually matters.
-    (resolveScheduledTierChange as any).mockResolvedValue({ tier: null, effectiveAt: null });
     process.env.STRIPE_WEBHOOK_SECRET = 'whsec_testsecret';
 
     mockReq = {
@@ -271,71 +268,22 @@ describe('POST /api/webhook/stripe', () => {
   });
 
   it('mirrors subscription.updated onto the user doc (plan switch + cancel flag)', async () => {
-    process.env.STRIPE_PRICE_BUILDER = 'price_builder_456';
     (resolveUid as any).mockResolvedValue('user123');
-    stripeClient.webhooks.constructEvent.mockReturnValue({
-      type: 'customer.subscription.updated',
-      data: {
-        object: {
-          customer: 'cus_123',
-          status: 'active',
-          cancel_at_period_end: true,
-          metadata: { uid: 'user123' },
-          items: { data: [{ price: { id: 'price_builder_456' }, current_period_end: 1799999999 }] },
-        },
-      },
-    });
-
-    await handler(mockReq as VercelRequest, mockRes as VercelResponse);
-
-    expect(updateSubscriptionState).toHaveBeenCalledWith({
-      uid: 'user123',
-      tier: 'builder',
+    const subscription = {
+      customer: 'cus_123',
       status: 'active',
-      cancelAtPeriodEnd: true,
-      currentPeriodEnd: 1799999999,
-      // Written on every sync so reversing a scheduled switch clears it (TE-47).
-      pendingTier: null,
-      pendingTierDate: null,
-    });
-    expect(mockRes.status).toHaveBeenCalledWith(200);
-  });
-
-  /**
-   * TE-47: the whole point of the scheduled downgrade is that this event looks
-   * like a no-op — Builder is still the live price. Without reading the
-   * schedule, the switch would land silently at period end.
-   */
-  it('records a scheduled downgrade without touching the current tier', async () => {
-    process.env.STRIPE_PRICE_BUILDER = 'price_builder_456';
-    (resolveUid as any).mockResolvedValue('user123');
-    (resolveScheduledTierChange as any).mockResolvedValue({
-      tier: 'pro',
-      effectiveAt: 1799999999,
-    });
+      cancel_at_period_end: true,
+      metadata: { uid: 'user123' },
+      items: { data: [{ price: { id: 'price_builder_456' }, current_period_end: 1799999999 }] },
+    };
     stripeClient.webhooks.constructEvent.mockReturnValue({
       type: 'customer.subscription.updated',
-      data: {
-        object: {
-          customer: 'cus_123',
-          status: 'active',
-          cancel_at_period_end: false,
-          schedule: 'sub_sched_1',
-          metadata: { uid: 'user123' },
-          items: { data: [{ price: { id: 'price_builder_456' }, current_period_end: 1799999999 }] },
-        },
-      },
+      data: { object: subscription },
     });
 
     await handler(mockReq as VercelRequest, mockRes as VercelResponse);
 
-    expect(updateSubscriptionState).toHaveBeenCalledWith(
-      expect.objectContaining({
-        tier: 'builder', // unchanged — access lasts as long as it was paid for
-        pendingTier: 'pro',
-        pendingTierDate: 1799999999,
-      })
-    );
+    expect(syncSubscriptionToUser).toHaveBeenCalledWith(stripeClient, 'user123', subscription);
     expect(mockRes.status).toHaveBeenCalledWith(200);
   });
 
@@ -350,7 +298,7 @@ describe('POST /api/webhook/stripe', () => {
 
     await handler(mockReq as VercelRequest, mockRes as VercelResponse);
 
-    expect(updateSubscriptionState).not.toHaveBeenCalled();
+    expect(syncSubscriptionToUser).not.toHaveBeenCalled();
     expect(mockRes.status).toHaveBeenCalledWith(200);
   });
 

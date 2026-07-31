@@ -169,6 +169,35 @@ describe('PricingSection plan-switch journey (TE-47)', () => {
     await userEvent.click(upgradeButtons()[0]);
 
     expect(await screen.findByText('Stripe is unavailable')).toBeInTheDocument();
+    expect(screen.getByText('Stripe is unavailable')).toHaveClass('text-red-400');
+  });
+
+  /**
+   * TE-60: the server answers a click on a plan Stripe already has the user on
+   * with a 409 and a reconciled tier. Painting that red tells somebody their
+   * upgrade broke at the exact moment it was found to have worked.
+   */
+  it('renders a reconciled plan as a notice, not as a failure', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 409,
+        json: async () => ({
+          error: 'You are already on Builder. Your account has been refreshed.',
+          reconciledTier: 'builder',
+        }),
+      })
+    );
+    render(<PricingSection currentPlan="pro" isAuthenticated firebaseToken={TOKEN} />);
+
+    await userEvent.click(upgradeButtons()[0]);
+
+    const notice = await screen.findByText(
+      'You are already on Builder. Your account has been refreshed.'
+    );
+    expect(notice).toHaveClass('text-amber-400');
+    expect(notice).not.toHaveClass('text-red-400');
   });
 
   it('announces a scheduled downgrade instead of a renewal date', async () => {

@@ -114,6 +114,7 @@ fetch('https://api.stripe.com/v1/products', {
 
     console.log('');
   })
+  .then(verifyConfiguredPrices)
   .then(verifyPortalConfiguration)
   .catch((error) => {
     console.error(`❌ Error: ${error.message}\n`);
@@ -128,6 +129,82 @@ fetch('https://api.stripe.com/v1/products', {
   });
 
 /**
+ * TE-60: the script printed the price ids it *suggests* and never looked at the
+ * ones actually configured. A deployment where `STRIPE_PRICE_BUILDER` held the
+ * Pro price id passed this cleanly while Checkout sold Builder for $9 and every
+ * pro→builder portal flow was refused by Stripe with "there are no changes to
+ * confirm" — the failure that reached production as a dead UPGRADE NOW button.
+ *
+ * So: resolve both configured ids against Stripe, and require them to be live,
+ * recurring, and genuinely different prices on different products.
+ */
+function verifyConfiguredPrices() {
+  console.log('6️⃣  Configured price ids:');
+
+  if (!priceProId || !priceBuilderPriceId) {
+    return fail(
+      [
+        !priceProId && 'STRIPE_PRICE_PRO is not set',
+        !priceBuilderPriceId && 'STRIPE_PRICE_BUILDER is not set',
+      ].filter(Boolean),
+      'Price configuration is incomplete',
+      'Copy each tier’s own monthly price id from the Stripe dashboard into .env / Doppler.'
+    );
+  }
+
+  const fetchPrice = (id) =>
+    fetch(`https://api.stripe.com/v1/prices/${encodeURIComponent(id)}`, {
+      headers: { Authorization: `Basic ${auth}` },
+    }).then((res) => (res.ok ? res.json() : null));
+
+  return Promise.all([fetchPrice(priceProId), fetchPrice(priceBuilderPriceId)]).then(
+    ([pro, builder]) => {
+      const problems = [];
+      const describe = (label, id, price) => {
+        if (!price) {
+          console.log(`   ✗ ${label}: ${id} — not found in this Stripe environment`);
+          problems.push(`${label} (${id}) does not exist here — test and live ids are not shared`);
+          return;
+        }
+        const amount = price.unit_amount != null ? (price.unit_amount / 100).toFixed(2) : '?';
+        const interval = price.recurring?.interval ?? 'one-off';
+        console.log(
+          `   ${price.active && price.recurring ? '✓' : '✗'} ${label}: ${id} — ` +
+            `${amount} ${(price.currency ?? '').toUpperCase()} / ${interval} (product ${price.product})`
+        );
+        if (!price.active) problems.push(`${label} (${id}) is archived`);
+        if (!price.recurring)
+          problems.push(`${label} (${id}) is a one-off price, not a subscription`);
+      };
+
+      describe('STRIPE_PRICE_PRO', priceProId, pro);
+      describe('STRIPE_PRICE_BUILDER', priceBuilderPriceId, builder);
+
+      if (priceProId === priceBuilderPriceId) {
+        problems.push(
+          'both tiers point at the SAME price — Builder would be sold at Pro’s amount and ' +
+            'pro→builder plan switches are refused by Stripe ("no changes to confirm")'
+        );
+      } else if (pro && builder && pro.product === builder.product) {
+        problems.push(
+          `Pro and Builder are two prices on the same product (${pro.product}) — the portal ` +
+            'plan switcher lists one entry per product, so the other tier is unreachable'
+        );
+      }
+
+      console.log('');
+      return problems.length
+        ? fail(
+            problems,
+            'Price configuration is wrong',
+            'Fix STRIPE_PRICE_PRO / STRIPE_PRICE_BUILDER, then re-run `npm run stripe:configure-portal`.'
+          )
+        : undefined;
+    }
+  );
+}
+
+/**
  * TE-48: keys and prices were the only things this script checked, so an
  * account where `npm run stripe:configure-portal` had never been run passed it
  * cleanly — and every pro→builder upgrade then 500'd, because Stripe refuses a
@@ -140,7 +217,7 @@ fetch('https://api.stripe.com/v1/products', {
  * it would fail against a correctly configured account.
  */
 function verifyPortalConfiguration() {
-  console.log('6️⃣  Customer Portal configuration:');
+  console.log('7️⃣  Customer Portal configuration:');
 
   return fetch('https://api.stripe.com/v1/billing_portal/configurations?limit=10', {
     headers: { Authorization: `Basic ${auth}` },
@@ -199,10 +276,14 @@ function verifyPortalConfiguration() {
     });
 }
 
-function fail(problems) {
-  console.log('❌ Customer Portal is misconfigured:\n');
+function fail(
+  problems,
+  title = 'Customer Portal is misconfigured',
+  fix = 'Fix: npm run stripe:configure-portal'
+) {
+  console.log(`❌ ${title}:\n`);
   problems.forEach((p) => console.log(`   • ${p}`));
-  console.log('\n   Fix: npm run stripe:configure-portal');
-  console.log('   Test and live are separate Stripe environments — run it against each.\n');
+  console.log(`\n   ${fix}`);
+  console.log('   Test and live are separate Stripe environments — check each.\n');
   process.exit(1);
 }

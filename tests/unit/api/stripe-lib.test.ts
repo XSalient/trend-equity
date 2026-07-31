@@ -70,6 +70,31 @@ describe('api/_lib/stripe configuration guards', () => {
       const { getPriceId } = await load();
       expect(getPriceId('builder')).toBe('price_1TwAlfIdBbgqt2LeUABAlTHP');
     });
+
+    /**
+     * TE-60: two tiers, one price is a well-formed, individually valid
+     * configuration that silently sells Builder at Pro's price through Checkout
+     * and makes the portal's pro→builder flow un-confirmable. Both symptoms are
+     * invisible until somebody reads an invoice, so it fails at the resolver.
+     */
+    it.each(['pro', 'builder'] as const)(
+      'rejects both tiers resolving to the same price (asked for %s)',
+      async (tier) => {
+        process.env.STRIPE_PRICE_PRO = 'price_1TwAlfIdBbgqt2LeUABAlTHP';
+        process.env.STRIPE_PRICE_BUILDER = 'price_1TwAlfIdBbgqt2LeUABAlTHP';
+        const { getPriceId, StripeConfigError } = await load();
+        expect(() => getPriceId(tier)).toThrow(StripeConfigError);
+        expect(() => getPriceId(tier)).toThrow(/both set to/);
+      }
+    );
+
+    it('is unbothered by a distinct price for each tier', async () => {
+      process.env.STRIPE_PRICE_PRO = 'price_1TwAlRIdBbgqt2Le0cZpHTeQ';
+      process.env.STRIPE_PRICE_BUILDER = 'price_1TwAlfIdBbgqt2LeUABAlTHP';
+      const { getPriceId } = await load();
+      expect(getPriceId('pro')).toBe('price_1TwAlRIdBbgqt2Le0cZpHTeQ');
+      expect(getPriceId('builder')).toBe('price_1TwAlfIdBbgqt2LeUABAlTHP');
+    });
   });
 
   describe('getAppUrl', () => {
@@ -202,6 +227,91 @@ describe('api/_lib/stripe configuration guards', () => {
         pendingTier: 'pro',
         pendingTierDate: new Date(1800000000 * 1000),
       });
+    });
+  });
+
+  /**
+   * TE-60: the webhook and the portal both reconcile a user doc from a live
+   * subscription, so the mapping lives in one place. These assert the doc that
+   * actually lands, not that a function was called.
+   */
+  describe('syncSubscriptionToUser (TE-60)', () => {
+    const setupDb = async () => {
+      const set = vi.fn().mockResolvedValue(undefined);
+      const doc = vi.fn(() => ({ set }));
+      const collection = vi.fn(() => ({ doc }));
+      const { getAdminDb } = await import('../../../api/_lib/admin');
+      (getAdminDb as any).mockReturnValue({ collection });
+      return { set, doc };
+    };
+
+    const subscription = (overrides: Record<string, unknown> = {}) =>
+      ({
+        id: 'sub_123',
+        status: 'active',
+        cancel_at_period_end: false,
+        items: { data: [{ price: { id: 'price_builder_live' }, current_period_end: 1800000000 }] },
+        ...overrides,
+      }) as any;
+
+    beforeEach(() => {
+      process.env.STRIPE_PRICE_PRO = 'price_pro_live';
+      process.env.STRIPE_PRICE_BUILDER = 'price_builder_live';
+    });
+
+    it('writes the tier the live price maps to, with period end and status', async () => {
+      const { set, doc } = await setupDb();
+      const { syncSubscriptionToUser } = await load();
+
+      const tier = await syncSubscriptionToUser({} as any, 'user123', subscription());
+
+      expect(tier).toBe('builder');
+      expect(doc).toHaveBeenCalledWith('user123');
+      expect(set.mock.calls[0][0]).toMatchObject({
+        tier: 'builder',
+        subscriptionStatus: 'active',
+        cancelAtPeriodEnd: false,
+        proEndDate: new Date(1800000000 * 1000),
+        // Cleared explicitly — a reversed switch must not linger (TE-47).
+        pendingTier: null,
+        pendingTierDate: null,
+      });
+    });
+
+    it('carries a scheduled switch through without moving the current tier', async () => {
+      const { set } = await setupDb();
+      const { syncSubscriptionToUser } = await load();
+      const future = Math.floor(Date.now() / 1000) + 86_400;
+      const stripe = {
+        subscriptionSchedules: {
+          retrieve: vi.fn().mockResolvedValue({
+            status: 'active',
+            phases: [{ start_date: future, items: [{ price: 'price_pro_live' }] }],
+          }),
+        },
+      };
+
+      await syncSubscriptionToUser(stripe as any, 'user123', subscription({ schedule: 'sched_1' }));
+
+      expect(set.mock.calls[0][0]).toMatchObject({
+        tier: 'builder',
+        pendingTier: 'pro',
+        pendingTierDate: new Date(future * 1000),
+      });
+    });
+
+    it('leaves tier alone when the price is not one of ours', async () => {
+      const { set } = await setupDb();
+      const { syncSubscriptionToUser } = await load();
+
+      const tier = await syncSubscriptionToUser(
+        {} as any,
+        'user123',
+        subscription({ items: { data: [{ price: { id: 'price_someone_elses' } }] } })
+      );
+
+      expect(tier).toBeNull();
+      expect(set.mock.calls[0][0]).not.toHaveProperty('tier');
     });
   });
 

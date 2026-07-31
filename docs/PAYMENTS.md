@@ -8,13 +8,13 @@ Canonical reference for how money and tiers work in Trend-Equity. If code and th
 
 ## Tier writers (exhaustive list)
 
-| Writer                                           | Direction             | Trigger                                                                                                                     |
-| ------------------------------------------------ | --------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| `provisionSubscription()` (`api/_lib/stripe.ts`) | free → pro/builder    | `checkout.session.completed` webhook **or** `GET /api/checkout?session_id=` return leg (idempotent, dedup key = session id) |
-| `updateSubscriptionState()`                      | pro ↔ builder         | `customer.subscription.updated` webhook (Customer Portal plan switch; price id → tier via `tierForPriceId`)                 |
-| `downgradeToFree()`                              | paid → free           | `customer.subscription.deleted` webhook (portal cancel at period end, dashboard cancel, dunning exhaustion)                 |
-| `resolveEffectiveTier()` (`api/_lib/auth.ts`)    | paid → free (virtual) | Per-request backstop: `proEndDate` + 3-day grace elapsed. Doesn't write the doc; the request just resolves as free          |
-| Admin (Firestore console)                        | any                   | Manual grants. Leave `proEndDate` unset/null — manual grants never expire                                                   |
+| Writer                                           | Direction             | Trigger                                                                                                                                                                                 |
+| ------------------------------------------------ | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `provisionSubscription()` (`api/_lib/stripe.ts`) | free → pro/builder    | `checkout.session.completed` webhook **or** `GET /api/checkout?session_id=` return leg (idempotent, dedup key = session id)                                                             |
+| `updateSubscriptionState()`                      | pro ↔ builder         | `customer.subscription.updated` webhook, and `POST /api/portal` when it finds the stored tier stale (TE-60) — both via `syncSubscriptionToUser()`; price id → tier via `tierForPriceId` |
+| `downgradeToFree()`                              | paid → free           | `customer.subscription.deleted` webhook (portal cancel at period end, dashboard cancel, dunning exhaustion)                                                                             |
+| `resolveEffectiveTier()` (`api/_lib/auth.ts`)    | paid → free (virtual) | Per-request backstop: `proEndDate` + 3-day grace elapsed. Doesn't write the doc; the request just resolves as free                                                                      |
+| Admin (Firestore console)                        | any                   | Manual grants. Leave `proEndDate` unset/null — manual grants never expire                                                                                                               |
 
 Anything else writing `tier` is a bug.
 
@@ -57,7 +57,7 @@ Every plan change the product supports, and what each one costs and when. **Any 
 | pro/builder → free   | Portal `subscription_cancel`                      | Nothing                                   | Period end | `downgradeToFree` (on `.deleted`)       |
 | lapsed → pro/builder | Checkout session (`stripeSubscriptionId` is null) | Full price now                            | Immediate  | `provisionSubscription`                 |
 
-The billing anchor never moves on a paid→paid switch — Stripe does the calendar maths. `api/portal.ts` takes an optional `targetTier` and deep-links to the right flow; it is a routing hint only, re-validated against the Firestore tier server-side. A hint that cannot be built (no subscription, stale tier, multi-item subscription) degrades to the portal homepage; a flow Stripe **refuses** does not — see "when the configuration is missing" below.
+The billing anchor never moves on a paid→paid switch — Stripe does the calendar maths. `api/portal.ts` takes an optional `targetTier` and deep-links to the right flow; it is a routing hint only, re-validated against the Firestore tier server-side. A hint that cannot be built (no subscription, multi-item subscription, unknown tier) degrades to the portal homepage; a flow Stripe **refuses** does not — see "when the configuration is missing" below. A hint that describes a switch Stripe has _already made_ is a third case: it reconciles the user doc rather than opening anything — see "when the stored tier is stale" below.
 
 ### Portal configuration is not optional
 
@@ -85,6 +85,22 @@ Two consequences are load-bearing:
 
 - **`npm run stripe:verify` asserts the portal configuration**, not just keys and prices. It exits non-zero on any of the four settings above being wrong. Run it after any Stripe environment change; the version that only checked prices passed cleanly against the broken account.
 - **`api/portal.ts` reports a refused flow as a 503**, with an operator log naming the script to run. It does not retry as a bare session: the portal homepage has no plan switcher while plan switching is disabled, so the fallback would swap a visible failure for an invisible dead end.
+
+#### When the stored tier is stale (TE-60)
+
+This shipped too, from the same button, and the TE-48 handling reported it as the TE-48 fault:
+
+```
+StripeInvalidRequestError: Cannot update the subscription `sub_…` because there
+are no changes to confirm. Provide a different `price` or `quantity`.
+```
+
+The flow is **priced off `users/{uid}.tier`**; Stripe validates it against the **subscription item**. Those are two different sources, and they drift — a portal switch whose `customer.subscription.updated` never landed, a price changed in the dashboard, an environment whose `STRIPE_PRICE_*` vars were swapped. Once they disagree, every press builds a flow that asks Stripe to change nothing, and Stripe refuses it.
+
+- `api/portal.ts` now **reads the subscription's current price** (it was fetched for its item id and otherwise discarded) and compares it with the target price before creating the session.
+- Equal means the subscription is already on the requested plan. The endpoint reconciles the user doc from the live subscription (`syncSubscriptionToUser`, the same call the webhook makes) and answers **409** with `reconciledTier`. `useTier`'s snapshot flips the card to CURRENT PLAN with no reload; the pricing card renders that as an amber notice, not a red error.
+- **Two tiers must never resolve to the same price.** `getPriceId` throws `StripeConfigError` when `STRIPE_PRICE_PRO` and `STRIPE_PRICE_BUILDER` match, because that configuration also makes Checkout sell Builder at Pro's amount — silent until somebody reads an invoice. `npm run stripe:verify` resolves both configured ids against Stripe and fails on identical ids, identical products, archived prices, one-off prices, and ids that do not exist in that environment.
+- The refused-flow log no longer names `stripe:configure-portal` unconditionally — only when Stripe's own message blames the portal configuration. The rest print Stripe's wording verbatim.
 
 ### Scheduled switches: `pendingTier`
 

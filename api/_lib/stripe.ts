@@ -54,6 +54,12 @@ export function getStripe(): Stripe {
  * Resolves the configured price id for a tier.
  * Rejects the stub values (`price_`, `price_..._placeholder`) that ship in
  * `.env.example`, which previously passed validation and were sent to Stripe.
+ *
+ * TE-60: also rejects the two tiers resolving to the *same* price. A deployment
+ * where `STRIPE_PRICE_BUILDER` holds the Pro price id is not a half-working one:
+ * Checkout sells Builder for $9 and the portal's pro→builder flow is refused by
+ * Stripe ("there are no changes to confirm"). Both are silent until somebody
+ * reads an invoice, so the collision fails loudly at every call site instead.
  */
 export function getPriceId(tier: PaidTier): string {
   const envVar = tier === 'pro' ? 'STRIPE_PRICE_PRO' : 'STRIPE_PRICE_BUILDER';
@@ -64,6 +70,15 @@ export function getPriceId(tier: PaidTier): string {
       `${envVar} is missing or malformed (got "${priceId ?? ''}"). Copy the monthly recurring price id from the Stripe dashboard.`
     );
   }
+
+  const otherVar = tier === 'pro' ? 'STRIPE_PRICE_BUILDER' : 'STRIPE_PRICE_PRO';
+  if (process.env[otherVar]?.trim() === priceId) {
+    throw new StripeConfigError(
+      `STRIPE_PRICE_PRO and STRIPE_PRICE_BUILDER are both set to "${priceId}". ` +
+        "Pro and Builder must be different prices — copy each tier's own monthly price id from the Stripe dashboard."
+    );
+  }
+
   return priceId;
 }
 
@@ -289,6 +304,41 @@ export function getPeriodEnd(subscription: Stripe.Subscription): number | null {
     | { current_period_end?: number }
     | undefined;
   return typeof itemEnd?.current_period_end === 'number' ? itemEnd.current_period_end : null;
+}
+
+/**
+ * TE-60: mirrors a live Stripe subscription onto `users/{uid}` — price → tier,
+ * status, period end, and any scheduled switch — in one call.
+ *
+ * Extracted from the `customer.subscription.updated` handler so the portal can
+ * reconcile a user doc that has drifted from Stripe without duplicating the
+ * schedule/period-end reading (a second copy would drift in its own way).
+ * `updateSubscriptionState` stays the only writer of `tier` on this path, so
+ * the exhaustive writer list in docs/PAYMENTS.md is unchanged.
+ *
+ * Returns the tier the subscription's price maps to, or null when the price is
+ * not one of ours (in which case the stored tier is deliberately left alone).
+ */
+export async function syncSubscriptionToUser(
+  stripe: Stripe,
+  uid: string,
+  subscription: Stripe.Subscription
+): Promise<PaidTier | null> {
+  const priceId = subscription.items?.data?.[0]?.price?.id;
+  const tier = tierForPriceId(priceId);
+  const scheduled = await resolveScheduledTierChange(stripe, subscription);
+
+  await updateSubscriptionState({
+    uid,
+    tier,
+    status: subscription.status,
+    cancelAtPeriodEnd: subscription.cancel_at_period_end === true,
+    currentPeriodEnd: getPeriodEnd(subscription),
+    pendingTier: scheduled.tier,
+    pendingTierDate: scheduled.effectiveAt,
+  });
+
+  return tier;
 }
 
 export interface RenewalParams {

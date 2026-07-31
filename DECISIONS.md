@@ -6,6 +6,26 @@ For ongoing context and details, see `CLAUDE.md` and the per-session memory syst
 
 ---
 
+## A Plan Change Is Validated Against Stripe, Not Against Our Copy of It — Adopted (2026-07-31)
+
+**Decision:** before `api/portal.ts` opens a plan-switch flow, it compares the **subscription's live price** with the price it is about to request. If they already match, no session is created: the user doc is reconciled from the live subscription and the caller is told the plan is already active (409 + `reconciledTier`).
+
+**Rationale (TE-60):** `users/{uid}.tier` and the Stripe subscription are two records of one fact, and the flow was built from the first while Stripe judged it against the second. Any drift — a `customer.subscription.updated` that never landed, a price edited in the dashboard, an environment with the wrong `STRIPE_PRICE_*` — turned every press of UPGRADE NOW into a request to change nothing, which Stripe refuses:
+
+```
+Cannot update the subscription `sub_…` because there are no changes to confirm.
+```
+
+The user sees a dead button; the operator sees a 503. Neither can act on it. Reading the price we already fetched costs one comparison and converts an unrecoverable error into the truthful answer, delivered to somebody who is one snapshot away from seeing it for themselves.
+
+**Why reconcile rather than degrade to the homepage:** the homepage would let them switch to a plan they are already on — a second dead end. And drift that nobody repairs stays drifted: the user is entitled to Builder and is being served Pro. `syncSubscriptionToUser` is the same call the webhook makes, so `updateSubscriptionState` remains the single writer of `tier` and the exhaustive writer list in `docs/PAYMENTS.md` still holds.
+
+**Corollary — two tiers may never resolve to the same price.** `getPriceId` throws `StripeConfigError` when `STRIPE_PRICE_PRO` and `STRIPE_PRICE_BUILDER` match. The collision is individually valid at both call sites and wrong at both: Checkout sells Builder at Pro's amount and the portal upgrade is unconfirmable. It is invisible until somebody reads an invoice, so it fails at the resolver instead of at the customer.
+
+**Corollary — a diagnosis is only as good as its evidence.** TE-48 mapped every `StripeInvalidRequestError` to "run `npm run stripe:configure-portal`". That was true of the fault in front of it and false of the next one, and the misdirection outlived the bug it described: the log told the operator to re-run a script that was already correct while quoting, in the same line, the message that said otherwise. An error handler may classify what it can prove — here, that Stripe's own message names the portal configuration — and must otherwise repeat what it was told.
+
+---
+
 ## Upgrades Bill Immediately, Downgrades Wait for the Period End — Adopted (2026-07-29)
 
 **Decision:** a mid-cycle paid→paid plan change is asymmetric, and deliberately so.
@@ -19,7 +39,7 @@ Both are properties of the **portal configuration** (`proration_behavior: always
 
 The lifecycle plan had specified `create_prorations`, which sounds like the middle ground and is in fact neither: it books the credit and charge onto the next invoice, so an upgrade takes no payment at switch time and the user gets the higher tier free until renewal. There is no configuration that makes both directions immediate and correct — the asymmetry is not a compromise.
 
-**Corollary — a flow Stripe refuses is surfaced, not degraded (TE-48).** `api/portal.ts` falls back to the portal homepage whenever it cannot _build_ a deep link — no subscription, a stale tier, a multi-item subscription — because the homepage offers the same actions with more clicks. It does not fall back when Stripe **rejects** a link we did build. The only cause seen in practice is a portal configuration where plan switching was never enabled, and in exactly that state the homepage has no plan switcher either: retrying would replace an error the user can report with a page where the journey silently dead-ends, and would hide a broken deployment from its operator indefinitely. Same reasoning as a missing price id being a 503. The distinction is "we could not construct the request" versus "the environment cannot serve it" — the first is recoverable by the user, the second is not.
+**Corollary — a flow Stripe refuses is surfaced, not degraded (TE-48).** `api/portal.ts` falls back to the portal homepage whenever it cannot _build_ a deep link — no subscription, a multi-item subscription, an unknown stored tier — because the homepage offers the same actions with more clicks. (A stored tier that is merely _behind_ Stripe was on this list and should not have been: it is not an unbuildable link, it is a link that describes a change already made. TE-60 reconciles it instead.) It does not fall back when Stripe **rejects** a link we did build. The only cause seen in practice is a portal configuration where plan switching was never enabled, and in exactly that state the homepage has no plan switcher either: retrying would replace an error the user can report with a page where the journey silently dead-ends, and would hide a broken deployment from its operator indefinitely. Same reasoning as a missing price id being a 503. The distinction is "we could not construct the request" versus "the environment cannot serve it" — the first is recoverable by the user, the second is not.
 
 **Corollary — a scheduled change is state the UI must show.** A period-end downgrade leaves the current price live and hangs the new one off a subscription schedule, so the subscription object alone reports no change at all. `pendingTier`/`pendingTierDate` are read from the schedule and written on every `customer.subscription.updated`, including as `null` — clearing them is how a reversal in the portal propagates. `tier` stays the current entitlement throughout; "what you can do now" and "what happens next" are separate fields, for the same reason entitlement and plan identity are (below).
 

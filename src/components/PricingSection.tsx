@@ -77,6 +77,16 @@ const TIER_FEATURES: Record<string, { label: string; tiers: string[] }[]> = {
   ],
 };
 
+/** Status line under a plan control — red for a failure, amber for a reconciliation. */
+const PortalNotice: React.FC<{ notice: { message: string; tone: 'error' | 'info' } | null }> = ({
+  notice,
+}) =>
+  notice ? (
+    <p className={`text-[10px] ${notice.tone === 'info' ? 'text-amber-400' : 'text-red-400'}`}>
+      {notice.message}
+    </p>
+  ) : null;
+
 function getFeaturesLost(from: string, to: string): string[] {
   const allFeatures = [...TIER_FEATURES.builder, ...TIER_FEATURES.pro];
   return allFeatures
@@ -167,9 +177,17 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
    * for the whole round-trip.
    */
   const [portalBusy, setPortalBusy] = useState<PortalAction | null>(null);
-  const [portalError, setPortalError] = useState<{ action: PortalAction; message: string } | null>(
-    null
-  );
+  /**
+   * TE-60: not every unopened portal is a failure. When the server finds Stripe
+   * already has the user on the plan they just clicked, it reconciles the tier
+   * and says so — rendering that in error red would tell somebody their upgrade
+   * broke at the moment it landed.
+   */
+  const [portalNotice, setPortalNotice] = useState<{
+    action: PortalAction;
+    message: string;
+    tone: 'error' | 'info';
+  } | null>(null);
   /** Plan the visitor picked before signing in — resumed once the token lands. */
   const [pendingIntent, setPendingIntent] = useState<PlanKey | null>(null);
 
@@ -184,8 +202,8 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
   const scheduledDate = subscription?.pendingTierDate ?? null;
   const hasScheduledSwitch = Boolean(scheduledTier && activePlan && scheduledTier !== activePlan);
 
-  const errorFor = (action: PortalAction) =>
-    portalError?.action === action ? portalError.message : null;
+  const noticeFor = (action: PortalAction) =>
+    portalNotice?.action === action ? portalNotice : null;
 
   /**
    * Signed-out CTA: every card says "Proceed" and starts sign-in. Showing
@@ -226,7 +244,7 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
   const openPortal = async (action: PortalAction, targetTier?: PlanKey) => {
     if (!firebaseToken || portalBusy) return;
     setPortalBusy(action);
-    setPortalError(null);
+    setPortalNotice(null);
     try {
       const res = await fetch('/api/portal', {
         method: 'POST',
@@ -241,14 +259,18 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
         window.location.href = data.url;
         return;
       }
-      setPortalError({
+      setPortalNotice({
         action,
         message: data.error ?? 'Could not open the billing portal. Please try again.',
+        // TE-60: `reconciledTier` means the server just repaired a stale tier —
+        // the snapshot is about to flip this card to CURRENT PLAN on its own.
+        tone: data.reconciledTier ? 'info' : 'error',
       });
     } catch {
-      setPortalError({
+      setPortalNotice({
         action,
         message: 'Could not open the billing portal. Please try again.',
+        tone: 'error',
       });
     } finally {
       setPortalBusy(null);
@@ -368,7 +390,7 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
                     ? 'CURRENT PLAN'
                     : 'DOWNGRADE'}
           </button>
-          {errorFor('free') && <p className="text-[10px] text-red-400">{errorFor('free')}</p>}
+          <PortalNotice notice={noticeFor('free')} />
         </div>
 
         {/* Pro Plan */}
@@ -457,7 +479,7 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
                         ? 'DOWNGRADE'
                         : 'UPGRADE NOW'}
           </button>
-          {errorFor('pro') && <p className="text-[10px] text-red-400">{errorFor('pro')}</p>}
+          <PortalNotice notice={noticeFor('pro')} />
         </div>
 
         {/* Builder Plan */}
@@ -538,7 +560,7 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
                     ? 'CURRENT PLAN'
                     : 'UPGRADE NOW'}
           </button>
-          {errorFor('builder') && <p className="text-[10px] text-red-400">{errorFor('builder')}</p>}
+          <PortalNotice notice={noticeFor('builder')} />
         </div>
       </div>
 
@@ -562,7 +584,7 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
               — cancel the switch in Manage billing.
             </p>
           )}
-          {errorFor('manage') && <p className="text-[10px] text-red-400">{errorFor('manage')}</p>}
+          <PortalNotice notice={noticeFor('manage')} />
         </div>
       )}
 
