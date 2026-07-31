@@ -31,9 +31,19 @@ Detailed steps for TE-01…TE-10: [2026-07-08 pain-point remediation plan](super
 
 ## Now — P0: the daily-generation test suite has been dead since TE-04 (TE-46)
 
-| ID    | Task                                                                                                           | Status | Owner | Effort |
-| ----- | -------------------------------------------------------------------------------------------------------------- | ------ | ----- | ------ |
-| TE-46 | Repair `tests/unit/api/daily.test.ts` (13 failing) and stop the handler from masking programming errors as 503 | todo   | —     | S      |
+| ID    | Task                                                                                                           | Status  | Owner  | Effort |
+| ----- | -------------------------------------------------------------------------------------------------------------- | ------- | ------ | ------ |
+| TE-46 | Repair `tests/unit/api/daily.test.ts` (13 failing) and stop the handler from masking programming errors as 503 | shipped | Claude | S      |
+
+**TE-46 as shipped (2026-07-31).** Suite is green: **452 passed, 0 failed** (`daily.test.ts` 13 failing → 28 passing). Work done against the five fix steps below:
+
+1. **Root cause fixed** — `getMarketSignals` added to the `signals` mock factory. That alone revived all 13.
+2. **Assertions reviewed.** They were sound against the current response shape, but TE-04's _own_ additions — `qualityStats.signals.sourceCount` and `.degraded` — were never asserted by anything: the commit that broke the suite was itself untested. Both branches (healthy / zero-source degraded + admin warn) are now pinned.
+3. **Date drift closed** — one hoisted `TODAY` constant now feeds both the `getToday()` mock and every request body, which were two independent literals. The suite could not actually drift into the TE-01 past-date 404 branch (the mock pinned both sides), but the two literals were free to disagree.
+4. **Error masking narrowed** — `isProgrammingError()` in `daily.ts` routes `TypeError`/`ReferenceError`/`SyntaxError`/`RangeError` to a 500 carrying the real message; everything else keeps the 503. A 503 promises the caller that retrying helps, which is only honest for a provider outage. **Known limit:** vitest's missing-export error is a plain `Error`, so this specific failure mode still reports 503 — what actually catches mock drift is the repaired happy-path tests going red, not the narrowing. Message-sniffing to catch it was rejected: it would misreport real Gemini outages as 500s, which is worse.
+5. **CI gate already exists** — `.github/workflows/ci.yml` has run `npm run test:unit` on every push and PR the whole time. The gate was not missing; it was red and unenforced. Nothing to add in code. **Worth checking that CI is a required status check on branch protection**, or the same thing happens again.
+
+Both new guards were verified to fail against the unfixed code before being kept.
 
 **TE-46 user story:** As a developer, I want the daily-generation suite to actually exercise the generation path, so the most expensive endpoint in the product is not shipping unverified — and I want a broken test mock to fail as a broken mock, not as a plausible-looking 503.
 
@@ -386,6 +396,7 @@ All five stories (TE-38…TE-42) shipped 2026-07-29 — rows are in [Recently sh
 
 | ID    | Task                                                                                                                                                                                 | Shipped    | Commits                   |
 | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------- | ------------------------- |
+| TE-46 | Daily-generation suite repaired (13 failing → 28 passing; full suite green); handler no longer masks programming errors as a 503 provider outage                                     | 2026-07-31 | (this commit)             |
 | TE-59 | Free-tier Evidence upgrade CTA made reachable by click, tap and keyboard; the missing `onUpgrade` at both `SavedIdeas` render sites (ticket defined on the subscriber-growth branch) | 2026-07-31 | (this commit)             |
 | TE-48 | Portal configuration applied; `stripe:verify` asserts it and fails non-zero; a Stripe-refused flow reports as a 503 with the fix, not an opaque 500                                  | 2026-07-29 | 8701bba                   |
 | TE-47 | Paid→paid plan switching: `targetTier` portal deep links, prorated immediate upgrade, period-end downgrade + `pendingTier`, per-button state, portal config script                   | 2026-07-29 | 00ea80f                   |

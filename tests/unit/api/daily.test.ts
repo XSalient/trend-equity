@@ -1,17 +1,32 @@
 /**
- * Unit tests for api/generate/daily.ts
+ * Unit tests for api/_handlers/daily.ts
  *
- * Covers:
+ * Generation path:
  *  + Returns 35 ideas on successful Gemini call
+ *  + Overgenerates 60 candidates, publishes the quality-engine top 35
  *  + Injects dedup block into prompt when recent headlines exist
  *  + Skips dedup block when no recent headlines
  *  + Appends country localisation when country != Global
  *  + Does NOT append country clause when country is Global
  *  + Uses signal context when signals are non-empty
  *  + Falls back to no-signal prompt when signals are empty
+ *  + Reports signal sourceCount + degraded flag in qualityStats (TE-04)
+ *  + Pre-fetches embeddings in parallel with generation batches
+ *
+ * Guards:
  *  - Returns 405 for non-POST request
- *  - Returns 503 when Gemini throws (no mock fallback)
- *  - Does not return _isMock on successful generation
+ *  - Returns 401/404 per the TE-01 auth + today-only trigger policy
+ *  - Returns 429 when locked or over the per-IP cap; admin refresh is exempt
+ *  - Returns the cached singleton without regenerating
+ *
+ * Failure modes (TE-46):
+ *  - Provider/network failure → 503 "temporarily unavailable" (retry is honest)
+ *  - Programming error → 500 with the real message (retry would not help)
+ *
+ * NOTE: every one of the 13 generation-path tests above was silently dead from
+ * TE-04 (2026-07-23) to TE-46 (2026-07-31) because the `signals` mock factory
+ * below was missing `getMarketSignals`. If you add an import to daily.ts, add it
+ * to the matching factory or these go red — which is the intended behaviour.
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -20,8 +35,14 @@ import { generateMockIdeas, MOCK_DAILY_GENERATION } from '../helpers/fixtures';
 
 // ── Module mocks ──────────────────────────────────────────────────────────────
 
+// One date for the whole suite. `daily.ts` only generates when the requested date equals
+// `getToday()` (TE-01), so the mocked "today" and every request body have to agree — they
+// were two independent literals before, which is a silent drift into the past-date 404
+// branch waiting to happen. `vi.hoisted` because the `vi.mock` factories below are hoisted.
 const {
+  TODAY,
   mockGenerateWithAI,
+  mockGetMarketSignals,
   mockFetchLiveSignals,
   mockFormatSignalsForPrompt,
   mockGetRecentIdeaHeadlines,
@@ -32,7 +53,9 @@ const {
   mockCritiqueAndRank,
   mockGetRecentEmbeddings,
 } = vi.hoisted(() => ({
+  TODAY: '2026-04-11',
   mockGenerateWithAI: vi.fn(),
+  mockGetMarketSignals: vi.fn(),
   mockFetchLiveSignals: vi.fn(),
   mockFormatSignalsForPrompt: vi.fn(),
   mockGetRecentIdeaHeadlines: vi.fn(),
@@ -49,12 +72,18 @@ vi.mock('../../../api/_lib/ai-provider', () => {
     generateWithAI: mockGenerateWithAI,
     normalizeAIResponse: vi.fn((data) => data),
     dailyResponseSchema: { type: 'OBJECT' },
-    getToday: vi.fn(() => '2026-04-11'),
+    getToday: vi.fn(() => TODAY),
   };
   return { ...mockAI, default: mockAI };
 });
 
+// `daily.ts` reads signals through `getMarketSignals()` (the wrapper that adds
+// `sourceCount`), not `fetchLiveSignals()` — TE-04 switched it and this factory was not
+// updated, which is what killed 13 tests in this file for weeks (TE-46). Vitest factories
+// are strict: touching an undeclared export throws, and the handler's catch-all turned
+// that into a plausible-looking 503. Every export `daily.ts` imports must be declared here.
 vi.mock('../../../api/_lib/signals', () => ({
+  getMarketSignals: mockGetMarketSignals,
   fetchLiveSignals: mockFetchLiveSignals,
   formatSignalsForPrompt: mockFormatSignalsForPrompt,
 }));
@@ -113,6 +142,7 @@ const EMPTY_SIGNALS = {
 describe('POST /api/generate/daily', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGetMarketSignals.mockResolvedValue({ signals: EMPTY_SIGNALS, sourceCount: 0 });
     mockFetchLiveSignals.mockResolvedValue(EMPTY_SIGNALS);
     mockFormatSignalsForPrompt.mockReturnValue('');
     mockGetRecentIdeaHeadlines.mockResolvedValue([]);
@@ -163,7 +193,7 @@ describe('POST /api/generate/daily', () => {
   // ── Positive cases ────────────────────────────────────────────────
 
   it('returns generated daily ideas on success', async () => {
-    const req = createMockRequest({ body: { date: '2026-04-11' } });
+    const req = createMockRequest({ body: { date: TODAY } });
     const res = createMockResponse();
 
     await handler(req, res);
@@ -176,12 +206,12 @@ describe('POST /api/generate/daily', () => {
   });
 
   it('calls getRecentIdeaHeadlines with the provided date', async () => {
-    const req = createMockRequest({ body: { date: '2026-04-11' } });
+    const req = createMockRequest({ body: { date: TODAY } });
     const res = createMockResponse();
 
     await handler(req, res);
 
-    expect(mockGetRecentIdeaHeadlines).toHaveBeenCalledWith('2026-04-11');
+    expect(mockGetRecentIdeaHeadlines).toHaveBeenCalledWith(TODAY);
   });
 
   it('injects DO NOT REPEAT block into prompt when recent headlines exist', async () => {
@@ -190,7 +220,7 @@ describe('POST /api/generate/daily', () => {
       { headline: 'Old Idea 2', pitch: 'Problem 2 solution' },
     ]);
 
-    const req = createMockRequest({ body: { date: '2026-04-11' } });
+    const req = createMockRequest({ body: { date: TODAY } });
     const res = createMockResponse();
 
     await handler(req, res);
@@ -204,7 +234,7 @@ describe('POST /api/generate/daily', () => {
   it('does NOT inject dedup block when no recent headlines', async () => {
     mockGetRecentIdeaHeadlines.mockResolvedValue([]);
 
-    const req = createMockRequest({ body: { date: '2026-04-11' } });
+    const req = createMockRequest({ body: { date: TODAY } });
     const res = createMockResponse();
 
     await handler(req, res);
@@ -216,7 +246,7 @@ describe('POST /api/generate/daily', () => {
   it('includes signal context in prompt when signals are non-empty', async () => {
     mockFormatSignalsForPrompt.mockReturnValue('LIVE MARKET SIGNALS — Google Trend A');
 
-    const req = createMockRequest({ body: { date: '2026-04-11' } });
+    const req = createMockRequest({ body: { date: TODAY } });
     const res = createMockResponse();
 
     await handler(req, res);
@@ -228,7 +258,7 @@ describe('POST /api/generate/daily', () => {
   it('uses fallback prompt without signal prefix when signals are empty', async () => {
     mockFormatSignalsForPrompt.mockReturnValue('');
 
-    const req = createMockRequest({ body: { date: '2026-04-11' } });
+    const req = createMockRequest({ body: { date: TODAY } });
     const res = createMockResponse();
 
     await handler(req, res);
@@ -239,7 +269,7 @@ describe('POST /api/generate/daily', () => {
   });
 
   it('overgenerates 60 candidates and publishes the quality-engine top 35', async () => {
-    const req = createMockRequest({ body: { date: '2026-04-11' } });
+    const req = createMockRequest({ body: { date: TODAY } });
     const res = createMockResponse();
 
     await handler(req, res);
@@ -252,9 +282,37 @@ describe('POST /api/generate/daily', () => {
     expect(res._body.qualityStats).toMatchObject({ criticModel: 'test-critic' });
   });
 
+  // TE-04 added signal observability and, in the same commit, broke this suite by
+  // switching to `getMarketSignals()`. Its own fields were never asserted — the change
+  // that killed the tests was itself untested. Both branches now pinned.
+  it('reports signal source count and a healthy (non-degraded) flag', async () => {
+    mockGetMarketSignals.mockResolvedValue({ signals: EMPTY_SIGNALS, sourceCount: 3 });
+
+    const req = createMockRequest({ body: { date: TODAY } });
+    const res = createMockResponse();
+
+    await handler(req, res);
+
+    expect(res._body.qualityStats.signals).toEqual({ sourceCount: 3, degraded: false });
+  });
+
+  it('flags degradation and warns an admin when zero signal sources returned', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    mockGetMarketSignals.mockResolvedValue({ signals: EMPTY_SIGNALS, sourceCount: 0 });
+
+    const req = createMockRequest({ body: { date: TODAY } });
+    const res = createMockResponse();
+
+    await handler(req, res);
+
+    expect(res._body.qualityStats.signals).toEqual({ sourceCount: 0, degraded: true });
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('Signal degradation'));
+    warn.mockRestore();
+  });
+
   it('appends country localisation clause when country is not Global', async () => {
     const req = createMockRequest({
-      body: { date: '2026-04-11', country: 'India', countryCount: 5 },
+      body: { date: TODAY, country: 'India', countryCount: 5 },
     });
     const res = createMockResponse();
 
@@ -268,7 +326,7 @@ describe('POST /api/generate/daily', () => {
 
   it('does NOT append country clause when country is Global', async () => {
     const req = createMockRequest({
-      body: { date: '2026-04-11', country: 'Global', countryCount: 3 },
+      body: { date: TODAY, country: 'Global', countryCount: 3 },
     });
     const res = createMockResponse();
 
@@ -279,7 +337,7 @@ describe('POST /api/generate/daily', () => {
   });
 
   it('does not include _isMock in successful response', async () => {
-    const req = createMockRequest({ body: { date: '2026-04-11' } });
+    const req = createMockRequest({ body: { date: TODAY } });
     const res = createMockResponse();
 
     await handler(req, res);
@@ -302,7 +360,7 @@ describe('POST /api/generate/daily', () => {
   it('returns 503 when Gemini throws — no mock fallback', async () => {
     mockGenerateWithAI.mockRejectedValue(new Error('API quota exceeded'));
 
-    const req = createMockRequest({ body: { date: '2026-04-11' } });
+    const req = createMockRequest({ body: { date: TODAY } });
     const res = createMockResponse();
 
     await handler(req, res);
@@ -312,9 +370,9 @@ describe('POST /api/generate/daily', () => {
   });
 
   it('returns 503 when signals fetch throws', async () => {
-    mockFetchLiveSignals.mockRejectedValue(new Error('Network error'));
+    mockGetMarketSignals.mockRejectedValue(new Error('Network error'));
 
-    const req = createMockRequest({ body: { date: '2026-04-11' } });
+    const req = createMockRequest({ body: { date: TODAY } });
     const res = createMockResponse();
 
     await handler(req, res);
@@ -322,12 +380,40 @@ describe('POST /api/generate/daily', () => {
     expect(res._status).toBe(503);
   });
 
+  // TE-46: a 503 promises the caller a retry will help. Only a provider/network failure
+  // earns that. A programming error dressed as an outage is what let this suite stay dead
+  // for weeks, so the two must be distinguishable from the response alone.
+  it('returns 500 with the real message when the generation path throws a programming error', async () => {
+    mockGetMarketSignals.mockRejectedValue(new TypeError('signals.map is not a function'));
+
+    const req = createMockRequest({ body: { date: TODAY } });
+    const res = createMockResponse();
+
+    await handler(req, res);
+
+    expect(res._status).toBe(500);
+    expect(res._body.error).toBe('signals.map is not a function');
+    expect(res._body.error).not.toContain('temporarily unavailable');
+  });
+
+  it('still reports a provider failure as 503, not as a bug', async () => {
+    mockGenerateWithAI.mockRejectedValue(new Error('503 Service Unavailable from upstream'));
+
+    const req = createMockRequest({ body: { date: TODAY } });
+    const res = createMockResponse();
+
+    await handler(req, res);
+
+    expect(res._status).toBe(503);
+    expect(res._body.error).toContain('temporarily unavailable');
+  });
+
   it('still calls Gemini even if getRecentIdeaHeadlines fails', async () => {
     // getRecentIdeaHeadlines fails but Promise.all rejects, so Gemini won't be called
     // — the handler should return 503 cleanly
     mockGetRecentIdeaHeadlines.mockRejectedValue(new Error('Firestore down'));
 
-    const req = createMockRequest({ body: { date: '2026-04-11' } });
+    const req = createMockRequest({ body: { date: TODAY } });
     const res = createMockResponse();
 
     await handler(req, res);
@@ -338,7 +424,7 @@ describe('POST /api/generate/daily', () => {
   it('allows non-builder tier to trigger initial generation for the day', async () => {
     mockGetAuthContext.mockResolvedValue({ uid: 'user-2', tier: 'free' });
 
-    const req = createMockRequest({ body: { date: '2026-04-11' } });
+    const req = createMockRequest({ body: { date: TODAY } });
     const res = createMockResponse();
 
     await handler(req, res);
@@ -350,7 +436,7 @@ describe('POST /api/generate/daily', () => {
   it('blocks non-builder tier from refreshing the daily generation', async () => {
     mockGetAuthContext.mockResolvedValue({ uid: 'user-2', tier: 'free' });
 
-    const req = createMockRequest({ body: { date: '2026-04-11', refresh: true } });
+    const req = createMockRequest({ body: { date: TODAY, refresh: true } });
     const res = createMockResponse();
 
     await handler(req, res);
@@ -364,7 +450,7 @@ describe('POST /api/generate/daily', () => {
   it('returns 401 when an unauthenticated user requests uncached generation for today', async () => {
     mockGetAuthContext.mockResolvedValue(null);
 
-    const req = createMockRequest({ body: { date: '2026-04-11' } });
+    const req = createMockRequest({ body: { date: TODAY } });
     const res = createMockResponse();
 
     await handler(req, res);
@@ -408,7 +494,7 @@ describe('POST /api/generate/daily', () => {
   it('proceeds to generation for an authenticated request on today, uncached', async () => {
     mockGetAuthContext.mockResolvedValue({ uid: 'user-4', tier: 'free' });
 
-    const req = createMockRequest({ body: { date: '2026-04-11' } });
+    const req = createMockRequest({ body: { date: TODAY } });
     const res = createMockResponse();
 
     await handler(req, res);
@@ -423,7 +509,7 @@ describe('POST /api/generate/daily', () => {
     mockGetAuthContext.mockResolvedValue({ uid: 'user-5', tier: 'free' });
     mockCheckAndIncrementIpLimit.mockResolvedValue({ allowed: false, remaining: 0, limit: 5 });
 
-    const req = createMockRequest({ body: { date: '2026-04-11' } });
+    const req = createMockRequest({ body: { date: TODAY } });
     const res = createMockResponse();
 
     await handler(req, res);
@@ -436,7 +522,7 @@ describe('POST /api/generate/daily', () => {
   it('checks the per-IP limit for the initial (non-refresh) generation trigger', async () => {
     mockGetAuthContext.mockResolvedValue({ uid: 'user-6', tier: 'free' });
 
-    const req = createMockRequest({ body: { date: '2026-04-11' } });
+    const req = createMockRequest({ body: { date: TODAY } });
     const res = createMockResponse();
 
     await handler(req, res);
@@ -447,7 +533,7 @@ describe('POST /api/generate/daily', () => {
   it('does not apply the per-IP limit to admin refresh requests', async () => {
     mockCheckAndIncrementIpLimit.mockResolvedValue({ allowed: false, remaining: 0, limit: 5 });
 
-    const req = createMockRequest({ body: { date: '2026-04-11', refresh: true } });
+    const req = createMockRequest({ body: { date: TODAY, refresh: true } });
     const res = createMockResponse();
 
     await handler(req, res);
@@ -485,7 +571,7 @@ describe('POST /api/generate/daily', () => {
         })
     );
 
-    const req = createMockRequest({ body: { date: '2026-04-11' } });
+    const req = createMockRequest({ body: { date: TODAY } });
     const res = createMockResponse();
 
     const startTime = Date.now();
@@ -496,7 +582,7 @@ describe('POST /api/generate/daily', () => {
     // (both run in parallel, not sequentially which would be ~300ms)
     // We use a loose bound to account for system variance
     expect(elapsed).toBeLessThan(400);
-    expect(mockGetRecentEmbeddings).toHaveBeenCalledWith('2026-04-11');
+    expect(mockGetRecentEmbeddings).toHaveBeenCalledWith(TODAY);
     expect(res.json).toHaveBeenCalledOnce();
   });
 });

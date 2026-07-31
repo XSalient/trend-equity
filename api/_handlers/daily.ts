@@ -27,6 +27,22 @@ const PUBLISH_COUNT = 35;
 // the request, which on Vercel is effectively no limit at all.
 const IP_DAILY_LIMIT = 5;
 
+// A 503 "AI generation temporarily unavailable" tells the caller to retry shortly, which
+// is only honest for a provider or network failure. Mapping *every* throw to it hides our
+// own bugs behind a plausible-looking outage: a broken import in this file, or a
+// mis-declared mock in the test suite, reads as "Gemini is having a moment" and nobody
+// investigates. That is precisely how the daily unit suite stayed dead from TE-04 to
+// TE-46. These four classes are only ever raised by defective code, never by a remote
+// service, so they surface as a 500 carrying the real message.
+function isProgrammingError(err: unknown): boolean {
+  return (
+    err instanceof TypeError ||
+    err instanceof ReferenceError ||
+    err instanceof SyntaxError ||
+    err instanceof RangeError
+  );
+}
+
 function getRequestIp(req: VercelRequest): string {
   return (
     (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
@@ -303,6 +319,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       await db.collection('locks').doc(`daily_gen_${today}`).delete();
     } catch (_lockErr) {
       // Ignore unlock errors
+    }
+
+    if (isProgrammingError(err)) {
+      console.error(
+        '[daily] BUG: programming error in the generation path — not a provider outage'
+      );
+      return res.status(500).json({ error: err?.message || 'Internal error' });
     }
 
     return res
