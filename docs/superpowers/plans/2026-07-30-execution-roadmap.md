@@ -25,34 +25,34 @@ This roadmap replaces the earlier sequence that centered on a locked ten-card Fr
 
 Legend: **Gate** means do not proceed until the condition is true. `∥` means the work can run in parallel.
 
-| # | Stage | Work | Result / gate | Effort |
-| --- | --- | --- | --- | --- |
-| 1 | **0 · Stabilize** | Repair TE-46 daily-generation tests and narrow programming-error masking | Generation, quality, signal, and tier behaviour have trustworthy tests | S |
-| 2 | 0 · Stabilize | Verify anonymous cached daily read in a real signed-out browser and API test | Anonymous users can receive the designated daily payload without triggering generation | S |
-| 3 | **0 · Observe** | Extend funnel instrumentation for anonymous and signed-in journeys | Landing → featured idea → source → save/sign-in → more requested → upgrade → checkout is measurable | M |
-| 4 | **1 · Define contract** | Specify anonymous/Free/Pro/Builder response shapes and low-quality-day behaviour | One testable entitlement contract, no client-only assumptions | S |
-| 5 | 1 · Define contract | Add structured signal-provenance schema or remove unsupported quantitative claims | Active UI and designs make only verifiable claims | M |
-| 6 | **2 · Tier-v2 backend** | Add deterministic `featuredIdeaId` and hard publishing threshold | Daily generation identifies one qualified featured idea and can publish a variable qualified count | M |
-| 7 | 2 · Tier-v2 backend | Implement server-side daily-read projection | Anonymous/Free receive one full idea; Pro/Builder receive the qualified paid set | M |
-| 8 | 2 · Tier-v2 backend | Precompute/cache featured evidence and lock arbitrary evidence generation by entitlement | Complete Free evidence works without exposing paid calls or uncontrolled cost | M |
-| 9 | **3 · Tier-v2 frontend** | Build one complete Idea of the Day, including honest empty/loading/error states | No blurred or locked sections inside the free idea | M |
-| 10 | 3 · Tier-v2 frontend | Add post-idea and intent-preserving upgrade surfaces | Upgrade is triggered by “more ideas” or a new workflow, not missing paragraphs | M |
-| 11 | 3 · Tier-v2 frontend | Reframe pricing as Discover / Evaluate / Execute | Tier promises match the PRD and implementation | S |
-| 12 | 3 · Tier-v2 frontend | Remove or quarantine stale locked-feed and evidence-sample behaviour | No active path contradicts the new free promise | M |
-| 13 | **4 · Verify** | Unit, integration, and mobile E2E tests for all tier and auth states | `npm run check` and targeted test suites pass; full user journey is exercised | M |
-| — | **★ DECISION GATE** | Read meaningful tier-v2 cohorts | Re-rank subsequent work using observed activation, request-more, checkout, and retention behaviour | — |
-| 14 | **5A · Trust** | Quality/diversity improvements and structured source provenance | The complete sample is consistently credible and non-repetitive | M–L |
-| 15 | 5A · Trust | Define prediction outcome review and grading before publishing a track record | Public credibility claims have a writer, reviewer, methodology, and misses | M |
-| 16 | **5B · Personal value** | Founder profile and personalized ranking | Paid feed and monitoring answer “for me,” not only “generally interesting” | L |
-| 17 | 5B · Personal value | My Thesis radar vertical slice: follow → detect change → explain → open | First recurring must-have workflow exists end to end | L |
-| 18 | 5B · Personal value | Saved-idea change detection | Saved items accrue new value instead of dead-ending | M |
-| 19 | 5B · Personal value | Personal Today view aggregating existing and new state | Paid users open on their work and changes, not a generic feed | L |
-| 20 | **5C · Re-engagement** | Personalized digest and web/native push | Messages are triggered by radar or saved changes; never generic broadcasts | M |
-| 21 | **5D · Retention moat** | Tracked validation experiments and portfolio | User evidence and decisions accrue in the product | L |
-| 22 | 5D · Retention moat | What I’m building, roadmap progress, accountability, and ship-log | Builder becomes a persistent execution workspace | L |
-| 23 | **5E · Churn learning** | Cancellation reason capture and suitable save options | Churn creates structured data and appropriate recovery paths | S–M |
-| 24 | **Later experiment** | Reverse trial, tested separately | Only after tier-v2 baseline; isolated cohort and economics | M |
-| 25 | **Last** | Genuine co-founder discovery and contact journey | Only after sufficient builder density, privacy design, and real user demand | L |
+| #   | Stage                    | Work                                                                                     | Result / gate                                                                                       | Effort |
+| --- | ------------------------ | ---------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- | ------ |
+| 1   | **0 · Stabilize**        | Repair TE-46 daily-generation tests and narrow programming-error masking                 | Generation, quality, signal, and tier behaviour have trustworthy tests                              | S      |
+| 2   | 0 · Stabilize            | Verify anonymous cached daily read in a real signed-out browser and API test             | Anonymous users can receive the designated daily payload without triggering generation              | S      |
+| 3   | **0 · Observe**          | Extend funnel instrumentation for anonymous and signed-in journeys                       | Landing → featured idea → source → save/sign-in → more requested → upgrade → checkout is measurable | M      |
+| 4   | **1 · Define contract**  | Specify anonymous/Free/Pro/Builder response shapes and low-quality-day behaviour         | One testable entitlement contract, no client-only assumptions                                       | S      |
+| 5   | 1 · Define contract      | Add structured signal-provenance schema or remove unsupported quantitative claims        | Active UI and designs make only verifiable claims                                                   | M      |
+| 6   | **2 · Tier-v2 backend**  | Add deterministic `featuredIdeaId` and hard publishing threshold                         | Daily generation identifies one qualified featured idea and can publish a variable qualified count  | M      |
+| 7   | 2 · Tier-v2 backend      | Implement server-side daily-read projection                                              | Anonymous/Free receive one full idea; Pro/Builder receive the qualified paid set                    | M      |
+| 8   | 2 · Tier-v2 backend      | Precompute/cache featured evidence and lock arbitrary evidence generation by entitlement | Complete Free evidence works without exposing paid calls or uncontrolled cost                       | M      |
+| 9   | **3 · Tier-v2 frontend** | Build one complete Idea of the Day, including honest empty/loading/error states          | No blurred or locked sections inside the free idea                                                  | M      |
+| 10  | 3 · Tier-v2 frontend     | Add post-idea and intent-preserving upgrade surfaces                                     | Upgrade is triggered by “more ideas” or a new workflow, not missing paragraphs                      | M      |
+| 11  | 3 · Tier-v2 frontend     | Reframe pricing as Discover / Evaluate / Execute                                         | Tier promises match the PRD and implementation                                                      | S      |
+| 12  | 3 · Tier-v2 frontend     | Remove or quarantine stale locked-feed and evidence-sample behaviour                     | No active path contradicts the new free promise                                                     | M      |
+| 13  | **4 · Verify**           | Unit, integration, and mobile E2E tests for all tier and auth states                     | `npm run check` and targeted test suites pass; full user journey is exercised                       | M      |
+| —   | **★ DECISION GATE**      | Read meaningful tier-v2 cohorts                                                          | Re-rank subsequent work using observed activation, request-more, checkout, and retention behaviour  | —      |
+| 14  | **5A · Trust**           | Quality/diversity improvements and structured source provenance                          | The complete sample is consistently credible and non-repetitive                                     | M–L    |
+| 15  | 5A · Trust               | Define prediction outcome review and grading before publishing a track record            | Public credibility claims have a writer, reviewer, methodology, and misses                          | M      |
+| 16  | **5B · Personal value**  | Founder profile and personalized ranking                                                 | Paid feed and monitoring answer “for me,” not only “generally interesting”                          | L      |
+| 17  | 5B · Personal value      | My Thesis radar vertical slice: follow → detect change → explain → open                  | First recurring must-have workflow exists end to end                                                | L      |
+| 18  | 5B · Personal value      | Saved-idea change detection                                                              | Saved items accrue new value instead of dead-ending                                                 | M      |
+| 19  | 5B · Personal value      | Personal Today view aggregating existing and new state                                   | Paid users open on their work and changes, not a generic feed                                       | L      |
+| 20  | **5C · Re-engagement**   | Personalized digest and web/native push                                                  | Messages are triggered by radar or saved changes; never generic broadcasts                          | M      |
+| 21  | **5D · Retention moat**  | Tracked validation experiments and portfolio                                             | User evidence and decisions accrue in the product                                                   | L      |
+| 22  | 5D · Retention moat      | What I’m building, roadmap progress, accountability, and ship-log                        | Builder becomes a persistent execution workspace                                                    | L      |
+| 23  | **5E · Churn learning**  | Cancellation reason capture and suitable save options                                    | Churn creates structured data and appropriate recovery paths                                        | S–M    |
+| 24  | **Later experiment**     | Reverse trial, tested separately                                                         | Only after tier-v2 baseline; isolated cohort and economics                                          | M      |
+| 25  | **Last**                 | Genuine co-founder discovery and contact journey                                         | Only after sufficient builder density, privacy design, and real user demand                         | L      |
 
 ---
 

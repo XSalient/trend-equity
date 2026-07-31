@@ -22,16 +22,16 @@ Where an older design conflicts with the first four files, the older design must
 
 ## What is available
 
-| Artifact | Purpose | Current status |
-| --- | --- | --- |
-| [`../research/2026-07-30-user-research-findings.md`](../research/2026-07-30-user-research-findings.md) | Expert persona walkthroughs and product findings | Useful hypotheses; not moderated user research |
-| [`../research/2026-07-30-value-and-reengagement-research.md`](../research/2026-07-30-value-and-reengagement-research.md) | Must-have value and re-engagement reasoning | Useful strategic input |
-| [`2026-07-30-redesign-concepts.md`](2026-07-30-redesign-concepts.md) | Component and campaign concepts | Requires tier-v2 reconciliation |
-| [`2026-07-30-mobile-home-screens.md`](2026-07-30-mobile-home-screens.md) | Three home states | Free state is stale; subscriber state remains directionally useful |
-| [`2026-07-30-mobile-screens.md`](2026-07-30-mobile-screens.md) | Whole-product mobile screen plan | Daily Feed and Pricing screens require revision |
-| [`stitch/DESIGN.md`](stitch/DESIGN.md) | Visual tokens, type, color, component direction | Reusable visual reference |
-| [`stitch/README.md`](stitch/README.md) | Stitch project and screen IDs | Historical run manifest |
-| [`stitch/generate/`](stitch/generate/) | Exact generation scripts/prompts | Reproducible, but prompts contain stale tier behaviour |
+| Artifact                                                                                                                 | Purpose                                          | Current status                                                     |
+| ------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------ | ------------------------------------------------------------------ |
+| [`../research/2026-07-30-user-research-findings.md`](../research/2026-07-30-user-research-findings.md)                   | Expert persona walkthroughs and product findings | Useful hypotheses; not moderated user research                     |
+| [`../research/2026-07-30-value-and-reengagement-research.md`](../research/2026-07-30-value-and-reengagement-research.md) | Must-have value and re-engagement reasoning      | Useful strategic input                                             |
+| [`2026-07-30-redesign-concepts.md`](2026-07-30-redesign-concepts.md)                                                     | Component and campaign concepts                  | Requires tier-v2 reconciliation                                    |
+| [`2026-07-30-mobile-home-screens.md`](2026-07-30-mobile-home-screens.md)                                                 | Three home states                                | Free state is stale; subscriber state remains directionally useful |
+| [`2026-07-30-mobile-screens.md`](2026-07-30-mobile-screens.md)                                                           | Whole-product mobile screen plan                 | Daily Feed and Pricing screens require revision                    |
+| [`stitch/DESIGN.md`](stitch/DESIGN.md)                                                                                   | Visual tokens, type, color, component direction  | Reusable visual reference                                          |
+| [`stitch/README.md`](stitch/README.md)                                                                                   | Stitch project and screen IDs                    | Historical run manifest                                            |
+| [`stitch/generate/`](stitch/generate/)                                                                                   | Exact generation scripts/prompts                 | Reproducible, but prompts contain stale tier behaviour             |
 
 ---
 

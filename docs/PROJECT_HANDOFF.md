@@ -121,20 +121,20 @@ These are acceptance requirements, not optional implementation suggestions:
 
 ## 6. Workstream status
 
-| Work package | Status | Notes |
-| --- | --- | --- |
-| Branch merge review | Done | Merged branch analyzed against current code and prior plans. |
-| Product model consolidation | Done | One complete free evaluation adopted for this branch. |
-| PRD and execution-plan update | Done in documentation | Code still uses the old tier limits. |
-| Cross-agent handoff and tracker | Done | Canonical read order and TV2 milestones are stored in-repo. |
-| Design reconciliation | In progress | Existing Stitch screens predate tier v2 and must not be implemented unchanged. |
-| Funnel instrumentation | Todo | Anonymous journey and upgrade events still need a coherent path. |
-| Tier-v2 vertical slice | Todo | Server projection, featured idea, UI, pricing copy, tests. |
-| Structured signal provenance | Todo | Required before quantitative SignalRibbon claims. |
-| Hard quality publishing gate | Todo | Variable publish count; no fail-open marketing promise. |
-| Radar vertical slice | Gated | Build after tier-v2 activation/conversion baseline. |
-| Validation and build workspace | Gated | Build after retention data supports the investment. |
-| Main-branch merge | Blocked | Requires explicit owner approval after review and validation. |
+| Work package                    | Status                | Notes                                                                          |
+| ------------------------------- | --------------------- | ------------------------------------------------------------------------------ |
+| Branch merge review             | Done                  | Merged branch analyzed against current code and prior plans.                   |
+| Product model consolidation     | Done                  | One complete free evaluation adopted for this branch.                          |
+| PRD and execution-plan update   | Done in documentation | Code still uses the old tier limits.                                           |
+| Cross-agent handoff and tracker | Done                  | Canonical read order and TV2 milestones are stored in-repo.                    |
+| Design reconciliation           | In progress           | Existing Stitch screens predate tier v2 and must not be implemented unchanged. |
+| Funnel instrumentation          | Todo                  | Anonymous journey and upgrade events still need a coherent path.               |
+| Tier-v2 vertical slice          | Todo                  | Server projection, featured idea, UI, pricing copy, tests.                     |
+| Structured signal provenance    | Todo                  | Required before quantitative SignalRibbon claims.                              |
+| Hard quality publishing gate    | Todo                  | Variable publish count; no fail-open marketing promise.                        |
+| Radar vertical slice            | Gated                 | Build after tier-v2 activation/conversion baseline.                            |
+| Validation and build workspace  | Gated                 | Build after retention data supports the investment.                            |
+| Main-branch merge               | Blocked               | Requires explicit owner approval after review and validation.                  |
 
 Detailed status is maintained in `docs/TIER_V2_TRACKER.md` rather than duplicated here.
 

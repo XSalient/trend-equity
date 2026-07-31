@@ -17,29 +17,29 @@ This tracker is intentionally compact so any AI agent, editor, or mobile session
 
 ## Milestones
 
-| ID | Milestone | Status | Owner | Dependencies | Completion evidence |
-| --- | --- | --- | --- | --- | --- |
-| TV2-01 | Repair daily-generation tests and programming-error masking | todo | — | None | Targeted unit suite passes and failure modes are distinguishable |
-| TV2-02 | Verify anonymous cached daily read end to end | todo | — | TV2-01 recommended | Signed-out API/browser test receives cached daily content without generating |
-| TV2-03 | Define and test tier-v2 API response contracts | todo | — | TV2-01 | Contract tests for anonymous, Free, Pro, Builder, admin, and zero-qualified day |
-| TV2-04 | Add privacy-respecting anonymous funnel measurement | todo | — | Analytics design | Landing and featured-idea journey is measurable without an account |
-| TV2-05 | Add structured signal provenance or neutralize unsupported claims | todo | — | Signal audit | No active UI displays invented or untraceable deltas |
-| TV2-06 | Add deterministic `featuredIdeaId` and hard publishing threshold | todo | — | TV2-03 | Daily document records stable featured idea; zero-passing day supported |
-| TV2-07 | Implement server-authoritative daily projection | todo | — | TV2-03, TV2-06 | Free receives exactly one full idea; paid tiers receive qualified set |
-| TV2-08 | Precompute/cache featured evidence safely | todo | — | TV2-06, evidence architecture | Featured evidence works for Free without arbitrary paid evidence access |
-| TV2-09 | Build complete mobile-first Idea of the Day UI | todo | — | TV2-07, TV2-08 | No locks inside featured idea; loading/error/empty states covered |
-| TV2-10 | Add post-idea and contextual upgrade journeys | todo | — | TV2-09 | Context preserved for more ideas, custom analysis, radar, validation, roadmap |
-| TV2-11 | Update pricing implementation to Discover/Evaluate/Execute | todo | — | TV2-07 | UI promises exactly match `PRD.md` and server behaviour |
-| TV2-12 | Remove stale locked-free-feed paths and one-time evidence sample assumptions | todo | — | TV2-09, TV2-10 | No active route contradicts one-complete-free-idea promise |
-| TV2-13 | Complete unit, integration, mobile E2E, lint, type, and format validation | todo | — | TV2-01…12 | Actual command output recorded; failing checks resolved or explicitly blocked |
-| TV2-14 | Read first meaningful cohort and decide next investment | blocked | Product owner | TV2-13 + sufficient real traffic | Written decision: activation, conversion, retention, or quality priority |
-| TV2-15 | My Thesis radar vertical slice | blocked | — | TV2-14 prioritizes personal value | Follow → change detection → explanation → open works end to end |
-| TV2-16 | Saved-idea changes and personal Today view | blocked | — | TV2-14/15 | Returning paid user sees accrued personal state and changes |
-| TV2-17 | Tracked validation and What I’m Building workspace | blocked | — | TV2-14 supports retention investment | User experiments, decisions, and build progress persist |
-| TV2-18 | Personalized digest and push | blocked | — | TV2-15/16 personal triggers | No generic broadcasts; consent and delivery verified |
-| TV2-19 | Cancellation reason and suitable save flow | todo | — | Billing review | Structured churn reason captured; exit remains easy and honest |
-| TV2-20 | Reverse-trial experiment | parked | — | Stable tier-v2 baseline | Isolated cohort, cost, conversion, refund, and retention comparison |
-| TV2-21 | Genuine co-founder matching | parked | — | Demonstrated builder density and demand | Privacy, discovery, opt-in list, and contact journey exist |
+| ID     | Milestone                                                                    | Status  | Owner         | Dependencies                            | Completion evidence                                                             |
+| ------ | ---------------------------------------------------------------------------- | ------- | ------------- | --------------------------------------- | ------------------------------------------------------------------------------- |
+| TV2-01 | Repair daily-generation tests and programming-error masking                  | todo    | —             | None                                    | Targeted unit suite passes and failure modes are distinguishable                |
+| TV2-02 | Verify anonymous cached daily read end to end                                | todo    | —             | TV2-01 recommended                      | Signed-out API/browser test receives cached daily content without generating    |
+| TV2-03 | Define and test tier-v2 API response contracts                               | todo    | —             | TV2-01                                  | Contract tests for anonymous, Free, Pro, Builder, admin, and zero-qualified day |
+| TV2-04 | Add privacy-respecting anonymous funnel measurement                          | todo    | —             | Analytics design                        | Landing and featured-idea journey is measurable without an account              |
+| TV2-05 | Add structured signal provenance or neutralize unsupported claims            | todo    | —             | Signal audit                            | No active UI displays invented or untraceable deltas                            |
+| TV2-06 | Add deterministic `featuredIdeaId` and hard publishing threshold             | todo    | —             | TV2-03                                  | Daily document records stable featured idea; zero-passing day supported         |
+| TV2-07 | Implement server-authoritative daily projection                              | todo    | —             | TV2-03, TV2-06                          | Free receives exactly one full idea; paid tiers receive qualified set           |
+| TV2-08 | Precompute/cache featured evidence safely                                    | todo    | —             | TV2-06, evidence architecture           | Featured evidence works for Free without arbitrary paid evidence access         |
+| TV2-09 | Build complete mobile-first Idea of the Day UI                               | todo    | —             | TV2-07, TV2-08                          | No locks inside featured idea; loading/error/empty states covered               |
+| TV2-10 | Add post-idea and contextual upgrade journeys                                | todo    | —             | TV2-09                                  | Context preserved for more ideas, custom analysis, radar, validation, roadmap   |
+| TV2-11 | Update pricing implementation to Discover/Evaluate/Execute                   | todo    | —             | TV2-07                                  | UI promises exactly match `PRD.md` and server behaviour                         |
+| TV2-12 | Remove stale locked-free-feed paths and one-time evidence sample assumptions | todo    | —             | TV2-09, TV2-10                          | No active route contradicts one-complete-free-idea promise                      |
+| TV2-13 | Complete unit, integration, mobile E2E, lint, type, and format validation    | todo    | —             | TV2-01…12                               | Actual command output recorded; failing checks resolved or explicitly blocked   |
+| TV2-14 | Read first meaningful cohort and decide next investment                      | blocked | Product owner | TV2-13 + sufficient real traffic        | Written decision: activation, conversion, retention, or quality priority        |
+| TV2-15 | My Thesis radar vertical slice                                               | blocked | —             | TV2-14 prioritizes personal value       | Follow → change detection → explanation → open works end to end                 |
+| TV2-16 | Saved-idea changes and personal Today view                                   | blocked | —             | TV2-14/15                               | Returning paid user sees accrued personal state and changes                     |
+| TV2-17 | Tracked validation and What I’m Building workspace                           | blocked | —             | TV2-14 supports retention investment    | User experiments, decisions, and build progress persist                         |
+| TV2-18 | Personalized digest and push                                                 | blocked | —             | TV2-15/16 personal triggers             | No generic broadcasts; consent and delivery verified                            |
+| TV2-19 | Cancellation reason and suitable save flow                                   | todo    | —             | Billing review                          | Structured churn reason captured; exit remains easy and honest                  |
+| TV2-20 | Reverse-trial experiment                                                     | parked  | —             | Stable tier-v2 baseline                 | Isolated cohort, cost, conversion, refund, and retention comparison             |
+| TV2-21 | Genuine co-founder matching                                                  | parked  | —             | Demonstrated builder density and demand | Privacy, discovery, opt-in list, and contact journey exist                      |
 
 ## Current next action
 
