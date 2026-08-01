@@ -89,13 +89,15 @@ No "getMarketSignals" export is defined on the "../../../api/_lib/signals" mock
 
 **Not failures, for the record:** the 81 skipped tests in `tests/unit/firestore.test.ts` are the documented emulator-gated rules suite (run via `firebase emulators:exec`, see CLAUDE.md) — expected skips, not breakage. The Playwright E2E suite was not assessed as part of this ticket.
 
-## Shipped — P0: the upgrade button broke again, for the opposite reason (TE-60)
+## Shipped — P0: the upgrade button broke again, for the opposite reason (TE-69)
 
 | ID    | Task                                                                                                            | Status            | Owner  | Effort |
 | ----- | --------------------------------------------------------------------------------------------------------------- | ----------------- | ------ | ------ |
-| TE-60 | Reconcile a stale stored tier instead of sending Stripe a flow it must refuse; stop misdiagnosing every refusal | done (2026-07-31) | Claude | S      |
+| TE-69 | Reconcile a stale stored tier instead of sending Stripe a flow it must refuse; stop misdiagnosing every refusal | done (2026-07-31) | Claude | S      |
 
-**TE-60 user story:** As a Pro subscriber, I want UPGRADE NOW to either open Stripe's confirm page or tell me I am already on that plan — and as the operator, I want the log to name the fault I actually have, not the one from last week.
+_Filed as TE-60 and renumbered before merge: `claude/merge-subscriber-growth-branches` already reserves TE-60…TE-68 for the Wave 6 growth tickets (TE-60 is "Today personal home"). Commit messages `05676e1` / `37d012f` still say TE-60._
+
+**TE-69 user story:** As a Pro subscriber, I want UPGRADE NOW to either open Stripe's confirm page or tell me I am already on that plan — and as the operator, I want the log to name the fault I actually have, not the one from last week.
 
 **Symptom:** identical to TE-48 from the outside — "Plan changes are temporarily unavailable. Please contact support." under the Builder card, everything else on the page working.
 
@@ -439,7 +441,7 @@ All five stories (TE-38…TE-42) shipped 2026-07-29 — rows are in [Recently sh
 | ID    | Task                                                                                                                                                                                 | Shipped    | Commits                   |
 | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------- | ------------------------- |
 | TE-46 | Daily-generation suite repaired (13 failing → 28 passing; full suite green); handler no longer masks programming errors as a 503 provider outage                                     | 2026-07-31 | (this commit)             |
-| TE-60 | Portal reconciles a stale stored tier instead of sending Stripe an unconfirmable flow; duplicate price ids rejected at `getPriceId` and in `stripe:verify`                           | 2026-07-31 | 05676e1                   |
+| TE-69 | Portal reconciles a stale stored tier instead of sending Stripe an unconfirmable flow; duplicate price ids rejected at `getPriceId` and in `stripe:verify`                           | 2026-07-31 | 05676e1                   |
 | TE-59 | Free-tier Evidence upgrade CTA made reachable by click, tap and keyboard; the missing `onUpgrade` at both `SavedIdeas` render sites (ticket defined on the subscriber-growth branch) | 2026-07-31 | (this commit)             |
 | TE-48 | Portal configuration applied; `stripe:verify` asserts it and fails non-zero; a Stripe-refused flow reports as a 503 with the fix, not an opaque 500                                  | 2026-07-29 | 8701bba                   |
 | TE-47 | Paid→paid plan switching: `targetTier` portal deep links, prorated immediate upgrade, period-end downgrade + `pendingTier`, per-button state, portal config script                   | 2026-07-29 | 00ea80f                   |

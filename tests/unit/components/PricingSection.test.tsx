@@ -173,7 +173,7 @@ describe('PricingSection plan-switch journey (TE-47)', () => {
   });
 
   /**
-   * TE-60: the server answers a click on a plan Stripe already has the user on
+   * TE-69: the server answers a click on a plan Stripe already has the user on
    * with a 409 and a reconciled tier. Painting that red tells somebody their
    * upgrade broke at the exact moment it was found to have worked.
    */

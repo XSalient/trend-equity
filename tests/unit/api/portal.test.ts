@@ -48,7 +48,7 @@ describe('POST /api/portal', () => {
 
   /**
    * A live single-item subscription — the shape every paid↔paid switch needs.
-   * TE-60: the item carries its **price**, because that is what Stripe prices
+   * TE-69: the item carries its **price**, because that is what Stripe prices
    * the flow against. The priceless fixture let every assertion below pass
    * while production was refusing the same flow for a price it could see and
    * the test could not.
@@ -272,7 +272,7 @@ describe('POST /api/portal', () => {
       });
 
       /**
-       * TE-60: the 503 is right for any refused flow, but the *log* is the
+       * TE-69: the 503 is right for any refused flow, but the *log* is the
        * operator's only lead. Pointing every rejection at
        * `stripe:configure-portal` sent the next investigation to re-run a
        * script that was already correct.
@@ -316,7 +316,7 @@ describe('POST /api/portal', () => {
     });
 
     /**
-     * TE-60. The production failure the TE-48 handling misreported:
+     * TE-69. The production failure the TE-48 handling misreported:
      *
      *   Cannot update the subscription `sub_…` because there are no changes to
      *   confirm. Provide a different `price` or `quantity`.
@@ -327,7 +327,7 @@ describe('POST /api/portal', () => {
      * press of UPGRADE NOW builds a no-op flow Stripe refuses. The fixture that
      * carried no price could not express this, so the suite stayed green.
      */
-    describe('when Firestore and Stripe disagree about the plan (TE-60)', () => {
+    describe('when Firestore and Stripe disagree about the plan (TE-69)', () => {
       beforeEach(() => {
         // Stored as pro (authedPro); Stripe already has them on Builder.
         stripeClient.subscriptions.retrieve.mockResolvedValue(builderSubscription);

@@ -55,7 +55,7 @@ export function getStripe(): Stripe {
  * Rejects the stub values (`price_`, `price_..._placeholder`) that ship in
  * `.env.example`, which previously passed validation and were sent to Stripe.
  *
- * TE-60: also rejects the two tiers resolving to the *same* price. A deployment
+ * TE-69: also rejects the two tiers resolving to the *same* price. A deployment
  * where `STRIPE_PRICE_BUILDER` holds the Pro price id is not a half-working one:
  * Checkout sells Builder for $9 and the portal's pro→builder flow is refused by
  * Stripe ("there are no changes to confirm"). Both are silent until somebody
@@ -307,7 +307,7 @@ export function getPeriodEnd(subscription: Stripe.Subscription): number | null {
 }
 
 /**
- * TE-60: mirrors a live Stripe subscription onto `users/{uid}` — price → tier,
+ * TE-69: mirrors a live Stripe subscription onto `users/{uid}` — price → tier,
  * status, period end, and any scheduled switch — in one call.
  *
  * Extracted from the `customer.subscription.updated` handler so the portal can

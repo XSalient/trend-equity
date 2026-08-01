@@ -11,7 +11,7 @@ Canonical reference for how money and tiers work in Trend-Equity. If code and th
 | Writer                                           | Direction             | Trigger                                                                                                                                                                                 |
 | ------------------------------------------------ | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `provisionSubscription()` (`api/_lib/stripe.ts`) | free → pro/builder    | `checkout.session.completed` webhook **or** `GET /api/checkout?session_id=` return leg (idempotent, dedup key = session id)                                                             |
-| `updateSubscriptionState()`                      | pro ↔ builder         | `customer.subscription.updated` webhook, and `POST /api/portal` when it finds the stored tier stale (TE-60) — both via `syncSubscriptionToUser()`; price id → tier via `tierForPriceId` |
+| `updateSubscriptionState()`                      | pro ↔ builder         | `customer.subscription.updated` webhook, and `POST /api/portal` when it finds the stored tier stale (TE-69) — both via `syncSubscriptionToUser()`; price id → tier via `tierForPriceId` |
 | `downgradeToFree()`                              | paid → free           | `customer.subscription.deleted` webhook (portal cancel at period end, dashboard cancel, dunning exhaustion)                                                                             |
 | `resolveEffectiveTier()` (`api/_lib/auth.ts`)    | paid → free (virtual) | Per-request backstop: `proEndDate` + 3-day grace elapsed. Doesn't write the doc; the request just resolves as free                                                                      |
 | Admin (Firestore console)                        | any                   | Manual grants. Leave `proEndDate` unset/null — manual grants never expire                                                                                                               |
@@ -86,7 +86,7 @@ Two consequences are load-bearing:
 - **`npm run stripe:verify` asserts the portal configuration**, not just keys and prices. It exits non-zero on any of the four settings above being wrong. Run it after any Stripe environment change; the version that only checked prices passed cleanly against the broken account.
 - **`api/portal.ts` reports a refused flow as a 503**, with an operator log naming the script to run. It does not retry as a bare session: the portal homepage has no plan switcher while plan switching is disabled, so the fallback would swap a visible failure for an invisible dead end.
 
-#### When the stored tier is stale (TE-60)
+#### When the stored tier is stale (TE-69)
 
 This shipped too, from the same button, and the TE-48 handling reported it as the TE-48 fault:
 

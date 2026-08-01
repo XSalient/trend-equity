@@ -178,7 +178,7 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
    */
   const [portalBusy, setPortalBusy] = useState<PortalAction | null>(null);
   /**
-   * TE-60: not every unopened portal is a failure. When the server finds Stripe
+   * TE-69: not every unopened portal is a failure. When the server finds Stripe
    * already has the user on the plan they just clicked, it reconciles the tier
    * and says so — rendering that in error red would tell somebody their upgrade
    * broke at the moment it landed.
@@ -262,7 +262,7 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
       setPortalNotice({
         action,
         message: data.error ?? 'Could not open the billing portal. Please try again.',
-        // TE-60: `reconciledTier` means the server just repaired a stale tier —
+        // TE-69: `reconciledTier` means the server just repaired a stale tier —
         // the snapshot is about to flip this card to CURRENT PLAN on its own.
         tone: data.reconciledTier ? 'info' : 'error',
       });

@@ -72,7 +72,7 @@ describe('api/_lib/stripe configuration guards', () => {
     });
 
     /**
-     * TE-60: two tiers, one price is a well-formed, individually valid
+     * TE-69: two tiers, one price is a well-formed, individually valid
      * configuration that silently sells Builder at Pro's price through Checkout
      * and makes the portal's pro→builder flow un-confirmable. Both symptoms are
      * invisible until somebody reads an invoice, so it fails at the resolver.
@@ -231,11 +231,11 @@ describe('api/_lib/stripe configuration guards', () => {
   });
 
   /**
-   * TE-60: the webhook and the portal both reconcile a user doc from a live
+   * TE-69: the webhook and the portal both reconcile a user doc from a live
    * subscription, so the mapping lives in one place. These assert the doc that
    * actually lands, not that a function was called.
    */
-  describe('syncSubscriptionToUser (TE-60)', () => {
+  describe('syncSubscriptionToUser (TE-69)', () => {
     const setupDb = async () => {
       const set = vi.fn().mockResolvedValue(undefined);
       const doc = vi.fn(() => ({ set }));

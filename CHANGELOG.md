@@ -31,7 +31,7 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/): **Added 
 
 ### Fixed
 
-- **The upgrade button broke again, for the opposite reason (TE-60, 2026-07-31).** A Pro subscriber pressing UPGRADE NOW on Builder got "Plan changes are temporarily unavailable" — the same symptom as TE-48, a different fault, reported as TE-48's. Production log: `Cannot update the subscription sub_… because there are no changes to confirm.`
+- **The upgrade button broke again, for the opposite reason (TE-69, 2026-07-31).** A Pro subscriber pressing UPGRADE NOW on Builder got "Plan changes are temporarily unavailable" — the same symptom as TE-48, a different fault, reported as TE-48's. Production log: `Cannot update the subscription sub_… because there are no changes to confirm.`
   - **Root cause:** the flow is priced off `users/{uid}.tier` (Firestore); Stripe validates it against the subscription item. Once those drift, the "upgrade" asks Stripe to change nothing and is refused. `buildFlowData` had the current price in hand — it retrieved the subscription for its item id — and never compared it to the target.
   - `api/portal.ts` now compares them before creating a session. Already-equal means the stored tier is stale: the endpoint reconciles the user doc from the live subscription via `syncSubscriptionToUser` (the webhook's own path, so `updateSubscriptionState` stays the only tier writer) and answers 409 with `reconciledTier`. The card flips to CURRENT PLAN off the Firestore snapshot, no reload.
   - The pricing card reads `reconciledTier` and renders it amber rather than red — "you are already on Builder" is not a billing failure.

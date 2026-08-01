@@ -83,7 +83,7 @@ fetch('https://api.stripe.com/v1/products', {
     console.log('3️⃣  Found Products & Prices:');
     console.log('');
 
-    // TE-60: matched with `includes`, so a throwaway product called
+    // TE-69: matched with `includes`, so a throwaway product called
     // "myproduct" answered to "pro" — and being listed first, it was the one
     // step 4 suggested, printing `STRIPE_PRICE_PRO=null` for anyone to paste
     // into .env. The tier products are named exactly "Pro" and "Builder"; a
@@ -138,7 +138,7 @@ fetch('https://api.stripe.com/v1/products', {
   });
 
 /**
- * TE-60: the script printed the price ids it *suggests* and never looked at the
+ * TE-69: the script printed the price ids it *suggests* and never looked at the
  * ones actually configured. A deployment where `STRIPE_PRICE_BUILDER` held the
  * Pro price id passed this cleanly while Checkout sold Builder for $9 and every
  * pro→builder portal flow was refused by Stripe with "there are no changes to

@@ -14,7 +14,7 @@ vi.mock('../../../api/_lib/stripe', async () => {
     extendSubscription: vi.fn(),
     downgradeToFree: vi.fn(),
     resolveUid: vi.fn(),
-    // TE-60: the price → tier mapping, the schedule read and the doc write all
+    // TE-69: the price → tier mapping, the schedule read and the doc write all
     // live behind this one call now (shared with api/portal.ts). What lands in
     // the user doc is asserted against a real Firestore mock in
     // stripe-lib.test.ts; the webhook's own job is resolving the uid and

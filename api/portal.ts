@@ -37,7 +37,7 @@ import { getAdminDb } from './_lib/admin';
  * see `isFlowRejection` below. That is a deployment fault, and it is reported
  * as one.
  *
- * TE-60: the flow is priced off the *Firestore* tier, but Stripe validates it
+ * TE-69: the flow is priced off the *Firestore* tier, but Stripe validates it
  * against the subscription's actual price. When those two disagree, the flow we
  * build asks Stripe to change nothing and is rejected — a dead upgrade button
  * whose cause is nowhere near the portal configuration. The subscription's
@@ -100,7 +100,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       returnUrl,
     });
 
-    // TE-60: the stored tier is behind Stripe. Sending the flow would earn a
+    // TE-69: the stored tier is behind Stripe. Sending the flow would earn a
     // "there are no changes to confirm" rejection and a support ticket, so
     // repair the drift instead — the webhook writer is still the one touching
     // `tier`, and `useTier`'s snapshot re-renders the card without a reload.
@@ -134,7 +134,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         .json({ error: 'Payments are not configured yet. Please contact support.' });
     }
     if (isFlowRejection(error, flowData)) {
-      // TE-60: only Stripe's own words decide which fault this is. Naming
+      // TE-69: only Stripe's own words decide which fault this is. Naming
       // `stripe:configure-portal` unconditionally sent the last outage's
       // operator to re-run a script that was already correct, while the real
       // message ("no changes to confirm") sat one line further along.
@@ -200,7 +200,7 @@ interface FlowDataParams {
 
 /**
  * Resolves the deep-link flow, the portal homepage, or the "already there"
- * case (TE-60).
+ * case (TE-69).
  *
  * Runtime failures degrade to the homepage rather than throwing: a user who
  * asked to upgrade should land on a page where they still can, not on an error.
@@ -263,7 +263,7 @@ async function resolveFlow({
 
   const targetPriceId = getPriceId(requestedTier);
 
-  // TE-60: the one comparison this function never made. `currentTier` is the
+  // TE-69: the one comparison this function never made. `currentTier` is the
   // Firestore entitlement; Stripe prices the flow off the subscription item. If
   // the item already carries the target price the subscription is *on* the
   // requested plan, and the confirm flow Stripe is handed changes nothing — it
