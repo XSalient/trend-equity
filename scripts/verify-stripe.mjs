@@ -83,26 +83,32 @@ fetch('https://api.stripe.com/v1/products', {
     console.log('3️⃣  Found Products & Prices:');
     console.log('');
 
-    products.forEach((product) => {
-      if (
-        ['pro', 'Pro', 'builder', 'Builder'].some((t) =>
-          product.name.toLowerCase().includes(t.toLowerCase())
-        )
-      ) {
+    // TE-60: matched with `includes`, so a throwaway product called
+    // "myproduct" answered to "pro" — and being listed first, it was the one
+    // step 4 suggested, printing `STRIPE_PRICE_PRO=null` for anyone to paste
+    // into .env. The tier products are named exactly "Pro" and "Builder"; a
+    // suggestion is only worth making when it carries a real price.
+    const named = (name) => (p) => p.name?.trim().toLowerCase() === name;
+    const withPrice = (p) => p && p.default_price;
+
+    products
+      .filter((p) => named('pro')(p) || named('builder')(p))
+      .forEach((product) => {
         console.log(`   📦 ${product.name}`);
         console.log(`      Product ID: ${product.id}`);
 
         if (product.default_price) {
           console.log(`      Price ID: ${product.default_price}`);
           console.log('      ✓ Copy this Price ID to your .env\n');
+        } else {
+          console.log('      ✗ no default price set on this product\n');
         }
-      }
-    });
+      });
 
     console.log('4️⃣  Update your .env:');
     console.log('');
-    const proProd = products.find((p) => p.name.toLowerCase().includes('pro'));
-    const builderProd = products.find((p) => p.name.toLowerCase().includes('builder'));
+    const proProd = products.filter(named('pro')).find(withPrice);
+    const builderProd = products.filter(named('builder')).find(withPrice);
 
     if (proProd && builderProd) {
       console.log(`   STRIPE_PRICE_PRO=${proProd.default_price}`);
@@ -110,6 +116,9 @@ fetch('https://api.stripe.com/v1/products', {
       console.log('');
       console.log('5️⃣  Restart dev server:');
       console.log('   npm run dev');
+    } else {
+      console.log('   (no "Pro" / "Builder" product with a default price — nothing to suggest)');
+      console.log('   Step 6 below checks the ids you actually have configured.');
     }
 
     console.log('');
